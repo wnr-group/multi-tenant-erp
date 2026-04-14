@@ -1,3 +1,6 @@
+// Server-side Supabase client for Next.js App Router only.
+// Kept in apps/web (not packages/shared) to avoid importing next/headers
+// into the Expo mobile bundle, which does not support it.
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
