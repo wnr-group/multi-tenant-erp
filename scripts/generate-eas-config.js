@@ -16,8 +16,19 @@ const schoolFiles = fs.readdirSync(configsDir).filter((f) => f.endsWith(".json")
 
 const buildProfiles = {};
 
+const REQUIRED_FIELDS = ["slug", "name", "schoolId", "primaryColor", "bundleIdentifier", "playStorePackage", "iconPath", "splashPath"];
+
 for (const file of schoolFiles) {
-  const school = JSON.parse(fs.readFileSync(path.join(configsDir, file), "utf8"));
+  let school;
+  try {
+    school = JSON.parse(fs.readFileSync(path.join(configsDir, file), "utf8"));
+  } catch (err) {
+    throw new Error(`Failed to parse ${file}: ${err.message}`);
+  }
+
+  for (const field of REQUIRED_FIELDS) {
+    if (!school[field]) throw new Error(`${file} is missing required field: ${field}`);
+  }
 
   buildProfiles[school.slug] = {
     android: {
@@ -28,6 +39,7 @@ for (const file of schoolFiles) {
       EXPO_PUBLIC_SCHOOL_NAME: school.name,
       EXPO_PUBLIC_PRIMARY_COLOR: school.primaryColor,
       EXPO_PUBLIC_BUNDLE_ID: school.bundleIdentifier,
+      EXPO_PUBLIC_PLAY_STORE_PACKAGE: school.playStorePackage,
       EXPO_PUBLIC_ICON_PATH: school.iconPath,
       EXPO_PUBLIC_SPLASH_PATH: school.splashPath,
     },

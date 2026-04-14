@@ -12,6 +12,7 @@
         "EXPO_PUBLIC_SCHOOL_NAME": "Demo School",
         "EXPO_PUBLIC_PRIMARY_COLOR": "#2563EB",
         "EXPO_PUBLIC_BUNDLE_ID": "com.demoschool.erp",
+        "EXPO_PUBLIC_PLAY_STORE_PACKAGE": "com.demoschool.erp",
         "EXPO_PUBLIC_ICON_PATH": "../../schools/assets/demo/icon.png",
         "EXPO_PUBLIC_SPLASH_PATH": "../../schools/assets/demo/splash.png"
       }
