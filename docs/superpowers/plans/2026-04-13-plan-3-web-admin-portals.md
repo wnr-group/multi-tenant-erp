@@ -4,7 +4,7 @@
 
 **Goal:** Build the Super Admin (WnR platform), School Admin, and Principal web portals — all CRUD operations, dashboards, and management screens.
 
-**Architecture:** Next.js App Router server components for data fetching; client components only for interactive forms and tables. shadcn/ui for all UI primitives. Each portal is a separate route group with its own layout and sidebar. Data access via `@balaji-erp/shared/supabase/server` client.
+**Architecture:** Next.js App Router server components for data fetching; client components only for interactive forms and tables. shadcn/ui for all UI primitives. Each portal is a separate route group with its own layout and sidebar. Data access via `@erp/shared/supabase/server` client.
 
 **Tech Stack:** Next.js 14 App Router, shadcn/ui, Tailwind CSS, `@supabase/ssr`, Zod
 
@@ -211,7 +211,7 @@ All user invite operations (school admin, teacher, student) require `supabase.au
 ```typescript
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 
 export async function POST(request: NextRequest) {
   // Verify caller is authenticated and has admin/super_admin role
@@ -306,7 +306,7 @@ git commit -m "feat: init shadcn/ui, shared components, and server-side invite A
 
 ```tsx
 import { redirect } from "next/navigation";
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 import { Sidebar } from "@/components/sidebar";
 
 const NAV = [
@@ -344,7 +344,7 @@ export default async function PlatformAdminLayout({
 - [ ] **Step 2: Create `apps/web/app/(platform-admin)/dashboard/page.tsx`**
 
 ```tsx
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 
 export default async function PlatformDashboard() {
   const supabase = await createServerSupabaseClient();
@@ -379,7 +379,7 @@ export default async function PlatformDashboard() {
 
 ```tsx
 import Link from "next/link";
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 import { DataTable } from "@/components/data-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -438,7 +438,7 @@ export default async function SchoolsPage() {
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@balaji-erp/shared/supabase/client";
+import { createClient } from "@erp/shared/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -544,7 +544,7 @@ export default function NewSchoolPage() {
 - [ ] **Step 5: Create `apps/web/app/(platform-admin)/schools/[id]/page.tsx`**
 
 ```tsx
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 import { notFound } from "next/navigation";
 import { ToggleActiveButton } from "./toggle-active-button";
 import { ViewAsButton } from "./view-as-button";
@@ -612,7 +612,7 @@ export default async function SchoolDetailPage({
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@balaji-erp/shared/supabase/client";
+import { createClient } from "@erp/shared/supabase/client";
 import { Button } from "@/components/ui/button";
 
 export function ToggleActiveButton({
@@ -709,7 +709,7 @@ This API route sets the `acting_as` cookie on the school's domain by redirecting
 
 ```typescript
 import { NextRequest, NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 
 export async function POST(request: NextRequest) {
   const { role, schoolDomain } = await request.json() as { role: string; schoolDomain: string };
@@ -803,7 +803,7 @@ export function ExitContextButton() {
 
 ```typescript
 import { NextRequest, NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 
 export async function POST(request: NextRequest) {
   const supabase = await createServerSupabaseClient();
@@ -916,7 +916,7 @@ export function SwitchRolePanel({ roles }: { roles: string[] }) {
 - [ ] **Step 15: Type-check**
 
 ```bash
-pnpm --filter @balaji-erp/web type-check
+pnpm --filter @erp/web type-check
 ```
 
 Expected: 0 errors.
@@ -946,7 +946,7 @@ git commit -m "feat: platform admin dashboard + schools CRUD, context switching,
 
 ```tsx
 import { redirect } from "next/navigation";
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 import { Sidebar } from "@/components/sidebar";
 import { ContextSwitchBanner } from "@/components/context-switch-banner";
 
@@ -995,7 +995,7 @@ export default async function AdminLayout({
 - [ ] **Step 2: Create `apps/web/app/(school)/admin/dashboard/page.tsx`**
 
 ```tsx
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 
 export default async function AdminDashboard() {
   const supabase = await createServerSupabaseClient();
@@ -1046,7 +1046,7 @@ export default async function AdminDashboard() {
 - [ ] **Step 3: Create `apps/web/app/(school)/admin/classes/page.tsx`**
 
 ```tsx
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 import { DataTable } from "@/components/data-table";
 import { AddClassForm } from "./add-class-form";
 
@@ -1092,7 +1092,7 @@ export default async function ClassesPage() {
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@balaji-erp/shared/supabase/client";
+import { createClient } from "@erp/shared/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1129,7 +1129,7 @@ export function AddClassForm({ schoolId }: { schoolId: string }) {
 - [ ] **Step 5: Create `apps/web/app/(school)/admin/teachers/page.tsx`**
 
 ```tsx
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 import { DataTable } from "@/components/data-table";
 import { InviteTeacherForm } from "./invite-teacher-form";
 
@@ -1245,7 +1245,7 @@ export function InviteTeacherForm({ schoolId }: { schoolId: string }) {
 - [ ] **Step 7: Create `apps/web/app/(school)/admin/students/page.tsx`**
 
 ```tsx
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 import { DataTable } from "@/components/data-table";
 import { AddStudentForm } from "./add-student-form";
 
@@ -1305,7 +1305,7 @@ export default async function StudentsPage() {
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@balaji-erp/shared/supabase/client";
+import { createClient } from "@erp/shared/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1427,7 +1427,7 @@ export function AddStudentForm({
 - [ ] **Step 9: Create `apps/web/app/(school)/admin/fees/page.tsx`**
 
 ```tsx
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 import { DataTable } from "@/components/data-table";
 import { Badge } from "@/components/ui/badge";
 
@@ -1490,7 +1490,7 @@ export default async function FeesPage() {
 - [ ] **Step 10: Create `apps/web/app/(school)/admin/announcements/page.tsx`**
 
 ```tsx
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 import { DataTable } from "@/components/data-table";
 import { CreateAnnouncementForm } from "./create-announcement-form";
 
@@ -1532,7 +1532,7 @@ export default async function AnnouncementsPage() {
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@balaji-erp/shared/supabase/client";
+import { createClient } from "@erp/shared/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1596,7 +1596,7 @@ export function CreateAnnouncementForm({
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@balaji-erp/shared/supabase/client";
+import { createClient } from "@erp/shared/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1659,7 +1659,7 @@ export default function SettingsPage() {
 - [ ] **Step 13: Type-check**
 
 ```bash
-pnpm --filter @balaji-erp/web type-check
+pnpm --filter @erp/web type-check
 ```
 
 Expected: 0 errors.
@@ -1686,7 +1686,7 @@ git commit -m "feat: school admin portal — dashboard, classes, teachers, stude
 
 ```tsx
 import { redirect } from "next/navigation";
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 import { Sidebar } from "@/components/sidebar";
 import { ContextSwitchBanner } from "@/components/context-switch-banner";
 
@@ -1732,7 +1732,7 @@ export default async function PrincipalLayout({
 - [ ] **Step 2: Create `apps/web/app/(school)/principal/dashboard/page.tsx`**
 
 ```tsx
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 
 export default async function PrincipalDashboard() {
   const supabase = await createServerSupabaseClient();
@@ -1776,7 +1776,7 @@ export default async function PrincipalDashboard() {
 - [ ] **Step 3: Create `apps/web/app/(school)/principal/discipline/page.tsx`**
 
 ```tsx
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 import { DataTable } from "@/components/data-table";
 import { Badge } from "@/components/ui/badge";
 
@@ -1829,7 +1829,7 @@ export default async function DisciplinePage() {
 - [ ] **Step 4: Create `apps/web/app/(school)/principal/reports/page.tsx`**
 
 ```tsx
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 import { DataTable } from "@/components/data-table";
 
 export default async function ReportsPage() {
@@ -1864,7 +1864,7 @@ export default async function ReportsPage() {
 - [ ] **Step 5: Create `apps/web/app/(school)/principal/announcements/page.tsx`**
 
 ```tsx
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 import { DataTable } from "@/components/data-table";
 import { CreateAnnouncementForm } from "../../admin/announcements/create-announcement-form";
 
@@ -1902,7 +1902,7 @@ export default async function PrincipalAnnouncementsPage() {
 - [ ] **Step 6: Type-check**
 
 ```bash
-pnpm --filter @balaji-erp/web type-check
+pnpm --filter @erp/web type-check
 ```
 
 Expected: 0 errors.
@@ -1936,7 +1936,7 @@ These pages were missing from the initial plan and are required for the teacher 
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@balaji-erp/shared/supabase/client";
+import { createClient } from "@erp/shared/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -2000,7 +2000,7 @@ In the admin layout's `NAV` array, add:
 - [ ] **Step 3: Create `apps/web/app/(school)/admin/timetable/page.tsx`**
 
 ```tsx
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 import { DataTable } from "@/components/data-table";
 import { AddTimetableForm } from "./add-timetable-form";
 
@@ -2058,7 +2058,7 @@ export default async function TimetablePage() {
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@balaji-erp/shared/supabase/client";
+import { createClient } from "@erp/shared/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -2146,7 +2146,7 @@ export function AddTimetableForm({ schoolId, sections, subjects, teachers }: {
 Manages academic years and exams.
 
 ```tsx
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 import { DataTable } from "@/components/data-table";
 import { AddExamForm } from "./add-exam-form";
 import { AddAcademicYearForm } from "./add-academic-year-form";
@@ -2207,7 +2207,7 @@ export default async function AcademicsPage() {
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@balaji-erp/shared/supabase/client";
+import { createClient } from "@erp/shared/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -2249,7 +2249,7 @@ export function AddAcademicYearForm({ schoolId }: { schoolId: string }) {
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@balaji-erp/shared/supabase/client";
+import { createClient } from "@erp/shared/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -2303,7 +2303,7 @@ Create `apps/web/app/(school)/admin/fees/add-fee-structure-form.tsx`:
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@balaji-erp/shared/supabase/client";
+import { createClient } from "@erp/shared/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -2380,7 +2380,7 @@ Add `{ label: "Syllabus", href: "/admin/syllabus" }` to the admin layout NAV.
 Create `apps/web/app/(school)/admin/syllabus/page.tsx`:
 
 ```tsx
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 import { DataTable } from "@/components/data-table";
 import { UploadSyllabusForm } from "./upload-syllabus-form";
 
@@ -2429,7 +2429,7 @@ export default async function SyllabusPage() {
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@balaji-erp/shared/supabase/client";
+import { createClient } from "@erp/shared/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -2510,7 +2510,7 @@ export function UploadSyllabusForm({ schoolId, classes, subjects, academicYears 
 - [ ] **Step 11: Type-check**
 
 ```bash
-pnpm --filter @balaji-erp/web type-check
+pnpm --filter @erp/web type-check
 ```
 
 Expected: 0 errors.
@@ -2582,7 +2582,7 @@ export { logAudit } from "./audit";
 In any client or server component after a successful mutation (e.g. attendance mark), add:
 
 ```typescript
-import { logAudit } from "@balaji-erp/shared";
+import { logAudit } from "@erp/shared";
 
 // After saving attendance:
 await logAudit(supabase, {

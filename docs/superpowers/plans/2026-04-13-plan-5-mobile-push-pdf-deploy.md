@@ -1551,7 +1551,7 @@ git commit -m "feat: report card HTML generation edge function"
 ```json
 {
   "framework": "nextjs",
-  "buildCommand": "cd ../.. && pnpm build --filter @balaji-erp/web",
+  "buildCommand": "cd ../.. && pnpm build --filter @erp/web",
   "outputDirectory": ".next"
 }
 ```

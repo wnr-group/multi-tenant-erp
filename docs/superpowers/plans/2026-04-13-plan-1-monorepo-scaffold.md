@@ -13,7 +13,7 @@
 ## File Map
 
 ```
-balaji-erp/
+multi-tenant-erp/
 ├── package.json                          # pnpm workspace root
 ├── pnpm-workspace.yaml                   # workspace globs
 ├── turbo.json                            # pipeline config
@@ -85,12 +85,12 @@ balaji-erp/
 ## Task 1: Initialize Turborepo Root
 
 **Files:**
-- Create: `balaji-erp/package.json`
-- Create: `balaji-erp/pnpm-workspace.yaml`
-- Create: `balaji-erp/turbo.json`
-- Create: `balaji-erp/tsconfig.base.json`
-- Create: `balaji-erp/.gitignore`
-- Create: `balaji-erp/.env.example`
+- Create: `multi-tenant-erp/package.json`
+- Create: `multi-tenant-erp/pnpm-workspace.yaml`
+- Create: `multi-tenant-erp/turbo.json`
+- Create: `multi-tenant-erp/tsconfig.base.json`
+- Create: `multi-tenant-erp/.gitignore`
+- Create: `multi-tenant-erp/.env.example`
 
 - [ ] **Step 1: Create the project root directory**
 
@@ -104,7 +104,7 @@ git init
 
 ```json
 {
-  "name": "balaji-erp",
+  "name": "multi-tenant-erp",
   "private": true,
   "scripts": {
     "dev": "turbo run dev",
@@ -213,7 +213,7 @@ git commit -m "chore: initialize turborepo root"
 
 ```json
 {
-  "name": "@balaji-erp/shared",
+  "name": "@erp/shared",
   "version": "0.0.1",
   "private": true,
   "main": "./src/index.ts",
@@ -366,7 +366,7 @@ git commit -m "feat: add shared package with types, schemas, supabase clients"
 
 ```json
 {
-  "name": "@balaji-erp/ui",
+  "name": "@erp/ui",
   "version": "0.0.1",
   "private": true,
   "main": "./src/index.ts",
@@ -400,7 +400,7 @@ export {};
 
 ```json
 {
-  "name": "@balaji-erp/supabase",
+  "name": "@erp/supabase",
   "version": "0.0.1",
   "private": true,
   "main": "./src/index.ts",
@@ -465,7 +465,7 @@ git commit -m "feat: add ui and supabase placeholder packages"
 
 ```json
 {
-  "name": "@balaji-erp/web",
+  "name": "@erp/web",
   "version": "0.0.1",
   "private": true,
   "scripts": {
@@ -476,8 +476,8 @@ git commit -m "feat: add ui and supabase placeholder packages"
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@balaji-erp/shared": "workspace:*",
-    "@balaji-erp/ui": "workspace:*",
+    "@erp/shared": "workspace:*",
+    "@erp/ui": "workspace:*",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.47.0",
     "next": "14.2.29",
@@ -520,7 +520,7 @@ git commit -m "feat: add ui and supabase placeholder packages"
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@balaji-erp/shared", "@balaji-erp/ui"],
+  transpilePackages: ["@erp/shared", "@erp/ui"],
 };
 
 export default nextConfig;
@@ -671,7 +671,7 @@ git commit -m "feat: scaffold Next.js 14 web app with auth placeholder"
 
 ```json
 {
-  "name": "@balaji-erp/mobile",
+  "name": "@erp/mobile",
   "version": "0.0.1",
   "private": true,
   "main": "expo-router/entry",
@@ -682,7 +682,7 @@ git commit -m "feat: scaffold Next.js 14 web app with auth placeholder"
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@balaji-erp/shared": "workspace:*",
+    "@erp/shared": "workspace:*",
     "@expo/metro-runtime": "~4.0.1",
     "@supabase/supabase-js": "^2.47.0",
     "expo": "~52.0.28",
@@ -728,7 +728,7 @@ git commit -m "feat: scaffold Next.js 14 web app with auth placeholder"
 {
   "expo": {
     "name": "Balaji ERP",
-    "slug": "balaji-erp",
+    "slug": "multi-tenant-erp",
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "balajierp",
@@ -888,7 +888,7 @@ Expected: 0 TypeScript errors across web, mobile, shared, ui, supabase packages.
 - [ ] **Step 3: Start the web dev server and verify it loads**
 
 ```bash
-pnpm --filter @balaji-erp/web dev
+pnpm --filter @erp/web dev
 ```
 
 Open `http://localhost:3000` — should redirect to `/login` and show the placeholder login page with "Balaji ERP — Login" heading.
@@ -897,7 +897,7 @@ Open `http://localhost:3000` — should redirect to `/login` and show the placeh
 
 Open a second terminal:
 ```bash
-pnpm --filter @balaji-erp/mobile dev
+pnpm --filter @erp/mobile dev
 ```
 
 Expected: Expo dev server starts, QR code displayed, Metro bundler compiles without errors.

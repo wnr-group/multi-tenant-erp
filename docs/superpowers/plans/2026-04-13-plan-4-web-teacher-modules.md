@@ -49,7 +49,7 @@ apps/web/app/(school)/teacher/
 
 ```tsx
 import { redirect } from "next/navigation";
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 import { Sidebar } from "@/components/sidebar";
 import { ContextSwitchBanner } from "@/components/context-switch-banner";
 
@@ -97,7 +97,7 @@ export default async function TeacherLayout({
 - [ ] **Step 2: Create `apps/web/app/(school)/teacher/dashboard/page.tsx`**
 
 ```tsx
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 
 const DAYS = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -173,7 +173,7 @@ git commit -m "feat: teacher layout and dashboard"
 - [ ] **Step 1: Create `apps/web/app/(school)/teacher/attendance/page.tsx`**
 
 ```tsx
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 import { AttendancePicker } from "./attendance-picker";
 
 export default async function AttendancePage() {
@@ -267,7 +267,7 @@ export function AttendancePicker({ sections }: { sections: Section[] }) {
 - [ ] **Step 3: Create `apps/web/app/(school)/teacher/attendance/mark/page.tsx`**
 
 ```tsx
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 import { AttendanceMarkForm } from "./attendance-mark-form";
 
 export default async function MarkAttendancePage({
@@ -331,7 +331,7 @@ export default async function MarkAttendancePage({
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@balaji-erp/shared/supabase/client";
+import { createClient } from "@erp/shared/supabase/client";
 import { Button } from "@/components/ui/button";
 
 type AttendanceStatus = "present" | "absent" | "late" | "half_day";
@@ -461,7 +461,7 @@ git commit -m "feat: teacher attendance — section picker and student mark form
 - [ ] **Step 1: Create `apps/web/app/(school)/teacher/homework/page.tsx`**
 
 ```tsx
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 import { DataTable } from "@/components/data-table";
 import { CreateHomeworkForm } from "./create-homework-form";
 
@@ -517,7 +517,7 @@ export default async function HomeworkPage() {
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@balaji-erp/shared/supabase/client";
+import { createClient } from "@erp/shared/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -646,7 +646,7 @@ git commit -m "feat: teacher homework — list and create form"
 - [ ] **Step 1: Create `apps/web/app/(school)/teacher/results/page.tsx`**
 
 ```tsx
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 import Link from "next/link";
 import { DataTable } from "@/components/data-table";
 
@@ -692,7 +692,7 @@ export default async function ResultsPage() {
 - [ ] **Step 2: Create `apps/web/app/(school)/teacher/results/[examId]/page.tsx`**
 
 ```tsx
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 import { MarksEntryForm } from "./marks-entry-form";
 import { notFound } from "next/navigation";
 
@@ -754,7 +754,7 @@ export default async function EnterMarksPage({
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@balaji-erp/shared/supabase/client";
+import { createClient } from "@erp/shared/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -894,7 +894,7 @@ git commit -m "feat: teacher results — exam list and marks entry form"
 - [ ] **Step 1: Create `apps/web/app/(school)/teacher/discipline/page.tsx`**
 
 ```tsx
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 import { DataTable } from "@/components/data-table";
 import { Badge } from "@/components/ui/badge";
 import { CreateDisciplineForm } from "./create-discipline-form";
@@ -968,7 +968,7 @@ export default async function TeacherDisciplinePage() {
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@balaji-erp/shared/supabase/client";
+import { createClient } from "@erp/shared/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1059,7 +1059,7 @@ export function CreateDisciplineForm({
 - [ ] **Step 3: Create `apps/web/app/(school)/teacher/feedback/page.tsx`**
 
 ```tsx
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 import { FeedbackList } from "./feedback-list";
 
 export default async function TeacherFeedbackPage() {
@@ -1089,7 +1089,7 @@ export default async function TeacherFeedbackPage() {
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@balaji-erp/shared/supabase/client";
+import { createClient } from "@erp/shared/supabase/client";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -1185,7 +1185,7 @@ export function FeedbackList({ items }: { items: FeedbackItem[] }) {
 - [ ] **Step 5: Type-check**
 
 ```bash
-pnpm --filter @balaji-erp/web type-check
+pnpm --filter @erp/web type-check
 ```
 
 Expected: 0 errors.
