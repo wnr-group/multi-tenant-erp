@@ -1,0 +1,10 @@
+{
+  "slug": "demo",
+  "name": "Demo School",
+  "schoolId": "aaaaaaaa-0000-0000-0000-000000000001",
+  "primaryColor": "#2563EB",
+  "bundleIdentifier": "com.demoschool.erp",
+  "playStorePackage": "com.demoschool.erp",
+  "iconPath": "../../schools/assets/demo/icon.png",
+  "splashPath": "../../schools/assets/demo/splash.png"
+}
