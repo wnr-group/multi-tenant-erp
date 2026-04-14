@@ -842,8 +842,8 @@ Create `apps/web/app/(auth)/login/login-form.tsx` (client component):
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@balaji-erp/shared/supabase/client";
-import { loginSchema } from "@balaji-erp/shared/schemas";
+import { createClient } from "@erp/shared/supabase/client";
+import { loginSchema } from "@erp/shared/schemas";
 
 export function LoginForm({
   schoolName,
@@ -944,7 +944,7 @@ Now create `apps/web/app/(auth)/login/page.tsx` (server component):
 
 ```tsx
 import { headers } from "next/headers";
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 import { LoginForm } from "./login-form";
 
 export default async function LoginPage() {
@@ -970,7 +970,7 @@ export default async function LoginPage() {
 - [ ] **Step 2: Create `apps/web/app/auth/callback/route.ts`**
 
 ```typescript
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
@@ -1130,7 +1130,7 @@ export const config = {
 
 ```tsx
 import { redirect } from "next/navigation";
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 
 export default async function PlatformAdminLayout({
   children,
@@ -1161,7 +1161,7 @@ export default async function PlatformAdminLayout({
 
 ```tsx
 import { redirect } from "next/navigation";
-import { createServerSupabaseClient } from "@balaji-erp/shared/supabase/server";
+import { createServerSupabaseClient } from "@erp/shared/supabase/server";
 
 // super_admin allowed via context switching
 const SCHOOL_ROLES = ["super_admin", "school_admin", "principal", "teacher"] as const;
@@ -1196,14 +1196,14 @@ export default async function SchoolLayout({
 - [ ] **Step 6: Verify web auth compiles**
 
 ```bash
-pnpm --filter @balaji-erp/web type-check
+pnpm --filter @erp/web type-check
 ```
 
 Expected: 0 errors.
 
 - [ ] **Step 7: Test login manually**
 
-Run `pnpm --filter @balaji-erp/web dev`, open `http://localhost:3000/login`, log in as the super admin seeded in Task 5.
+Run `pnpm --filter @erp/web dev`, open `http://localhost:3000/login`, log in as the super admin seeded in Task 5.
 
 Expected: redirected to `/platform-admin/dashboard` (404 is fine — page not built yet, but redirect proves role routing works).
 
@@ -1216,7 +1216,7 @@ When Super Admin invites a School Admin, teacher, or student, they receive an em
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "@balaji-erp/shared/supabase/client";
+import { createClient } from "@erp/shared/supabase/client";
 
 export default function InviteAcceptPage() {
   const router = useRouter();
@@ -1556,7 +1556,7 @@ export default function ParentLayout() {
 - [ ] **Step 7: Type-check mobile**
 
 ```bash
-pnpm --filter @balaji-erp/mobile type-check
+pnpm --filter @erp/mobile type-check
 ```
 
 Expected: 0 TypeScript errors.

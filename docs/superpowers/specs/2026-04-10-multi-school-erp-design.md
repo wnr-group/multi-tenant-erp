@@ -48,7 +48,7 @@ WnR acts as the platform-level super admin, operating from a separate admin URL 
 ### 2.2 Monorepo Structure
 
 ```
-balaji-erp/
+multi-tenant-erp/
 ├── apps/
 │   ├── web/                → Next.js 14+ (App Router)
 │   └── mobile/             → Expo SDK 52+ (Expo Router)
