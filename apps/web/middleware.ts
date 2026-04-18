@@ -140,14 +140,17 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(adminUrl);
   }
 
-  if (effectiveRole === "school_admin" && !pathname.startsWith("/admin")) {
-    return NextResponse.redirect(new URL("/admin/dashboard", request.url));
-  }
-  if (effectiveRole === "principal" && !pathname.startsWith("/principal")) {
-    return NextResponse.redirect(new URL("/principal/dashboard", request.url));
-  }
-  if (effectiveRole === "teacher" && !pathname.startsWith("/teacher")) {
-    return NextResponse.redirect(new URL("/teacher/dashboard", request.url));
+  // Skip role-based redirects for API routes and auth routes
+  if (!pathname.startsWith("/api") && !pathname.startsWith("/auth")) {
+    if (effectiveRole === "school_admin" && !pathname.startsWith("/admin")) {
+      return NextResponse.redirect(new URL("/admin/dashboard", request.url));
+    }
+    if (effectiveRole === "principal" && !pathname.startsWith("/principal")) {
+      return NextResponse.redirect(new URL("/principal/dashboard", request.url));
+    }
+    if (effectiveRole === "teacher" && !pathname.startsWith("/teacher")) {
+      return NextResponse.redirect(new URL("/teacher/dashboard", request.url));
+    }
   }
 
   return response;

@@ -57,7 +57,7 @@ export function AddTimetableForm({
       school_id: schoolId,
       section_id: sectionId,
       day_of_week: parseInt(day),
-      period_number: parseInt(period),
+      period: parseInt(period),
       subject_id: subjectId,
       teacher_id: teacherId,
     });
