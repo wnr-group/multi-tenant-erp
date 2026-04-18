@@ -18,10 +18,10 @@ export default async function TimetablePage() {
 
   const { data: slots } = await supabase
     .from("timetable")
-    .select("id, day_of_week, period_number, subject:subjects(name), section:sections(name, class:classes(name)), teacher:teacher_profiles(profile:profiles(full_name))")
+    .select("id, day_of_week, period, teacher_id, subject:subjects(name), section:sections(name, class:classes(name))")
     .eq("school_id", schoolId)
     .order("day_of_week")
-    .order("period_number");
+    .order("period");
 
   const { data: sections } = await supabase
     .from("sections")
@@ -37,20 +37,27 @@ export default async function TimetablePage() {
 
   const { data: teachers } = await supabase
     .from("teacher_profiles")
-    .select("id, profile:profiles(full_name)")
+    .select("profile_id, profile:profiles(full_name)")
     .eq("school_id", schoolId);
+
+  // Build teacher name lookup: profile_id (= auth user id) → full_name
+  const teacherNameMap = new Map(
+    (teachers ?? []).map((t) => {
+      const p = (t.profile as unknown as { full_name: string } | null);
+      return [t.profile_id, p?.full_name ?? ""] as const;
+    })
+  );
 
   const rows = (slots ?? []).map((s) => {
     const subject = (s.subject as unknown as { name: string } | null);
     const section = (s.section as unknown as { name: string; class: { name: string } | null } | null);
-    const teacher = (s.teacher as unknown as { profile: { full_name: string } | null } | null);
     return {
       id: s.id,
       day: DAY_LABELS[s.day_of_week] ?? String(s.day_of_week),
-      period: String(s.period_number),
+      period: String(s.period),
       section: section ? `${section.class?.name ?? ""} - ${section.name}` : "",
       subject: subject?.name ?? "",
-      teacher: teacher?.profile?.full_name ?? "",
+      teacher: teacherNameMap.get(s.teacher_id) ?? "",
     };
   });
 
@@ -61,7 +68,7 @@ export default async function TimetablePage() {
 
   const teacherOptions = (teachers ?? []).map((t) => {
     const p = (t.profile as unknown as { full_name: string } | null);
-    return { id: t.id, label: p?.full_name ?? "" };
+    return { id: t.profile_id, label: p?.full_name ?? "" };
   });
 
   return (
