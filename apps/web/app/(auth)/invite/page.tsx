@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase";
+import { GraduationCap, CheckCircle2 } from "lucide-react";
 
 export default function InviteAcceptPage() {
   const router = useRouter();
@@ -11,18 +12,30 @@ export default function InviteAcceptPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [tokenVerified, setTokenVerified] = useState(false);
+  const [userName, setUserName] = useState("");
+  const [userRole, setUserRole] = useState("");
+  const [schoolName, setSchoolName] = useState("");
+  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
-    // Supabase processes the token hash from the URL automatically on load
-    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
         setTokenVerified(true);
+        if (session?.user) {
+          setUserName(session.user.user_metadata?.full_name ?? "");
+          setUserRole(session.user.user_metadata?.invited_role ?? "");
+          setSchoolName(session.user.user_metadata?.school_name ?? "");
+        }
       }
     });
-    // Also check if already verified (page reload case)
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setTokenVerified(true);
+      if (session) {
+        setTokenVerified(true);
+        setUserName(session.user.user_metadata?.full_name ?? "");
+        setUserRole(session.user.user_metadata?.invited_role ?? "");
+        setSchoolName(session.user.user_metadata?.school_name ?? "");
+      }
     });
     return () => listener.subscription.unsubscribe();
   }, []);
@@ -50,62 +63,103 @@ export default function InviteAcceptPage() {
       return;
     }
 
-    await supabase.auth.signOut();
-    router.push("/login");
+    setSuccess(true);
+    setTimeout(async () => {
+      await supabase.auth.signOut();
+      router.push("/login");
+    }, 2000);
+  }
+
+  if (success) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-indigo-100">
+        <div className="w-full max-w-md rounded-xl border border-border bg-white p-8 text-center shadow-sm">
+          <CheckCircle2 className="mx-auto mb-4 h-12 w-12 text-emerald-500" />
+          <h1 className="text-xl font-semibold text-foreground">You're all set!</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Redirecting you to sign in...
+          </p>
+        </div>
+      </main>
+    );
   }
 
   if (!tokenVerified) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-gray-50">
-        <p className="text-sm text-gray-500">Verifying your invite link…</p>
+      <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-indigo-100">
+        <div className="w-full max-w-md rounded-xl border border-border bg-white p-8 text-center shadow-sm">
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
+          <p className="text-sm text-muted-foreground">Verifying your invite link...</p>
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gray-50">
+    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-indigo-100">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-lg bg-white p-8 shadow"
+        className="w-full max-w-md rounded-xl border border-border bg-white p-8 shadow-sm"
       >
-        <h1 className="mb-2 text-2xl font-bold text-gray-900">
-          Welcome to Balaji ERP
-        </h1>
-        <p className="mb-6 text-sm text-gray-500">
-          Set your password to get started.
-        </p>
+        <div className="mb-6 flex flex-col items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600">
+            <GraduationCap className="h-6 w-6 text-white" />
+          </div>
+          <div className="text-center">
+            <h1 className="text-xl font-semibold text-foreground">
+              {userName ? `Welcome, ${userName}!` : "Welcome!"}
+            </h1>
+            {(schoolName || userRole) && (
+              <p className="mt-1 text-sm text-muted-foreground">
+                {userRole && <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700">{userRole}</span>}
+                {schoolName && <span className="ml-1.5">at {schoolName}</span>}
+              </p>
+            )}
+            <p className="mt-3 text-sm text-muted-foreground">
+              Create a password to access your account.
+            </p>
+          </div>
+        </div>
+
         {error && (
-          <p className="mb-4 rounded bg-red-50 px-4 py-2 text-sm text-red-600">
+          <p className="mb-4 rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-600">
             {error}
           </p>
         )}
+
         <div className="mb-4">
-          <label className="mb-1 block text-sm font-medium text-gray-700">Password</label>
+          <label className="mb-1.5 block text-sm font-medium text-foreground">
+            Password
+          </label>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
             minLength={8}
-            className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+            placeholder="Minimum 8 characters"
+            className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
           />
         </div>
         <div className="mb-6">
-          <label className="mb-1 block text-sm font-medium text-gray-700">Confirm Password</label>
+          <label className="mb-1.5 block text-sm font-medium text-foreground">
+            Confirm Password
+          </label>
           <input
             type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
-            className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+            placeholder="Re-enter your password"
+            className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
           />
         </div>
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          className="w-full rounded-lg bg-indigo-600 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
         >
-          {loading ? "Setting password…" : "Set Password & Continue"}
+          {loading ? "Setting up your account..." : "Set Password & Get Started"}
         </button>
       </form>
     </main>

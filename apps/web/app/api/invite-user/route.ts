@@ -31,9 +31,37 @@ export async function POST(request: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
+  // Look up the school's domain so the invite redirects to the right URL
+  const { data: school } = await adminClient
+    .from("schools")
+    .select("domain, name")
+    .eq("id", schoolId)
+    .single();
+
+  // Build redirect URL — use the school's domain so the invite lands on the correct school portal
+  const host = request.headers.get("host") ?? "";
+  const port = host.includes(":") ? `:${host.split(":")[1]}` : "";
+  const protocol = host.includes("localhost") || host.includes("lvh.me") ? "http" : "https";
+  const redirectTo = school?.domain
+    ? `${protocol}://${school.domain}${port}/invite`
+    : undefined;
+
+  const roleLabels: Record<string, string> = {
+    school_admin: "School Admin",
+    principal: "Principal",
+    teacher: "Teacher",
+    student: "Student",
+    parent: "Parent",
+  };
+
   const { data: inviteData, error: inviteError } =
     await adminClient.auth.admin.inviteUserByEmail(email, {
-      data: { full_name: fullName },
+      data: {
+        full_name: fullName,
+        invited_role: roleLabels[role] ?? role,
+        school_name: school?.name ?? "School",
+      },
+      redirectTo,
     });
 
   if (inviteError || !inviteData.user) {
