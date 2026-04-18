@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { Sidebar } from "@/components/sidebar";
 import { ContextSwitchBanner } from "@/components/context-switch-banner";
+import { getSchoolBrand } from "@/lib/school-brand";
 
 const NAV = [
   { label: "Dashboard", href: "/principal/dashboard" },
@@ -31,11 +32,13 @@ export default async function PrincipalLayout({
   const allowed = ["principal", "school_admin", "super_admin"];
   if (!roleRow || !allowed.includes(roleRow.role)) redirect("/login");
 
+  const brand = await getSchoolBrand();
+
   return (
     <div className="flex h-screen flex-col">
       <ContextSwitchBanner />
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar title="Principal" items={NAV} />
+        <Sidebar title={brand?.name ?? "Principal"} items={NAV} brandColor={brand?.primaryColor} />
         <main className="flex-1 overflow-y-auto bg-[#F8F9FC] px-8 py-6">{children}</main>
       </div>
     </div>

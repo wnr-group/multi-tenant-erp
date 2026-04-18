@@ -52,7 +52,10 @@ export function LoginForm({
         className="w-full max-w-md rounded-xl border border-border bg-white p-8 shadow-sm"
       >
         <div className="mb-6 flex flex-col items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600">
+          <div
+            className="flex h-12 w-12 items-center justify-center rounded-xl"
+            style={{ backgroundColor: primaryColor }}
+          >
             <GraduationCap className="h-6 w-6 text-white" />
           </div>
           <div className="text-center">
@@ -92,7 +95,8 @@ export function LoginForm({
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-lg bg-indigo-600 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
+          className="w-full rounded-lg py-2.5 text-sm font-semibold text-white transition-opacity disabled:opacity-50"
+          style={{ backgroundColor: primaryColor }}
         >
           {loading ? "Signing in..." : "Sign in"}
         </button>
