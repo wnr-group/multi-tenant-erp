@@ -30,10 +30,19 @@ export async function middleware(request: NextRequest) {
         setAll(
           cookiesToSet: { name: string; value: string; options: CookieOptions }[]
         ) {
+          // Share auth cookies across subdomains (.lvh.me for local, .balajierp.com for prod)
+          const host = request.headers.get("host") ?? "";
+          const isLvh = host.includes("lvh.me");
+          const isBalaji = host.includes("balajierp.com");
+          const cookieDomain = isLvh ? ".lvh.me" : isBalaji ? ".balajierp.com" : undefined;
+
           cookiesToSet.forEach(({ name, value, options }) => {
             request.cookies.set(name, value);
             response = NextResponse.next({ request });
-            response.cookies.set(name, value, options);
+            response.cookies.set(name, value, {
+              ...options,
+              domain: cookieDomain,
+            });
           });
         },
       },
