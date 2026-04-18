@@ -14,10 +14,11 @@ export async function ContextSwitchBanner() {
   };
 
   return (
-    <div className="sticky top-0 z-50 flex items-center justify-between bg-amber-400 px-4 py-2 text-sm font-medium text-amber-900">
+    <div className="flex items-center justify-between bg-amber-50 border-b border-amber-200 px-5 py-2 text-sm text-amber-800">
       <span>
-        You are viewing as <strong>{roleLabels[actingAs] ?? actingAs}</strong>.
-        All actions are logged under your real identity.
+        Viewing as <strong className="font-semibold">{roleLabels[actingAs] ?? actingAs}</strong>
+        <span className="mx-2 text-amber-400">&middot;</span>
+        Actions logged under your real identity
       </span>
       <ExitContextButton />
     </div>

@@ -24,12 +24,17 @@ export function DataTable<T extends { id: string }>({
   emptyMessage = "No records found.",
 }: DataTableProps<T>) {
   return (
-    <div className="rounded-md border">
+    <div className="overflow-hidden rounded-lg border border-border bg-card">
       <Table>
         <TableHeader>
-          <TableRow>
+          <TableRow className="bg-muted/40 hover:bg-muted/40">
             {columns.map((col, i) => (
-              <TableHead key={i}>{col.header}</TableHead>
+              <TableHead
+                key={i}
+                className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+              >
+                {col.header}
+              </TableHead>
             ))}
           </TableRow>
         </TableHeader>
@@ -38,16 +43,16 @@ export function DataTable<T extends { id: string }>({
             <TableRow>
               <TableCell
                 colSpan={columns.length}
-                className="py-8 text-center text-sm text-gray-400"
+                className="py-12 text-center text-sm text-muted-foreground"
               >
                 {emptyMessage}
               </TableCell>
             </TableRow>
           ) : (
             data.map((row) => (
-              <TableRow key={row.id}>
+              <TableRow key={row.id} className="hover:bg-muted/30">
                 {columns.map((col, i) => (
-                  <TableCell key={i}>
+                  <TableCell key={i} className="text-sm">
                     {typeof col.accessor === "function"
                       ? col.accessor(row)
                       : (row[col.accessor] as React.ReactNode)}

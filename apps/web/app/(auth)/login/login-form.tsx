@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase";
 import { loginSchema } from "@erp/shared";
+import { GraduationCap } from "lucide-react";
 
 export function LoginForm({
   schoolName,
@@ -45,24 +46,27 @@ export function LoginForm({
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gray-50">
+    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-indigo-100">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-lg bg-white p-8 shadow"
+        className="w-full max-w-md rounded-xl border border-border bg-white p-8 shadow-sm"
       >
-        <div
-          className="mb-2 h-2 w-full rounded-t-lg"
-          style={{ backgroundColor: primaryColor }}
-        />
-        <h1 className="mb-1 text-2xl font-bold text-gray-900">{schoolName}</h1>
-        <p className="mb-6 text-sm text-gray-400">Sign in to continue</p>
+        <div className="mb-6 flex flex-col items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600">
+            <GraduationCap className="h-6 w-6 text-white" />
+          </div>
+          <div className="text-center">
+            <h1 className="text-xl font-semibold text-foreground">{schoolName}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Sign in to continue</p>
+          </div>
+        </div>
         {error && (
-          <p className="mb-4 rounded bg-red-50 px-4 py-2 text-sm text-red-600">
+          <p className="mb-4 rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-600">
             {error}
           </p>
         )}
         <div className="mb-4">
-          <label className="mb-1 block text-sm font-medium text-gray-700">
+          <label className="mb-1.5 block text-sm font-medium text-foreground">
             Email
           </label>
           <input
@@ -70,11 +74,11 @@ export function LoginForm({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none"
+            className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
           />
         </div>
         <div className="mb-6">
-          <label className="mb-1 block text-sm font-medium text-gray-700">
+          <label className="mb-1.5 block text-sm font-medium text-foreground">
             Password
           </label>
           <input
@@ -82,16 +86,15 @@ export function LoginForm({
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none"
+            className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
           />
         </div>
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded py-2 text-sm font-medium text-white disabled:opacity-50"
-          style={{ backgroundColor: primaryColor }}
+          className="w-full rounded-lg bg-indigo-600 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
         >
-          {loading ? "Signing in…" : "Sign in"}
+          {loading ? "Signing in..." : "Sign in"}
         </button>
       </form>
     </main>
