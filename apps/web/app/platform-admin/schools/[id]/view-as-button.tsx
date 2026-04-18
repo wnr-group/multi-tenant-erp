@@ -14,11 +14,16 @@ export function ViewAsButton({ schoolDomain }: { schoolDomain: string }) {
   async function switchContext(role: string) {
     if (!schoolDomain) return;
     setLoading(true);
+    // Call API to log the audit entry
     await fetch("/api/context-switch", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ role }),
     });
+    // Set cookie client-side with parent domain so it's shared across subdomains
+    const host = window.location.hostname;
+    const parentDomain = host.includes("lvh.me") ? ".lvh.me" : host.includes("balajierp.com") ? ".balajierp.com" : "";
+    document.cookie = `acting_as=${role}; path=/; domain=${parentDomain}; max-age=${60 * 60 * 8}; samesite=lax`;
     const port = window.location.port ? `:${window.location.port}` : "";
     const path = role === "school_admin" ? "admin" : role;
     window.location.href = `http://${schoolDomain}${port}/${path}/dashboard`;

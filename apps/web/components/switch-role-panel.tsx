@@ -27,9 +27,11 @@ export function SwitchRolePanel({ roles }: { roles: string[] }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ role }),
     });
-    router.push(ROLE_PATHS[role] ?? "/");
-    router.refresh();
-    setLoading(false);
+    // Set cookie client-side with parent domain
+    const host = window.location.hostname;
+    const parentDomain = host.includes("lvh.me") ? ".lvh.me" : host.includes("balajierp.com") ? ".balajierp.com" : "";
+    document.cookie = `acting_as=${role}; path=/; domain=${parentDomain}; max-age=${60 * 60 * 8}; samesite=lax`;
+    window.location.href = ROLE_PATHS[role] ?? "/";
   }
 
   return (
