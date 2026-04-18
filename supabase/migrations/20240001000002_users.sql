@@ -72,3 +72,4 @@ CREATE INDEX idx_student_profiles_class_id ON public.student_profiles(class_id);
 CREATE INDEX idx_student_profiles_section_id ON public.student_profiles(section_id);
 CREATE INDEX idx_teacher_profiles_profile_id ON public.teacher_profiles(profile_id);
 CREATE INDEX idx_teacher_profiles_school_id ON public.teacher_profiles(school_id);
+CREATE INDEX idx_teacher_profiles_class_teacher_of ON public.teacher_profiles(class_teacher_of);
