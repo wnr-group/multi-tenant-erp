@@ -18,10 +18,22 @@ export default async function SchoolDetailPage({
 
   if (!school) notFound();
 
-  const { data: users } = await supabase
-    .from("profiles")
-    .select("id, full_name, email")
-    .eq("school_id", id);
+  // Query via user_roles (source of truth for school membership) joined with profiles
+  const { data: roleRows } = await supabase
+    .from("user_roles")
+    .select("role, user:profiles!user_roles_user_id_fkey(id, full_name, email)")
+    .eq("school_id", id)
+    .eq("is_active", true);
+
+  const users = (roleRows ?? []).map((r) => {
+    const profile = r.user as unknown as { id: string; full_name: string; email: string } | null;
+    return {
+      id: profile?.id ?? "",
+      full_name: profile?.full_name ?? "",
+      email: profile?.email ?? "",
+      role: r.role,
+    };
+  });
 
   return (
     <div>
@@ -43,13 +55,15 @@ export default async function SchoolDetailPage({
             <tr className="border-b text-left text-gray-500">
               <th className="pb-2">Name</th>
               <th className="pb-2">Email</th>
+              <th className="pb-2">Role</th>
             </tr>
           </thead>
           <tbody>
-            {users?.map((u) => (
+            {users.map((u) => (
               <tr key={u.id} className="border-b last:border-0">
                 <td className="py-2">{u.full_name}</td>
                 <td className="py-2 text-gray-500">{u.email}</td>
+                <td className="py-2 text-gray-500">{u.role}</td>
               </tr>
             ))}
           </tbody>
