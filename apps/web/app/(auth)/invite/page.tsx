@@ -10,14 +10,21 @@ export default function InviteAcceptPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [tokenVerified, setTokenVerified] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.onAuthStateChange((event) => {
+    // Supabase processes the token hash from the URL automatically on load
+    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
-        // Token verified — user can now set password
+        setTokenVerified(true);
       }
     });
+    // Also check if already verified (page reload case)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) setTokenVerified(true);
+    });
+    return () => listener.subscription.unsubscribe();
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -47,6 +54,14 @@ export default function InviteAcceptPage() {
     router.push("/login");
   }
 
+  if (!tokenVerified) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-gray-50">
+        <p className="text-sm text-gray-500">Verifying your invite link…</p>
+      </main>
+    );
+  }
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50">
       <form
@@ -65,9 +80,7 @@ export default function InviteAcceptPage() {
           </p>
         )}
         <div className="mb-4">
-          <label className="mb-1 block text-sm font-medium text-gray-700">
-            Password
-          </label>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Password</label>
           <input
             type="password"
             value={password}
@@ -78,9 +91,7 @@ export default function InviteAcceptPage() {
           />
         </div>
         <div className="mb-6">
-          <label className="mb-1 block text-sm font-medium text-gray-700">
-            Confirm Password
-          </label>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Confirm Password</label>
           <input
             type="password"
             value={confirmPassword}

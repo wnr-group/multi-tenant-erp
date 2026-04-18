@@ -1,7 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/auth/callback"];
+const PUBLIC_PATHS = ["/login", "/auth/callback", "/invite"];
 const PLATFORM_ADMIN_DOMAIN = "admin.balajierp.com";
 
 export async function middleware(request: NextRequest) {
@@ -92,7 +92,13 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  const actingAsCookie = request.cookies.get("acting_as")?.value;
+  const VALID_ROLES = ["super_admin", "school_admin", "principal", "teacher", "student", "parent"] as const;
+  type AppRole = (typeof VALID_ROLES)[number];
+
+  const rawActingAs = request.cookies.get("acting_as")?.value;
+  const actingAsCookie = rawActingAs && VALID_ROLES.includes(rawActingAs as AppRole)
+    ? rawActingAs as AppRole
+    : undefined;
   const effectiveRole = actingAsCookie ?? role;
 
   if (actingAsCookie) {
