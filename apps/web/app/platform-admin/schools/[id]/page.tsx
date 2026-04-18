@@ -18,22 +18,27 @@ export default async function SchoolDetailPage({
 
   if (!school) notFound();
 
-  // Query via user_roles (source of truth for school membership) joined with profiles
+  // Get user IDs + roles from user_roles, then fetch their profiles
   const { data: roleRows } = await supabase
     .from("user_roles")
-    .select("role, user:profiles!user_roles_user_id_fkey(id, full_name, email)")
+    .select("user_id, role")
     .eq("school_id", id)
     .eq("is_active", true);
 
-  const users = (roleRows ?? []).map((r) => {
-    const profile = r.user as unknown as { id: string; full_name: string; email: string } | null;
-    return {
-      id: profile?.id ?? "",
-      full_name: profile?.full_name ?? "",
-      email: profile?.email ?? "",
-      role: r.role,
-    };
-  });
+  const userIds = (roleRows ?? []).map((r) => r.user_id);
+  const roleMap = new Map((roleRows ?? []).map((r) => [r.user_id, r.role]));
+
+  const { data: profiles } = userIds.length > 0
+    ? await supabase
+        .from("profiles")
+        .select("id, full_name, email")
+        .in("id", userIds)
+    : { data: [] };
+
+  const users = (profiles ?? []).map((p) => ({
+    ...p,
+    role: roleMap.get(p.id) ?? "",
+  }));
 
   return (
     <div>
