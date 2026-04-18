@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase";
 import { loginSchema } from "@erp/shared";
@@ -18,6 +18,20 @@ export function LoginForm({
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const initialized = useRef(false);
+
+  // Clear any stale session on mount to prevent auth refresh loops
+  useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        // User has an active session — redirect them away from login
+        router.push("/");
+      }
+    });
+  }, [router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -39,6 +53,8 @@ export function LoginForm({
     if (authError) {
       setError(authError.message);
       setLoading(false);
+      // Sign out to clear any stale session that could trigger infinite refresh loops
+      await supabase.auth.signOut();
       return;
     }
 
