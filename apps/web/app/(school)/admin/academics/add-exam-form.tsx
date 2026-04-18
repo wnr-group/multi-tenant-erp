@@ -6,13 +6,7 @@ import { createClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { NativeSelect } from "@/components/ui/native-select";
 
 interface AcademicYearOption {
   id: string;
@@ -65,18 +59,12 @@ export function AddExamForm({ schoolId, academicYears }: AddExamFormProps) {
       </div>
       <div className="w-48">
         <Label>Academic Year</Label>
-        <Select value={academicYearId} onValueChange={(v) => setAcademicYearId(v ?? "")}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select year" />
-          </SelectTrigger>
-          <SelectContent>
-            {academicYears.map((y) => (
-              <SelectItem key={y.id} value={y.id}>
-                {y.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <NativeSelect
+          options={academicYears.map((y) => ({ value: y.id, label: y.name }))}
+          value={academicYearId}
+          onChange={(e) => setAcademicYearId(e.target.value)}
+          placeholder="Select year"
+        />
       </div>
       <div>
         <Label>Start Date (optional)</Label>

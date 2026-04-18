@@ -6,13 +6,7 @@ import { createClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { NativeSelect } from "@/components/ui/native-select";
 
 interface SubjectOption {
   id: string;
@@ -104,21 +98,13 @@ export function MarksEntryForm({
       <div className="mb-6 flex flex-wrap items-end gap-4">
         <div className="w-56">
           <Label>Subject</Label>
-          <Select
+          <NativeSelect
+            options={subjects.map((s) => ({ value: s.id, label: s.name }))}
             value={subjectId}
-            onValueChange={(v) => setSubjectId(v ?? "")}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select subject" />
-            </SelectTrigger>
-            <SelectContent>
-              {subjects.map((s) => (
-                <SelectItem key={s.id} value={s.id}>
-                  {s.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            onChange={(e) => setSubjectId(e.target.value)}
+            placeholder="Select subject"
+            className="w-full"
+          />
         </div>
         <div className="w-32">
           <Label>Max Marks</Label>

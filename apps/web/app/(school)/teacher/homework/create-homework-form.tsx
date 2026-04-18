@@ -6,13 +6,7 @@ import { createClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { NativeSelect } from "@/components/ui/native-select";
 
 interface ClassOption {
   id: string;
@@ -124,58 +118,37 @@ export function CreateHomeworkForm({
 
       <div>
         <Label>Class</Label>
-        <Select value={classId} onValueChange={(v) => setClassId(v ?? "")}>
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select class" />
-          </SelectTrigger>
-          <SelectContent>
-            {classes.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <NativeSelect
+          options={classes.map((c) => ({ value: c.id, label: c.name }))}
+          value={classId}
+          onChange={(e) => setClassId(e.target.value)}
+          placeholder="Select class"
+          className="w-full"
+        />
       </div>
 
       <div>
         <Label>Section</Label>
-        <Select
+        <NativeSelect
+          options={sections.map((s) => ({ value: s.id, label: s.name }))}
           value={sectionId}
-          onValueChange={(v) => setSectionId(v ?? "")}
+          onChange={(e) => setSectionId(e.target.value)}
+          placeholder="Select section"
           disabled={!classId}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select section" />
-          </SelectTrigger>
-          <SelectContent>
-            {sections.map((s) => (
-              <SelectItem key={s.id} value={s.id}>
-                {s.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          className="w-full"
+        />
       </div>
 
       <div>
         <Label>Subject</Label>
-        <Select
+        <NativeSelect
+          options={subjects.map((s) => ({ value: s.id, label: s.name }))}
           value={subjectId}
-          onValueChange={(v) => setSubjectId(v ?? "")}
+          onChange={(e) => setSubjectId(e.target.value)}
+          placeholder="Select subject"
           disabled={!classId}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select subject" />
-          </SelectTrigger>
-          <SelectContent>
-            {subjects.map((s) => (
-              <SelectItem key={s.id} value={s.id}>
-                {s.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          className="w-full"
+        />
       </div>
 
       <div className="col-span-2">

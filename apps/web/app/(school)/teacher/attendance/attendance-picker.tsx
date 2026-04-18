@@ -5,13 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { NativeSelect } from "@/components/ui/native-select";
 
 interface SectionOption {
   id: string;
@@ -39,18 +33,13 @@ export function AttendancePicker({
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
       <div>
         <Label>Section</Label>
-        <Select value={sectionId} onValueChange={(v) => setSectionId(v ?? "")}>
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select section" />
-          </SelectTrigger>
-          <SelectContent>
-            {sections.map((s) => (
-              <SelectItem key={s.id} value={s.id}>
-                {s.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <NativeSelect
+          options={sections.map((s) => ({ value: s.id, label: s.label }))}
+          value={sectionId}
+          onChange={(e) => setSectionId(e.target.value)}
+          placeholder="Select section"
+          className="w-full"
+        />
       </div>
       <div>
         <Label>Date</Label>

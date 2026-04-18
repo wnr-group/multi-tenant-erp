@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { NativeSelect } from "@/components/ui/native-select";
 
 interface ClassOption { id: string; name: string }
 interface SectionOption { id: string; name: string }
@@ -68,17 +68,22 @@ export function AddStudentForm({ schoolId, classes }: { schoolId: string; classe
       <div><Label>Roll Number</Label><Input value={rollNumber} onChange={(e) => setRollNumber(e.target.value)} /></div>
       <div>
         <Label>Class</Label>
-        <Select onValueChange={(v) => setClassId(v ?? "")} value={classId}>
-          <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
-          <SelectContent>{classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-        </Select>
+        <NativeSelect
+          options={classes.map((c) => ({ value: c.id, label: c.name }))}
+          value={classId}
+          onChange={(e) => setClassId(e.target.value)}
+          placeholder="Select class"
+        />
       </div>
       <div>
         <Label>Section</Label>
-        <Select onValueChange={(v) => setSectionId(v ?? "")} value={sectionId} disabled={!classId}>
-          <SelectTrigger><SelectValue placeholder="Select section" /></SelectTrigger>
-          <SelectContent>{sections.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
-        </Select>
+        <NativeSelect
+          options={sections.map((s) => ({ value: s.id, label: s.name }))}
+          value={sectionId}
+          onChange={(e) => setSectionId(e.target.value)}
+          placeholder="Select section"
+          disabled={!classId}
+        />
       </div>
       <div className="col-span-2">
         <Button type="submit" disabled={loading || !sectionId}>{loading ? "Adding…" : "Add Student"}</Button>

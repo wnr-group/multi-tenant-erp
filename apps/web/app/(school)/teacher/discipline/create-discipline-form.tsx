@@ -6,13 +6,7 @@ import { createClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { NativeSelect } from "@/components/ui/native-select";
 
 interface StudentOption {
   id: string;
@@ -84,18 +78,13 @@ export function CreateDisciplineForm({
 
       <div>
         <Label>Student</Label>
-        <Select value={studentId} onValueChange={(v) => setStudentId(v ?? "")}>
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select student" />
-          </SelectTrigger>
-          <SelectContent>
-            {students.map((s) => (
-              <SelectItem key={s.id} value={s.id}>
-                {s.full_name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <NativeSelect
+          options={students.map((s) => ({ value: s.id, label: s.full_name }))}
+          value={studentId}
+          onChange={(e) => setStudentId(e.target.value)}
+          placeholder="Select student"
+          className="w-full"
+        />
       </div>
 
       <div>
@@ -109,34 +98,24 @@ export function CreateDisciplineForm({
 
       <div>
         <Label>Category</Label>
-        <Select value={category} onValueChange={(v) => setCategory(v ?? "")}>
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select category" />
-          </SelectTrigger>
-          <SelectContent>
-            {CATEGORIES.map((c) => (
-              <SelectItem key={c.value} value={c.value}>
-                {c.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <NativeSelect
+          options={CATEGORIES.map((c) => ({ value: c.value, label: c.label }))}
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          placeholder="Select category"
+          className="w-full"
+        />
       </div>
 
       <div>
         <Label>Severity</Label>
-        <Select value={severity} onValueChange={(v) => setSeverity(v ?? "")}>
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select severity" />
-          </SelectTrigger>
-          <SelectContent>
-            {SEVERITIES.map((s) => (
-              <SelectItem key={s.value} value={s.value}>
-                {s.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <NativeSelect
+          options={SEVERITIES.map((s) => ({ value: s.value, label: s.label }))}
+          value={severity}
+          onChange={(e) => setSeverity(e.target.value)}
+          placeholder="Select severity"
+          className="w-full"
+        />
       </div>
 
       <div className="col-span-2">

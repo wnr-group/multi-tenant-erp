@@ -6,13 +6,7 @@ import { createClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { NativeSelect } from "@/components/ui/native-select";
 
 interface ClassOption {
   id: string;
@@ -54,8 +48,8 @@ export function UploadSyllabusForm({
     ? subjects.filter((s) => s.classId === classId)
     : subjects;
 
-  function handleClassChange(value: string | null) {
-    setClassId(value ?? "");
+  function handleClassChange(value: string) {
+    setClassId(value);
     setSubjectId("");
   }
 
@@ -83,48 +77,30 @@ export function UploadSyllabusForm({
     <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3">
       <div className="w-44">
         <Label>Class</Label>
-        <Select value={classId} onValueChange={handleClassChange}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select class" />
-          </SelectTrigger>
-          <SelectContent>
-            {classes.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <NativeSelect
+          options={classes.map((c) => ({ value: c.id, label: c.name }))}
+          value={classId}
+          onChange={(e) => handleClassChange(e.target.value)}
+          placeholder="Select class"
+        />
       </div>
       <div className="w-44">
         <Label>Subject</Label>
-        <Select value={subjectId} onValueChange={(v) => setSubjectId(v ?? "")}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select subject" />
-          </SelectTrigger>
-          <SelectContent>
-            {filteredSubjects.map((s) => (
-              <SelectItem key={s.id} value={s.id}>
-                {s.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <NativeSelect
+          options={filteredSubjects.map((s) => ({ value: s.id, label: s.name }))}
+          value={subjectId}
+          onChange={(e) => setSubjectId(e.target.value)}
+          placeholder="Select subject"
+        />
       </div>
       <div className="w-44">
         <Label>Academic Year</Label>
-        <Select value={academicYearId} onValueChange={(v) => setAcademicYearId(v ?? "")}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select year" />
-          </SelectTrigger>
-          <SelectContent>
-            {academicYears.map((y) => (
-              <SelectItem key={y.id} value={y.id}>
-                {y.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <NativeSelect
+          options={academicYears.map((y) => ({ value: y.id, label: y.name }))}
+          value={academicYearId}
+          onChange={(e) => setAcademicYearId(e.target.value)}
+          placeholder="Select year"
+        />
       </div>
       <div className="flex-1 min-w-48">
         <Label>File URL (paste link or storage URL)</Label>

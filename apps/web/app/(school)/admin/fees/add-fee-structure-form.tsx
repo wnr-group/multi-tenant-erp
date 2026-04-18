@@ -6,13 +6,7 @@ import { createClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { NativeSelect } from "@/components/ui/native-select";
 
 interface ClassOption {
   id: string;
@@ -89,33 +83,21 @@ export function AddFeeStructureForm({
       </div>
       <div className="w-40">
         <Label>Class</Label>
-        <Select value={classId} onValueChange={(v) => setClassId(v ?? "")}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select class" />
-          </SelectTrigger>
-          <SelectContent>
-            {classes.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <NativeSelect
+          options={classes.map((c) => ({ value: c.id, label: c.name }))}
+          value={classId}
+          onChange={(e) => setClassId(e.target.value)}
+          placeholder="Select class"
+        />
       </div>
       <div className="w-44">
         <Label>Academic Year</Label>
-        <Select value={academicYearId} onValueChange={(v) => setAcademicYearId(v ?? "")}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select year" />
-          </SelectTrigger>
-          <SelectContent>
-            {academicYears.map((y) => (
-              <SelectItem key={y.id} value={y.id}>
-                {y.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <NativeSelect
+          options={academicYears.map((y) => ({ value: y.id, label: y.name }))}
+          value={academicYearId}
+          onChange={(e) => setAcademicYearId(e.target.value)}
+          placeholder="Select year"
+        />
       </div>
       <div>
         <Label>Due Date (optional)</Label>

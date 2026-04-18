@@ -6,13 +6,7 @@ import { createClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { NativeSelect } from "@/components/ui/native-select";
 
 interface ClassOption {
   id: string;
@@ -50,18 +44,12 @@ export function AddSectionForm({ schoolId, classes }: AddSectionFormProps) {
     <form onSubmit={handleSubmit} className="flex items-end gap-3">
       <div className="w-48">
         <Label>Class</Label>
-        <Select value={classId} onValueChange={(v) => setClassId(v ?? "")}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select class" />
-          </SelectTrigger>
-          <SelectContent>
-            {classes.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <NativeSelect
+          options={classes.map((c) => ({ value: c.id, label: c.name }))}
+          value={classId}
+          onChange={(e) => setClassId(e.target.value)}
+          placeholder="Select class"
+        />
       </div>
       <div className="flex-1">
         <Label>Section Name (e.g., "A")</Label>

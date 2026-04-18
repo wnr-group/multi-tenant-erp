@@ -6,13 +6,7 @@ import { createClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { NativeSelect } from "@/components/ui/native-select";
 
 interface Option {
   id: string;
@@ -80,33 +74,21 @@ export function AddTimetableForm({
     <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
       <div>
         <Label>Section</Label>
-        <Select value={sectionId} onValueChange={(v) => setSectionId(v ?? "")}>
-          <SelectTrigger>
-            <SelectValue placeholder="Section" />
-          </SelectTrigger>
-          <SelectContent>
-            {sections.map((s) => (
-              <SelectItem key={s.id} value={s.id}>
-                {s.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <NativeSelect
+          options={sections.map((s) => ({ value: s.id, label: s.label }))}
+          value={sectionId}
+          onChange={(e) => setSectionId(e.target.value)}
+          placeholder="Section"
+        />
       </div>
       <div>
         <Label>Day</Label>
-        <Select value={day} onValueChange={(v) => setDay(v ?? "")}>
-          <SelectTrigger>
-            <SelectValue placeholder="Day" />
-          </SelectTrigger>
-          <SelectContent>
-            {DAYS.map((d) => (
-              <SelectItem key={d.value} value={d.value}>
-                {d.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <NativeSelect
+          options={DAYS.map((d) => ({ value: d.value, label: d.label }))}
+          value={day}
+          onChange={(e) => setDay(e.target.value)}
+          placeholder="Day"
+        />
       </div>
       <div>
         <Label>Period</Label>
@@ -122,33 +104,21 @@ export function AddTimetableForm({
       </div>
       <div>
         <Label>Subject</Label>
-        <Select value={subjectId} onValueChange={(v) => setSubjectId(v ?? "")}>
-          <SelectTrigger>
-            <SelectValue placeholder="Subject" />
-          </SelectTrigger>
-          <SelectContent>
-            {subjects.map((s) => (
-              <SelectItem key={s.id} value={s.id}>
-                {s.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <NativeSelect
+          options={subjects.map((s) => ({ value: s.id, label: s.name }))}
+          value={subjectId}
+          onChange={(e) => setSubjectId(e.target.value)}
+          placeholder="Subject"
+        />
       </div>
       <div>
         <Label>Teacher</Label>
-        <Select value={teacherId} onValueChange={(v) => setTeacherId(v ?? "")}>
-          <SelectTrigger>
-            <SelectValue placeholder="Teacher" />
-          </SelectTrigger>
-          <SelectContent>
-            {teachers.map((t) => (
-              <SelectItem key={t.id} value={t.id}>
-                {t.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <NativeSelect
+          options={teachers.map((t) => ({ value: t.id, label: t.label }))}
+          value={teacherId}
+          onChange={(e) => setTeacherId(e.target.value)}
+          placeholder="Teacher"
+        />
       </div>
       <div className="flex items-end">
         <Button type="submit" disabled={loading} className="w-full">
