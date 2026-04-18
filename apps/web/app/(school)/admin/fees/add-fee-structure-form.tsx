@@ -89,7 +89,7 @@ export function AddFeeStructureForm({
       </div>
       <div className="w-40">
         <Label>Class</Label>
-        <Select value={classId} onValueChange={(v) => setClassId(v ?? "")} required>
+        <Select value={classId} onValueChange={(v) => setClassId(v ?? "")}>
           <SelectTrigger>
             <SelectValue placeholder="Select class" />
           </SelectTrigger>
@@ -104,7 +104,7 @@ export function AddFeeStructureForm({
       </div>
       <div className="w-44">
         <Label>Academic Year</Label>
-        <Select value={academicYearId} onValueChange={(v) => setAcademicYearId(v ?? "")} required>
+        <Select value={academicYearId} onValueChange={(v) => setAcademicYearId(v ?? "")}>
           <SelectTrigger>
             <SelectValue placeholder="Select year" />
           </SelectTrigger>

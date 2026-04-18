@@ -65,7 +65,7 @@ export function AddExamForm({ schoolId, academicYears }: AddExamFormProps) {
       </div>
       <div className="w-48">
         <Label>Academic Year</Label>
-        <Select value={academicYearId} onValueChange={(v) => setAcademicYearId(v ?? "")} required>
+        <Select value={academicYearId} onValueChange={(v) => setAcademicYearId(v ?? "")}>
           <SelectTrigger>
             <SelectValue placeholder="Select year" />
           </SelectTrigger>

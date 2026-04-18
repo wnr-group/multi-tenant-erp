@@ -80,7 +80,7 @@ export function AddTimetableForm({
     <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
       <div>
         <Label>Section</Label>
-        <Select value={sectionId} onValueChange={(v) => setSectionId(v ?? "")} required>
+        <Select value={sectionId} onValueChange={(v) => setSectionId(v ?? "")}>
           <SelectTrigger>
             <SelectValue placeholder="Section" />
           </SelectTrigger>
@@ -95,7 +95,7 @@ export function AddTimetableForm({
       </div>
       <div>
         <Label>Day</Label>
-        <Select value={day} onValueChange={(v) => setDay(v ?? "")} required>
+        <Select value={day} onValueChange={(v) => setDay(v ?? "")}>
           <SelectTrigger>
             <SelectValue placeholder="Day" />
           </SelectTrigger>
@@ -122,7 +122,7 @@ export function AddTimetableForm({
       </div>
       <div>
         <Label>Subject</Label>
-        <Select value={subjectId} onValueChange={(v) => setSubjectId(v ?? "")} required>
+        <Select value={subjectId} onValueChange={(v) => setSubjectId(v ?? "")}>
           <SelectTrigger>
             <SelectValue placeholder="Subject" />
           </SelectTrigger>
@@ -137,7 +137,7 @@ export function AddTimetableForm({
       </div>
       <div>
         <Label>Teacher</Label>
-        <Select value={teacherId} onValueChange={(v) => setTeacherId(v ?? "")} required>
+        <Select value={teacherId} onValueChange={(v) => setTeacherId(v ?? "")}>
           <SelectTrigger>
             <SelectValue placeholder="Teacher" />
           </SelectTrigger>

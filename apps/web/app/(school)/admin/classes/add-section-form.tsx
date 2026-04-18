@@ -50,7 +50,7 @@ export function AddSectionForm({ schoolId, classes }: AddSectionFormProps) {
     <form onSubmit={handleSubmit} className="flex items-end gap-3">
       <div className="w-48">
         <Label>Class</Label>
-        <Select value={classId} onValueChange={(v) => setClassId(v ?? "")} required>
+        <Select value={classId} onValueChange={(v) => setClassId(v ?? "")}>
           <SelectTrigger>
             <SelectValue placeholder="Select class" />
           </SelectTrigger>
@@ -71,7 +71,7 @@ export function AddSectionForm({ schoolId, classes }: AddSectionFormProps) {
           required
         />
       </div>
-      <Button type="submit" disabled={loading}>
+      <Button type="submit" disabled={loading || !classId}>
         {loading ? "Adding…" : "Add Section"}
       </Button>
     </form>

@@ -83,7 +83,7 @@ export function UploadSyllabusForm({
     <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3">
       <div className="w-44">
         <Label>Class</Label>
-        <Select value={classId} onValueChange={handleClassChange} required>
+        <Select value={classId} onValueChange={handleClassChange}>
           <SelectTrigger>
             <SelectValue placeholder="Select class" />
           </SelectTrigger>
@@ -98,7 +98,7 @@ export function UploadSyllabusForm({
       </div>
       <div className="w-44">
         <Label>Subject</Label>
-        <Select value={subjectId} onValueChange={(v) => setSubjectId(v ?? "")} required>
+        <Select value={subjectId} onValueChange={(v) => setSubjectId(v ?? "")}>
           <SelectTrigger>
             <SelectValue placeholder="Select subject" />
           </SelectTrigger>
@@ -113,7 +113,7 @@ export function UploadSyllabusForm({
       </div>
       <div className="w-44">
         <Label>Academic Year</Label>
-        <Select value={academicYearId} onValueChange={(v) => setAcademicYearId(v ?? "")} required>
+        <Select value={academicYearId} onValueChange={(v) => setAcademicYearId(v ?? "")}>
           <SelectTrigger>
             <SelectValue placeholder="Select year" />
           </SelectTrigger>
