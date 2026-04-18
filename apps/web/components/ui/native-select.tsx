@@ -15,8 +15,8 @@ export function NativeSelect({
   return (
     <select
       className={cn(
-        "flex h-9 w-full rounded-md border border-border bg-background px-3 py-1 text-sm shadow-sm transition-colors",
-        "focus:outline-none focus:ring-1 focus:ring-ring",
+        "flex h-9 w-full rounded-md border border-border bg-card px-3 py-1 text-sm shadow-sm transition-colors",
+        "focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
         "disabled:cursor-not-allowed disabled:opacity-50",
         !value && "text-muted-foreground",
         className

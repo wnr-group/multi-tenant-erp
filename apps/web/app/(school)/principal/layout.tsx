@@ -36,7 +36,7 @@ export default async function PrincipalLayout({
       <ContextSwitchBanner />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar title="Principal" items={NAV} />
-        <main className="flex-1 overflow-y-auto bg-gray-50 p-8">{children}</main>
+        <main className="flex-1 overflow-y-auto bg-[#F8F9FC] px-8 py-6">{children}</main>
       </div>
     </div>
   );

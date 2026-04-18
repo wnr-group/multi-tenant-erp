@@ -28,7 +28,7 @@ export default async function PlatformAdminLayout({
   return (
     <div className="flex h-screen">
       <Sidebar title="WnR Platform" items={NAV} />
-      <main className="flex-1 overflow-y-auto bg-gray-50 p-8">{children}</main>
+      <main className="flex-1 overflow-y-auto bg-[#F8F9FC] px-8 py-6">{children}</main>
     </div>
   );
 }
