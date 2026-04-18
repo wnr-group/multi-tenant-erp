@@ -15,7 +15,16 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  const host = request.headers.get("host") ?? "";
+  const isLvh = host.includes("lvh.me");
+  const isBalaji = host.includes("balajierp.com");
+  const cookieDomain = isLvh ? ".lvh.me" : isBalaji ? ".balajierp.com" : undefined;
+
   const response = NextResponse.json({ ok: true });
-  response.cookies.delete("acting_as");
+  response.cookies.set("acting_as", "", {
+    path: "/",
+    domain: cookieDomain,
+    maxAge: 0,
+  });
   return response;
 }

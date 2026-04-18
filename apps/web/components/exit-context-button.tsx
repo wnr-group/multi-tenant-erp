@@ -5,7 +5,14 @@ import { Button } from "@/components/ui/button";
 export function ExitContextButton() {
   async function exit() {
     await fetch("/api/context-exit", { method: "POST" });
-    window.location.href = "/platform-admin/dashboard";
+    // Redirect back to admin domain
+    const host = window.location.host;
+    const port = window.location.port ? `:${window.location.port}` : "";
+    const isLvh = host.includes("lvh.me");
+    const adminUrl = isLvh
+      ? `http://core.lvh.me${port}/platform-admin/dashboard`
+      : `https://admin.balajierp.com/platform-admin/dashboard`;
+    window.location.href = adminUrl;
   }
 
   return (

@@ -16,10 +16,17 @@ export async function POST(request: NextRequest) {
     metadata: { target_role: role },
   });
 
+  // Determine cookie domain so it's shared across subdomains
+  const host = request.headers.get("host") ?? "";
+  const isLvh = host.includes("lvh.me");
+  const isBalaji = host.includes("balajierp.com");
+  const cookieDomain = isLvh ? ".lvh.me" : isBalaji ? ".balajierp.com" : undefined;
+
   const response = NextResponse.json({ ok: true });
   response.cookies.set("acting_as", role, {
     httpOnly: false,
     path: "/",
+    domain: cookieDomain,
     maxAge: 60 * 60 * 8,
     sameSite: "lax",
   });
