@@ -1,0 +1,5 @@
+# Reverse proxy: port 80 → Next.js on host port 3000
+# Forwards Host header so middleware resolves the correct school
+:80 {
+	reverse_proxy host.docker.internal:3000
+}

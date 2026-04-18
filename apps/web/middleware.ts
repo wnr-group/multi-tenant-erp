@@ -2,15 +2,15 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
 const PUBLIC_PATHS = ["/login", "/auth/callback", "/invite"];
-const PLATFORM_ADMIN_DOMAIN = "admin.balajierp.com";
+// Production: admin.balajierp.com | Local dev: core.lvh.me
+const PLATFORM_ADMIN_DOMAINS = ["admin.balajierp.com", "core.lvh.me"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const host = request.headers.get("host") ?? "";
   const domain = host.replace(/:\d+$/, "");
   const isPlatformAdmin =
-    domain === PLATFORM_ADMIN_DOMAIN ||
-    domain === "admin.localhost" ||
+    PLATFORM_ADMIN_DOMAINS.includes(domain) ||
     pathname.startsWith("/platform-admin");
 
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
@@ -63,18 +63,30 @@ export async function middleware(request: NextRequest) {
     response.headers.set("x-school-id", school.id);
   }
 
-  const roleQuery = supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", user.id)
-    .eq("is_active", true);
-
+  // Try school-scoped role first (teachers, admins, etc.)
+  let role: string | null = null;
   if (schoolId) {
-    roleQuery.eq("school_id", schoolId);
+    const { data } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("school_id", schoolId)
+      .eq("is_active", true)
+      .maybeSingle();
+    role = data?.role ?? null;
   }
 
-  const { data: roleRow } = await roleQuery.single();
-  const role = roleRow?.role;
+  // Fallback: platform-level role (super_admin has school_id = NULL)
+  if (!role) {
+    const { data } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .is("school_id", null)
+      .eq("is_active", true)
+      .maybeSingle();
+    role = data?.role ?? null;
+  }
 
   if (!role) {
     return NextResponse.redirect(new URL("/login", request.url));
@@ -107,9 +119,13 @@ export async function middleware(request: NextRequest) {
   }
 
   if (role === "super_admin" && !actingAsCookie) {
-    return NextResponse.redirect(
-      `https://${PLATFORM_ADMIN_DOMAIN}/platform-admin/dashboard`
-    );
+    // Redirect super_admin to the admin domain's dashboard
+    const isLocalDev = domain.endsWith(".lvh.me") || domain.includes("localhost");
+    const port = host.includes(":") ? `:${host.split(":")[1]}` : "";
+    const adminUrl = isLocalDev
+      ? `http://core.lvh.me${port}/platform-admin/dashboard`
+      : `https://${PLATFORM_ADMIN_DOMAINS[0]}/platform-admin/dashboard`;
+    return NextResponse.redirect(adminUrl);
   }
 
   if (effectiveRole === "school_admin" && !pathname.startsWith("/admin")) {

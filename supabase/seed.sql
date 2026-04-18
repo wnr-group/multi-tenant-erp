@@ -4,12 +4,13 @@
 -- =============================================================
 
 -- Seed one demo school for testing
--- domain = 'localhost' allows local dev without a real subdomain
+-- Uses lvh.me wildcard DNS (*.lvh.me → 127.0.0.1, no /etc/hosts needed)
+-- Platform admin: core.lvh.me:3000 | School: school1.lvh.me:3000
 INSERT INTO public.schools (id, name, domain, is_active, contact_email, primary_color)
 VALUES (
   'aaaaaaaa-0000-0000-0000-000000000001',
   'Demo School',
-  'localhost',
+  'school1.lvh.me',
   true,
   'demo@example.com',
   '#2563EB'

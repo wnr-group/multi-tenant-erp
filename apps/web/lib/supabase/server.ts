@@ -2,7 +2,16 @@
 // Kept in apps/web (not packages/shared) to avoid importing next/headers
 // into the Expo mobile bundle, which does not support it.
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
+
+// Bypasses RLS — use only for unauthenticated server-side reads (e.g. login page branding)
+export function createServiceSupabaseClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 export async function createServerSupabaseClient() {
   const cookieStore = await cookies();

@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import { createServerSupabaseClient } from "../../../lib/supabase/server";
+import { createServiceSupabaseClient } from "../../../lib/supabase/server";
 import { LoginForm } from "./login-form";
 
 export default async function LoginPage() {
@@ -7,7 +7,8 @@ export default async function LoginPage() {
   const host = headersList.get("host") ?? "";
   const domain = host.replace(/:\d+$/, "");
 
-  const supabase = await createServerSupabaseClient();
+  // Use service role to bypass RLS — login page is unauthenticated
+  const supabase = createServiceSupabaseClient();
   const { data: school } = await supabase
     .from("schools")
     .select("name, primary_color")
