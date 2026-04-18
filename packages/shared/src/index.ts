@@ -2,3 +2,4 @@
 //   import { createClient } from "@erp/shared/supabase/client"
 export * from "./types/index";
 export * from "./schemas/index";
+export { logAudit } from "./audit";
