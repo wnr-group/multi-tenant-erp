@@ -62,6 +62,7 @@ export default function NewSchoolPage() {
     }
 
     router.push("/platform-admin/schools");
+    router.refresh();
   }
 
   return (
