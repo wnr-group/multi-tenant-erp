@@ -19,24 +19,43 @@ export default function InviteAcceptPage() {
 
   useEffect(() => {
     const supabase = createClient();
+
+    function setUserFromSession(session: { user: { user_metadata: Record<string, string> } } | null) {
+      if (!session) return;
+      setTokenVerified(true);
+      setUserName(session.user.user_metadata?.full_name ?? "");
+      setUserRole(session.user.user_metadata?.invited_role ?? "");
+      setSchoolName(session.user.user_metadata?.school_name ?? "");
+    }
+
+    // Listen for auth state changes (fires when token from URL hash is exchanged)
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
-        setTokenVerified(true);
-        if (session?.user) {
-          setUserName(session.user.user_metadata?.full_name ?? "");
-          setUserRole(session.user.user_metadata?.invited_role ?? "");
-          setSchoolName(session.user.user_metadata?.school_name ?? "");
-        }
+      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN" || event === "INITIAL_SESSION") {
+        setUserFromSession(session);
       }
     });
+
+    // Check if already has a session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setTokenVerified(true);
-        setUserName(session.user.user_metadata?.full_name ?? "");
-        setUserRole(session.user.user_metadata?.invited_role ?? "");
-        setSchoolName(session.user.user_metadata?.school_name ?? "");
-      }
+      setUserFromSession(session);
     });
+
+    // Explicitly try to exchange the hash params if present
+    // createBrowserClient from @supabase/ssr may not auto-detect URL hash
+    const hash = window.location.hash;
+    if (hash && hash.includes("access_token")) {
+      // Parse the hash into params and call setSession or getUser
+      const params = new URLSearchParams(hash.substring(1));
+      const accessToken = params.get("access_token");
+      const refreshToken = params.get("refresh_token");
+      if (accessToken && refreshToken) {
+        supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+          .then(({ data: { session } }) => {
+            setUserFromSession(session);
+          });
+      }
+    }
+
     return () => listener.subscription.unsubscribe();
   }, []);
 
