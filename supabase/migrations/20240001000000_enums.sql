@@ -18,6 +18,7 @@ CREATE TYPE public.attendance_status AS ENUM (
 
 -- Fee payment status enum
 CREATE TYPE public.fee_payment_status AS ENUM (
+  'pending',
   'paid',
   'partial',
   'overdue'

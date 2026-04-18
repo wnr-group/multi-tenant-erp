@@ -52,3 +52,11 @@ CREATE TABLE public.subjects (
   code      TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Indexes for FK columns (PostgreSQL does not auto-index FKs)
+CREATE INDEX idx_academic_years_school_id ON public.academic_years(school_id);
+CREATE INDEX idx_classes_school_id ON public.classes(school_id);
+CREATE INDEX idx_sections_class_id ON public.sections(class_id);
+CREATE INDEX idx_sections_school_id ON public.sections(school_id);
+CREATE INDEX idx_subjects_school_id ON public.subjects(school_id);
+CREATE INDEX idx_subjects_class_id ON public.subjects(class_id);
