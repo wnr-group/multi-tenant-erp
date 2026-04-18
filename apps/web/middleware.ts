@@ -96,7 +96,7 @@ export async function middleware(request: NextRequest) {
     if (role !== "super_admin") {
       return NextResponse.redirect(new URL("/login", request.url));
     }
-    if (!pathname.startsWith("/platform-admin")) {
+    if (!pathname.startsWith("/platform-admin") && !pathname.startsWith("/api")) {
       return NextResponse.redirect(
         new URL("/platform-admin/dashboard", request.url)
       );

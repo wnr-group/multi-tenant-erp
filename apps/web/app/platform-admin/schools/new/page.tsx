@@ -36,20 +36,27 @@ export default function NewSchoolPage() {
       return;
     }
 
-    const res = await fetch("/api/invite-user", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: adminEmail,
-        fullName: adminName,
-        schoolId: school.id,
-        role: "school_admin",
-      }),
-    });
+    try {
+      const res = await fetch("/api/invite-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        redirect: "error",
+        body: JSON.stringify({
+          email: adminEmail,
+          fullName: adminName,
+          schoolId: school.id,
+          role: "school_admin",
+        }),
+      });
 
-    if (!res.ok) {
-      const { error: msg } = await res.json();
-      setError(msg ?? "Failed to invite admin");
+      if (!res.ok) {
+        const { error: msg } = await res.json();
+        setError(msg ?? "Failed to invite admin");
+        setLoading(false);
+        return;
+      }
+    } catch {
+      setError("Failed to invite admin — please try again");
       setLoading(false);
       return;
     }
