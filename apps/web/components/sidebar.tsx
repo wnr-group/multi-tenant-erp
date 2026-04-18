@@ -61,10 +61,11 @@ export function Sidebar({ title, items, brandColor }: SidebarProps) {
   const pathname = usePathname();
 
   // Generate sidebar colors from brand color, or fall back to indigo
-  const sidebarBg = brandColor ? darken(brandColor, 0.75) : "#1e1b4b";
+  const sidebarBg = brandColor ? darken(brandColor, 0.8) : "#1e1b4b";
   const logoBg = brandColor ?? "#4f46e5";
-  const dividerColor = brandColor ? `${darken(brandColor, 0.5)}99` : "#3730a380";
-  const inactiveText = brandColor ? `${brandColor}aa` : "#a5b4fc";
+  const dividerColor = brandColor ? "rgba(255,255,255,0.12)" : "#3730a380";
+  // Inactive text: use white with good opacity for readability on any dark bg
+  const inactiveText = "rgba(255,255,255,0.6)";
 
   return (
     <aside

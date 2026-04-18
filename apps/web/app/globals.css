@@ -35,3 +35,19 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
+
+/* When a school brand color is set, override primary buttons and focus rings */
+@layer utilities {
+  [style*="--school-color"] .bg-primary {
+    background-color: var(--school-color) !important;
+  }
+  [style*="--school-color"] .border-primary {
+    border-color: var(--school-color) !important;
+  }
+  [style*="--school-color"] .text-primary {
+    color: var(--school-color) !important;
+  }
+  [style*="--school-color"] .ring-primary\/20 {
+    --tw-ring-color: color-mix(in srgb, var(--school-color) 20%, transparent) !important;
+  }
+}

@@ -33,9 +33,12 @@ export default async function PrincipalLayout({
   if (!roleRow || !allowed.includes(roleRow.role)) redirect("/login");
 
   const brand = await getSchoolBrand();
+  const brandStyle = brand?.primaryColor
+    ? ({ "--school-color": brand.primaryColor } as React.CSSProperties)
+    : undefined;
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-screen flex-col" style={brandStyle}>
       <ContextSwitchBanner />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar title={brand?.name ?? "Principal"} items={NAV} brandColor={brand?.primaryColor} />
