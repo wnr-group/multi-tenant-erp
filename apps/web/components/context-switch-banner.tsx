@@ -1,10 +1,9 @@
-import { headers } from "next/headers";
+import { cookies } from "next/headers";
 import { ExitContextButton } from "./exit-context-button";
 
 export async function ContextSwitchBanner() {
-  const headersList = await headers();
-  const actingAs = headersList.get("x-acting-as");
-  const realRole = headersList.get("x-real-role");
+  const cookieStore = await cookies();
+  const actingAs = cookieStore.get("acting_as")?.value;
 
   if (!actingAs) return null;
 
@@ -18,7 +17,7 @@ export async function ContextSwitchBanner() {
     <div className="sticky top-0 z-50 flex items-center justify-between bg-amber-400 px-4 py-2 text-sm font-medium text-amber-900">
       <span>
         You are viewing as <strong>{roleLabels[actingAs] ?? actingAs}</strong>.
-        Actions are logged under your real identity ({realRole}).
+        All actions are logged under your real identity.
       </span>
       <ExitContextButton />
     </div>
