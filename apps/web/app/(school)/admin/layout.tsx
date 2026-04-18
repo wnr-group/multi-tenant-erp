@@ -6,6 +6,7 @@ import { ContextSwitchBanner } from "@/components/context-switch-banner";
 const NAV = [
   { label: "Dashboard", href: "/admin/dashboard" },
   { label: "Classes", href: "/admin/classes" },
+  { label: "Subjects", href: "/admin/subjects" },
   { label: "Teachers", href: "/admin/teachers" },
   { label: "Students", href: "/admin/students" },
   { label: "Timetable", href: "/admin/timetable" },
