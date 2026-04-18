@@ -69,6 +69,9 @@ export async function middleware(request: NextRequest) {
       return new NextResponse("School not found or inactive.", { status: 404 });
     }
     schoolId = school.id;
+    // Set on request headers so server components can read via headers()
+    request.headers.set("x-school-id", school.id);
+    response = NextResponse.next({ request });
     response.headers.set("x-school-id", school.id);
   }
 

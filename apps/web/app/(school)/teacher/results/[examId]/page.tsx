@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getSchoolId } from "@/lib/school";
 import { MarksEntryForm } from "./marks-entry-form";
 
 export default async function ExamMarksPage({
@@ -8,17 +9,7 @@ export default async function ExamMarksPage({
 }) {
   const { examId } = await params;
   const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("school_id")
-    .eq("id", user!.id)
-    .single();
-
-  const schoolId = profile!.school_id!;
+  const schoolId = (await getSchoolId())!;
 
   const { data: exam } = await supabase
     .from("exams")

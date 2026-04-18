@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getSchoolId } from "@/lib/school";
 import { DataTable } from "@/components/data-table";
 import { AddTimetableForm } from "./add-timetable-form";
 
@@ -13,9 +14,7 @@ const DAY_LABELS: Record<number, string> = {
 
 export default async function TimetablePage() {
   const supabase = await createServerSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: profile } = await supabase.from("profiles").select("school_id").eq("id", user!.id).single();
-  const schoolId = profile!.school_id!;
+  const schoolId = (await getSchoolId())!;
 
   const { data: slots } = await supabase
     .from("timetable")

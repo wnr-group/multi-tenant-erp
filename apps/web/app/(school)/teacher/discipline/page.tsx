@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getSchoolId } from "@/lib/school";
 import { DataTable } from "@/components/data-table";
 import { Badge } from "@/components/ui/badge";
 import { CreateDisciplineForm } from "./create-discipline-form";
@@ -13,17 +14,8 @@ function severityVariant(severity: string | null): SeverityVariant {
 
 export default async function TeacherDisciplinePage() {
   const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("school_id")
-    .eq("id", user!.id)
-    .single();
-
-  const schoolId = profile!.school_id!;
+  const { data: { user } } = await supabase.auth.getUser();
+  const schoolId = (await getSchoolId())!;
 
   const [{ data: records }, { data: students }] = await Promise.all([
     supabase

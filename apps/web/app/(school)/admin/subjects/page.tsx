@@ -1,19 +1,11 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getSchoolId } from "@/lib/school";
 import { DataTable } from "@/components/data-table";
 import { AddSubjectForm } from "./add-subject-form";
 
 export default async function SubjectsPage() {
   const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("school_id")
-    .eq("id", user!.id)
-    .single();
-
-  const schoolId = profile!.school_id!;
+  const schoolId = (await getSchoolId())!;
 
   const [{ data: subjects }, { data: classes }] = await Promise.all([
     supabase

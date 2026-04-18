@@ -1,19 +1,10 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getSchoolId } from "@/lib/school";
 import { SwitchRolePanel } from "@/components/switch-role-panel";
 
 export default async function PrincipalDashboard() {
   const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("school_id")
-    .eq("id", user!.id)
-    .single();
-
-  const schoolId = profile?.school_id!;
+  const schoolId = (await getSchoolId())!;
 
   const today = new Date().toISOString().slice(0, 10);
 

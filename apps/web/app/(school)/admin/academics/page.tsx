@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getSchoolId } from "@/lib/school";
 import { DataTable } from "@/components/data-table";
 import { AddAcademicYearForm } from "./add-academic-year-form";
 import { AddExamForm } from "./add-exam-form";
@@ -6,9 +7,7 @@ import { Badge } from "@/components/ui/badge";
 
 export default async function AcademicsPage() {
   const supabase = await createServerSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: profile } = await supabase.from("profiles").select("school_id").eq("id", user!.id).single();
-  const schoolId = profile!.school_id!;
+  const schoolId = (await getSchoolId())!;
 
   const { data: academicYears } = await supabase
     .from("academic_years")

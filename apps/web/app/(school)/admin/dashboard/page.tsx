@@ -1,17 +1,10 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getSchoolId } from "@/lib/school";
 import { SwitchRolePanel } from "@/components/switch-role-panel";
 
 export default async function AdminDashboard() {
   const supabase = await createServerSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("school_id")
-    .eq("id", user!.id)
-    .single();
-
-  const schoolId = profile?.school_id;
+  const schoolId = await getSchoolId();
 
   const [{ count: teacherCount }, { count: studentCount }] = await Promise.all([
     supabase.from("teacher_profiles").select("*", { count: "exact", head: true }).eq("school_id", schoolId!),
