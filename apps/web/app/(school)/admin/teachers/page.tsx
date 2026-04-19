@@ -1,6 +1,11 @@
+import Link from "next/link";
+import { Users } from "lucide-react";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
-import { DataTable } from "@/components/data-table";
+import { PageHeader } from "@/components/page-header";
+import { ActionDialog } from "@/components/action-dialog";
+import { FilterableDataTable } from "@/components/filterable-data-table";
+import { EmptyState } from "@/components/empty-state";
 import { InviteTeacherForm } from "./invite-teacher-form";
 
 export default async function TeachersPage() {
@@ -23,14 +28,50 @@ export default async function TeachersPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold text-gray-900">Teachers</h1>
-      <div className="mb-6 rounded-lg bg-white p-6 shadow-sm">
-        <InviteTeacherForm schoolId={schoolId} />
-      </div>
-      <DataTable data={rows} columns={[
-        { header: "Name", accessor: "name" },
-        { header: "Email", accessor: "email" },
-      ]} emptyMessage="No teachers yet." />
+      <PageHeader
+        title="Teachers"
+        description="Manage your school's teaching staff."
+        action={
+          <ActionDialog trigger="+ Invite Teacher" title="Invite Teacher">
+            {(onSuccess) => (
+              <InviteTeacherForm schoolId={schoolId} onSuccess={onSuccess} />
+            )}
+          </ActionDialog>
+        }
+        stats={[{ label: "Total Teachers", value: rows.length }]}
+      />
+
+      <FilterableDataTable
+        data={rows}
+        columns={[
+          { header: "Name", accessor: "name" },
+          { header: "Email", accessor: "email" },
+        ]}
+        searchKeys={["name", "email"]}
+        searchPlaceholder="Search by name or email…"
+        renderActions={(row) => (
+          <Link
+            href={`/admin/teachers/${row.id}`}
+            className="text-sm text-primary hover:underline"
+          >
+            View Profile
+          </Link>
+        )}
+        emptyState={
+          <EmptyState
+            icon={Users}
+            title="No teachers yet"
+            description="Invite your first teacher to get started."
+            action={
+              <ActionDialog trigger="+ Invite Teacher" title="Invite Teacher">
+                {(onSuccess) => (
+                  <InviteTeacherForm schoolId={schoolId} onSuccess={onSuccess} />
+                )}
+              </ActionDialog>
+            }
+          />
+        }
+      />
     </div>
   );
 }

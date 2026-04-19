@@ -6,7 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function InviteTeacherForm({ schoolId }: { schoolId: string }) {
+interface InviteTeacherFormProps {
+  schoolId: string;
+  onSuccess?: () => void;
+}
+
+export function InviteTeacherForm({ schoolId, onSuccess }: InviteTeacherFormProps) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -37,6 +42,7 @@ export function InviteTeacherForm({ schoolId }: { schoolId: string }) {
     setName(""); setEmail("");
     setLoading(false);
     router.refresh();
+    onSuccess?.();
   }
 
   return (
