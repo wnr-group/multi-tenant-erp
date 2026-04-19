@@ -1,0 +1,5 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "cd ../.. && pnpm build --filter @erp/web",
+  "outputDirectory": ".next"
+}
