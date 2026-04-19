@@ -1,11 +1,8 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
-import { Calendar } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
-import { FilterableDataTable } from "@/components/filterable-data-table";
-import { EmptyState } from "@/components/empty-state";
-import { Badge } from "@/components/ui/badge";
 import { AddAcademicYearDialog, AddExamDialog } from "./academic-dialogs";
+import { AcademicYearsTable, ExamsTable } from "./academics-table";
 
 export default async function AcademicsPage() {
   const supabase = await createServerSupabaseClient();
@@ -60,32 +57,7 @@ export default async function AcademicsPage() {
           ]}
         />
 
-        <FilterableDataTable
-          data={yearRows}
-          columns={[
-            { header: "Name", accessor: "name" },
-            { header: "Start", accessor: "start" },
-            { header: "End", accessor: "end" },
-            {
-              header: "Status",
-              accessor: (row) =>
-                row.is_current ? (
-                  <Badge variant="default">Current</Badge>
-                ) : (
-                  <Badge variant="secondary">Inactive</Badge>
-                ),
-            },
-          ]}
-          searchKeys={["name"]}
-          searchPlaceholder="Search academic years…"
-          emptyState={
-            <EmptyState
-              icon={Calendar}
-              title="No academic years yet"
-              description="Add your first academic year to get started."
-            />
-          }
-        />
+        <AcademicYearsTable yearRows={yearRows} />
       </section>
 
       {/* Exams section */}
@@ -101,24 +73,7 @@ export default async function AcademicsPage() {
           }
         />
 
-        <FilterableDataTable
-          data={examRows}
-          columns={[
-            { header: "Exam Name", accessor: "name" },
-            { header: "Academic Year", accessor: "academic_year" },
-            { header: "Start", accessor: "start" },
-            { header: "End", accessor: "end" },
-          ]}
-          searchKeys={["name"]}
-          searchPlaceholder="Search exams…"
-          emptyState={
-            <EmptyState
-              icon={Calendar}
-              title="No exams yet"
-              description="Add your first exam to get started."
-            />
-          }
-        />
+        <ExamsTable examRows={examRows} />
       </section>
     </div>
   );

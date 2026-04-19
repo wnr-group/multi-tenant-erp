@@ -1,10 +1,8 @@
-import { Upload } from "lucide-react";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
 import { PageHeader } from "@/components/page-header";
-import { FilterableDataTable } from "@/components/filterable-data-table";
-import { EmptyState } from "@/components/empty-state";
 import { UploadSyllabusDialog } from "./upload-syllabus-dialog";
+import { SyllabusTable } from "./syllabus-table";
 
 export default async function SyllabusPage() {
   const supabase = await createServerSupabaseClient();
@@ -73,6 +71,8 @@ export default async function SyllabusPage() {
     name: y.name,
   }));
 
+  const yearFilterOptions = uniqueYears.map((y) => ({ value: y, label: y }));
+
   return (
     <div>
       <PageHeader
@@ -92,55 +92,13 @@ export default async function SyllabusPage() {
         }
       />
 
-      <FilterableDataTable
-        data={rows}
-        columns={[
-          { header: "Class", accessor: "class_name" },
-          { header: "Subject", accessor: "subject_name" },
-          { header: "Academic Year", accessor: "academic_year" },
-          {
-            header: "File",
-            accessor: (row) =>
-              row.file_url ? (
-                <a
-                  href={row.file_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 underline hover:text-blue-800"
-                >
-                  View
-                </a>
-              ) : (
-                "—"
-              ),
-          },
-        ]}
-        searchKeys={["class_name", "subject_name"]}
-        searchPlaceholder="Search by class or subject..."
-        filter={
-          uniqueYears.length > 0
-            ? {
-                label: "All Years",
-                options: uniqueYears.map((y) => ({ value: y, label: y })),
-                filterFn: (row, value) => row.academic_year === value,
-              }
-            : undefined
-        }
-        emptyState={
-          <EmptyState
-            icon={Upload}
-            title="No syllabus files yet"
-            description="Upload syllabus PDFs for each class and subject."
-            action={
-              <UploadSyllabusDialog
-                schoolId={schoolId}
-                classes={classesData}
-                subjects={subjectsData}
-                academicYears={academicYearsData}
-              />
-            }
-          />
-        }
+      <SyllabusTable
+        rows={rows}
+        yearFilterOptions={yearFilterOptions}
+        schoolId={schoolId}
+        classesData={classesData}
+        subjectsData={subjectsData}
+        academicYearsData={academicYearsData}
       />
     </div>
   );

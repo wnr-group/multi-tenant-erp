@@ -1,10 +1,8 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
 import { PageHeader } from "@/components/page-header";
-import { FilterableDataTable } from "@/components/filterable-data-table";
-import { EmptyState } from "@/components/empty-state";
 import { AddClassDialog, AddSectionDialog } from "./class-dialogs";
-import { School } from "lucide-react";
+import { ClassesDataTable, SectionsDataTable } from "./classes-table";
 
 export default async function ClassesPage() {
   const supabase = await createServerSupabaseClient();
@@ -39,16 +37,7 @@ export default async function ClassesPage() {
             { label: "Total Sections", value: sectionRows.length },
           ]}
         />
-        <FilterableDataTable
-          data={classes ?? []}
-          columns={[
-            { header: "Class Name", accessor: "name" },
-            { header: "Order", accessor: "order" },
-          ]}
-          searchKeys={["name"]}
-          searchPlaceholder="Search classes..."
-          emptyState={<EmptyState icon={School} title="No classes yet" description="Add your first class to get started." />}
-        />
+        <ClassesDataTable classes={classes ?? []} />
       </div>
 
       <div>
@@ -57,16 +46,7 @@ export default async function ClassesPage() {
           description="Assign sections to classes."
           action={<AddSectionDialog schoolId={schoolId} classes={classes ?? []} />}
         />
-        <FilterableDataTable
-          data={sectionRows}
-          columns={[
-            { header: "Class", accessor: "class_name" },
-            { header: "Section", accessor: "section_name" },
-          ]}
-          searchKeys={["class_name", "section_name"]}
-          searchPlaceholder="Search sections..."
-          emptyState={<EmptyState icon={School} title="No sections yet" description="Add sections after creating classes." />}
-        />
+        <SectionsDataTable sectionRows={sectionRows} />
       </div>
     </div>
   );

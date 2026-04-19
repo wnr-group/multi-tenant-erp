@@ -1,18 +1,8 @@
-import Link from "next/link";
-import { GraduationCap, MoreHorizontal } from "lucide-react";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
 import { PageHeader } from "@/components/page-header";
-import { FilterableDataTable } from "@/components/filterable-data-table";
-import { EmptyState } from "@/components/empty-state";
 import { AddStudentDialog } from "./add-student-dialog";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
+import { StudentsTable } from "./students-table";
 
 export default async function StudentsPage() {
   const supabase = await createServerSupabaseClient();
@@ -45,27 +35,10 @@ export default async function StudentsPage() {
     };
   });
 
-  type StudentRow = (typeof rows)[number];
-
-  const columns: { header: string; accessor: keyof StudentRow | ((row: StudentRow) => React.ReactNode) }[] = [
-    { header: "Name", accessor: "name" },
-    { header: "Roll No.", accessor: "roll" },
-    { header: "Class", accessor: "class_name" },
-    { header: "Section", accessor: "section" },
-  ];
-
   const classFilterOptions = (classes ?? []).map((c) => ({
     label: c.name,
     value: c.name,
   }));
-
-  const emptyState = (
-    <EmptyState
-      icon={GraduationCap}
-      title="No students yet"
-      description="Add your first student to get started with enrollment."
-    />
-  );
 
   return (
     <div>
@@ -79,43 +52,7 @@ export default async function StudentsPage() {
         ]}
       />
 
-      <FilterableDataTable
-        data={rows}
-        columns={columns}
-        searchKeys={["name", "roll"]}
-        searchPlaceholder="Search by name or roll number…"
-        filter={
-          classFilterOptions.length > 0
-            ? {
-                label: "All Classes",
-                options: classFilterOptions,
-                filterFn: (row: StudentRow, value: string) =>
-                  row.class_name === value,
-              }
-            : undefined
-        }
-        renderActions={(row) => (
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button variant="ghost" size="icon-sm" aria-label="Row actions" />
-              }
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                render={
-                  <Link href={`/admin/students/${row.id}`} />
-                }
-              >
-                View Profile
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-        emptyState={emptyState}
-      />
+      <StudentsTable rows={rows} classFilterOptions={classFilterOptions} />
     </div>
   );
 }

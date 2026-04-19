@@ -1,11 +1,8 @@
-import Link from "next/link";
-import { Users } from "lucide-react";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
 import { PageHeader } from "@/components/page-header";
-import { FilterableDataTable } from "@/components/filterable-data-table";
-import { EmptyState } from "@/components/empty-state";
 import { InviteTeacherDialog } from "./invite-teacher-dialog";
+import { TeachersTable } from "./teachers-table";
 
 export default async function TeachersPage() {
   const supabase = await createServerSupabaseClient();
@@ -34,31 +31,7 @@ export default async function TeachersPage() {
         stats={[{ label: "Total Teachers", value: rows.length }]}
       />
 
-      <FilterableDataTable
-        data={rows}
-        columns={[
-          { header: "Name", accessor: "name" },
-          { header: "Email", accessor: "email" },
-        ]}
-        searchKeys={["name", "email"]}
-        searchPlaceholder="Search by name or email…"
-        renderActions={(row) => (
-          <Link
-            href={`/admin/teachers/${row.id}`}
-            className="text-sm text-primary hover:underline"
-          >
-            View Profile
-          </Link>
-        )}
-        emptyState={
-          <EmptyState
-            icon={Users}
-            title="No teachers yet"
-            description="Invite your first teacher to get started."
-            action={<InviteTeacherDialog schoolId={schoolId} />}
-          />
-        }
-      />
+      <TeachersTable rows={rows} schoolId={schoolId} />
     </div>
   );
 }

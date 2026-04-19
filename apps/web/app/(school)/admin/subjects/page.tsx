@@ -1,10 +1,8 @@
-import { BookOpen } from "lucide-react";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
 import { PageHeader } from "@/components/page-header";
-import { FilterableDataTable } from "@/components/filterable-data-table";
-import { EmptyState } from "@/components/empty-state";
 import { AddSubjectDialog } from "./add-subject-dialog";
+import { SubjectsTable } from "./subjects-table";
 
 export default async function SubjectsPage() {
   const supabase = await createServerSupabaseClient();
@@ -43,6 +41,11 @@ export default async function SubjectsPage() {
     rows.filter((r) => r.class_name !== "—").map((r) => r.class_name)
   ).size;
 
+  const classFilterOptions = uniqueClasses.map((c) => ({
+    value: c.name,
+    label: c.name,
+  }));
+
   return (
     <div>
       <PageHeader
@@ -55,35 +58,11 @@ export default async function SubjectsPage() {
         action={<AddSubjectDialog schoolId={schoolId} classes={classesData} />}
       />
 
-      <FilterableDataTable
-        data={rows}
-        columns={[
-          { header: "Subject", accessor: "name" },
-          { header: "Code", accessor: "code" },
-          { header: "Class", accessor: "class_name" },
-        ]}
-        searchKeys={["name", "code"]}
-        searchPlaceholder="Search subjects..."
-        filter={
-          uniqueClasses.length > 0
-            ? {
-                label: "All Classes",
-                options: uniqueClasses.map((c) => ({
-                  value: c.name,
-                  label: c.name,
-                })),
-                filterFn: (row, value) => row.class_name === value,
-              }
-            : undefined
-        }
-        emptyState={
-          <EmptyState
-            icon={BookOpen}
-            title="No subjects yet"
-            description="Add subjects so teachers can assign homework and enter marks."
-            action={<AddSubjectDialog schoolId={schoolId} classes={classesData} />}
-          />
-        }
+      <SubjectsTable
+        rows={rows}
+        classFilterOptions={classFilterOptions}
+        schoolId={schoolId}
+        classesData={classesData}
       />
     </div>
   );

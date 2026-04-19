@@ -1,10 +1,8 @@
-import { Megaphone } from "lucide-react";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
 import { PageHeader } from "@/components/page-header";
-import { FilterableDataTable } from "@/components/filterable-data-table";
-import { EmptyState } from "@/components/empty-state";
 import { CreateAnnouncementDialog } from "./create-announcement-dialog";
+import { AnnouncementsTable } from "./announcements-table";
 
 export default async function AnnouncementsPage() {
   const supabase = await createServerSupabaseClient();
@@ -42,33 +40,7 @@ export default async function AnnouncementsPage() {
         ]}
       />
 
-      <FilterableDataTable
-        data={rows}
-        columns={[
-          { header: "Title", accessor: "title" },
-          { header: "Target", accessor: "target_type" },
-          { header: "Date", accessor: "date" },
-        ]}
-        searchKeys={["title"]}
-        searchPlaceholder="Search by title…"
-        filter={{
-          label: "All Targets",
-          options: [
-            { label: "School", value: "school" },
-            { label: "Students", value: "students" },
-            { label: "Teachers", value: "teachers" },
-          ],
-          filterFn: (row, value) => row.target_type === value,
-        }}
-        emptyState={
-          <EmptyState
-            icon={Megaphone}
-            title="No announcements yet"
-            description="Post your first announcement to reach your school community."
-            action={<CreateAnnouncementDialog schoolId={schoolId} createdBy={user!.id} />}
-          />
-        }
-      />
+      <AnnouncementsTable rows={rows} schoolId={schoolId} userId={user!.id} />
     </div>
   );
 }
