@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { supabase } from "../lib/supabase";
 import type { Session } from "@supabase/supabase-js";
+import { registerForPushNotifications } from "../lib/notifications";
 
 export default function RootLayout() {
   const router = useRouter();
@@ -12,12 +13,18 @@ export default function RootLayout() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      if (session?.user) {
+        registerForPushNotifications(session.user.id);
+      }
       setInitialized(true);
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setSession(session);
+        if (session?.user) {
+          registerForPushNotifications(session.user.id);
+        }
       }
     );
 
