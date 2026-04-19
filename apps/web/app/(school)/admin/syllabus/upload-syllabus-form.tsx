@@ -28,6 +28,7 @@ interface UploadSyllabusFormProps {
   classes: ClassOption[];
   subjects: SubjectOption[];
   academicYears: AcademicYearOption[];
+  onSuccess?: () => void;
 }
 
 export function UploadSyllabusForm({
@@ -35,6 +36,7 @@ export function UploadSyllabusForm({
   classes,
   subjects,
   academicYears,
+  onSuccess,
 }: UploadSyllabusFormProps) {
   const router = useRouter();
   const [classId, setClassId] = useState("");
@@ -95,6 +97,7 @@ export function UploadSyllabusForm({
     setFile(null);
     setLoading(false);
     router.refresh();
+    onSuccess?.();
   }
 
   return (
