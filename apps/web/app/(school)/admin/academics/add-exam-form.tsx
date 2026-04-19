@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,7 @@ export function AddExamForm({ schoolId, academicYears, onSuccess }: AddExamFormP
     setStartDate("");
     setEndDate("");
     setLoading(false);
+    toast.success("Exam added.");
     router.refresh();
     onSuccess?.();
   }

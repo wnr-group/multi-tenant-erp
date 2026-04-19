@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,12 +36,14 @@ export function InviteTeacherForm({ schoolId, onSuccess }: InviteTeacherFormProp
     if (!res.ok) {
       const { error: msg } = await res.json();
       setError(msg ?? "Invite failed");
+      toast.error(msg ?? "Something went wrong. Please try again.");
       setLoading(false);
       return;
     }
 
     setName(""); setEmail("");
     setLoading(false);
+    toast.success("Teacher invited successfully.");
     router.refresh();
     onSuccess?.();
   }

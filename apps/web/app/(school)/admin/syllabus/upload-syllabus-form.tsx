@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -71,10 +72,11 @@ export function UploadSyllabusForm({
 
     if (uploadError) {
       // If bucket doesn't exist, try creating it or show helpful error
-      setError(uploadError.message.includes("not found")
+      const errMsg = uploadError.message.includes("not found")
         ? "Storage bucket 'files' not configured. Ask admin to create it in Supabase Studio → Storage."
-        : uploadError.message
-      );
+        : uploadError.message;
+      setError(errMsg);
+      toast.error(errMsg);
       setLoading(false);
       return;
     }
@@ -96,6 +98,7 @@ export function UploadSyllabusForm({
     setAcademicYearId("");
     setFile(null);
     setLoading(false);
+    toast.success("Syllabus uploaded.");
     router.refresh();
     onSuccess?.();
   }

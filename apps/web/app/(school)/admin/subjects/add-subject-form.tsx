@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +43,7 @@ export function AddSubjectForm({
     setCode("");
     setClassId("");
     setLoading(false);
+    toast.success("Subject added.");
     router.refresh();
     onSuccess?.();
   }

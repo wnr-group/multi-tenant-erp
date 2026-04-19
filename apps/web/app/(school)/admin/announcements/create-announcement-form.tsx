@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,7 @@ export function CreateAnnouncementForm({
     });
     setTitle(""); setContent("");
     setLoading(false);
+    toast.success("Announcement sent.");
     router.refresh();
     onSuccess?.();
   }

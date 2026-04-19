@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,12 +52,14 @@ export function AddStudentForm({ schoolId, classes, onSuccess }: { schoolId: str
     if (!res.ok) {
       const { error: msg } = await res.json();
       setError(msg ?? "Failed");
+      toast.error(msg ?? "Something went wrong. Please try again.");
       setLoading(false);
       return;
     }
 
     setName(""); setEmail(""); setRollNumber(""); setClassId(""); setSectionId("");
     setLoading(false);
+    toast.success("Student added successfully.");
     router.refresh();
     onSuccess?.();
   }
