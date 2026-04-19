@@ -16,9 +16,10 @@ interface AcademicYearOption {
 interface AddExamFormProps {
   schoolId: string;
   academicYears: AcademicYearOption[];
+  onSuccess?: () => void;
 }
 
-export function AddExamForm({ schoolId, academicYears }: AddExamFormProps) {
+export function AddExamForm({ schoolId, academicYears, onSuccess }: AddExamFormProps) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [academicYearId, setAcademicYearId] = useState("");
@@ -44,6 +45,7 @@ export function AddExamForm({ schoolId, academicYears }: AddExamFormProps) {
     setEndDate("");
     setLoading(false);
     router.refresh();
+    onSuccess?.();
   }
 
   return (

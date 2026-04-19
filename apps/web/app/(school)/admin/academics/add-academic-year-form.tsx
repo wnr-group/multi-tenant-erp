@@ -7,7 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function AddAcademicYearForm({ schoolId }: { schoolId: string }) {
+export function AddAcademicYearForm({
+  schoolId,
+  onSuccess,
+}: {
+  schoolId: string;
+  onSuccess?: () => void;
+}) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -29,6 +35,7 @@ export function AddAcademicYearForm({ schoolId }: { schoolId: string }) {
     setEndDate("");
     setLoading(false);
     router.refresh();
+    onSuccess?.();
   }
 
   return (
