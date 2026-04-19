@@ -41,7 +41,16 @@ interface SidebarProps {
   title: string;
   items: NavItem[];
   brandColor?: string; // hex color from school's primary_color
+  userName?: string;
+  userRole?: string;
 }
+
+const ROLE_LABELS: Record<string, string> = {
+  school_admin: "School Admin",
+  teacher: "Teacher",
+  principal: "Principal",
+  super_admin: "Platform Admin",
+};
 
 /**
  * Darken a hex color by mixing with black.
@@ -57,7 +66,7 @@ function darken(hex: string, factor: number): string {
   return `#${dr.toString(16).padStart(2, "0")}${dg.toString(16).padStart(2, "0")}${db.toString(16).padStart(2, "0")}`;
 }
 
-export function Sidebar({ title, items, brandColor }: SidebarProps) {
+export function Sidebar({ title, items, brandColor, userName, userRole }: SidebarProps) {
   const pathname = usePathname();
 
   // Generate sidebar colors from brand color, or fall back to indigo
@@ -106,6 +115,25 @@ export function Sidebar({ title, items, brandColor }: SidebarProps) {
           );
         })}
       </nav>
+      {userName && (
+        <>
+          <div className="mx-4 border-t" style={{ borderColor: dividerColor }} />
+          <div className="flex items-center gap-3 px-4 py-4">
+            <div
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+              style={{ backgroundColor: logoBg }}
+            >
+              {userName.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-xs font-medium text-white/90">{userName}</p>
+              <p className="truncate text-[11px] text-white/50">
+                {ROLE_LABELS[userRole ?? ""] ?? userRole}
+              </p>
+            </div>
+          </div>
+        </>
+      )}
     </aside>
   );
 }
