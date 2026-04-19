@@ -2,7 +2,16 @@ import { useEffect, useState } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { supabase } from "../lib/supabase";
 import type { Session } from "@supabase/supabase-js";
-import { registerForPushNotifications } from "../lib/notifications";
+import "../global.css";
+
+async function tryRegisterPush(userId: string) {
+  try {
+    const { registerForPushNotifications } = await import("../lib/notifications");
+    await registerForPushNotifications(userId);
+  } catch {
+    // Notifications unavailable (Expo Go)
+  }
+}
 
 export default function RootLayout() {
   const router = useRouter();
@@ -14,7 +23,7 @@ export default function RootLayout() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session?.user) {
-        registerForPushNotifications(session.user.id);
+        tryRegisterPush(session.user.id);
       }
       setInitialized(true);
     });
@@ -23,7 +32,7 @@ export default function RootLayout() {
       (_event, session) => {
         setSession(session);
         if (session?.user) {
-          registerForPushNotifications(session.user.id);
+          tryRegisterPush(session.user.id);
         }
       }
     );
