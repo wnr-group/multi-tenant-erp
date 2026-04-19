@@ -1,22 +1,6 @@
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { Sidebar } from "@/components/sidebar";
 import { ContextSwitchBanner } from "@/components/context-switch-banner";
-import { getSchoolBrand } from "@/lib/school-brand";
-
-const NAV = [
-  { label: "Dashboard", href: "/admin/dashboard" },
-  { label: "Classes", href: "/admin/classes" },
-  { label: "Subjects", href: "/admin/subjects" },
-  { label: "Teachers", href: "/admin/teachers" },
-  { label: "Students", href: "/admin/students" },
-  { label: "Timetable", href: "/admin/timetable" },
-  { label: "Academics", href: "/admin/academics" },
-  { label: "Syllabus", href: "/admin/syllabus" },
-  { label: "Fees", href: "/admin/fees" },
-  { label: "Announcements", href: "/admin/announcements" },
-  { label: "Settings", href: "/admin/settings" },
-];
 
 export default async function AdminLayout({
   children,
@@ -39,25 +23,10 @@ export default async function AdminLayout({
   const allowed = ["school_admin", "super_admin"];
   if (!roleRow || !allowed.includes(roleRow.role)) redirect("/login");
 
-  const brand = await getSchoolBrand();
-
-  const brandStyle = brand?.primaryColor
-    ? ({ "--school-color": brand.primaryColor } as React.CSSProperties)
-    : undefined;
-
   return (
-    <div className="flex h-screen flex-col" style={brandStyle}>
+    <>
       <ContextSwitchBanner />
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar
-          title={brand?.name ?? "School Admin"}
-          items={NAV}
-          brandColor={brand?.primaryColor}
-        />
-        <main className="flex-1 overflow-y-auto bg-[#F8F9FC] px-8 py-6">
-          {children}
-        </main>
-      </div>
-    </div>
+      {children}
+    </>
   );
 }

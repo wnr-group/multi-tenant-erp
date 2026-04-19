@@ -12,7 +12,7 @@ const SCHOOL_ROLES = [
 
 const NAV_ITEMS: Record<string, { label: string; href: string }[]> = {
   school_admin: [
-    { label: "Dashboard", href: "/dashboard" },
+    { label: "Dashboard", href: "/admin/dashboard" },
     { label: "Teachers", href: "/admin/teachers" },
     { label: "Students", href: "/admin/students" },
     { label: "Classes", href: "/admin/classes" },
@@ -24,20 +24,20 @@ const NAV_ITEMS: Record<string, { label: string; href: string }[]> = {
     { label: "Settings", href: "/admin/settings" },
   ],
   teacher: [
-    { label: "Dashboard", href: "/dashboard" },
+    { label: "Dashboard", href: "/teacher/dashboard" },
     { label: "Attendance", href: "/teacher/attendance" },
     { label: "Homework", href: "/teacher/homework" },
     { label: "Results", href: "/teacher/results" },
     { label: "Feedback", href: "/teacher/feedback" },
   ],
   principal: [
-    { label: "Dashboard", href: "/dashboard" },
+    { label: "Dashboard", href: "/principal/dashboard" },
     { label: "Reports", href: "/principal/reports" },
     { label: "Discipline", href: "/principal/discipline" },
     { label: "Announcements", href: "/principal/announcements" },
   ],
   super_admin: [
-    { label: "Dashboard", href: "/dashboard" },
+    { label: "Dashboard", href: "/platform-admin/dashboard" },
     { label: "Schools", href: "/platform-admin/schools" },
   ],
 };
