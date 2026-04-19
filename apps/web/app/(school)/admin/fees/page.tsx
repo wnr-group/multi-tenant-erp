@@ -52,14 +52,16 @@ export default async function FeesPage() {
     };
   });
 
-  const studentOptions = (studentProfiles ?? []).map((sp) => {
-    const profile = (sp.profile as unknown as { id: string; full_name: string } | null);
-    return {
-      id: profile?.id ?? sp.id,
-      name: profile?.full_name ?? "Unknown",
-      classId: sp.class_id,
-    };
-  });
+  const studentOptions = (studentProfiles ?? [])
+    .filter((sp) => sp.profile != null)
+    .map((sp) => {
+      const profile = sp.profile as unknown as { id: string; full_name: string };
+      return {
+        id: profile.id,
+        name: profile.full_name,
+        classId: sp.class_id,
+      };
+    });
 
   const feeStructureOptions = (feeStructures ?? []).map((fs) => ({
     id: fs.id,

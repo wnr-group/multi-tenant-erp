@@ -62,17 +62,25 @@ export function RecordPaymentForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setLoading(true);
 
-    if (!studentId || !feeStructureId || !paymentMethod) return;
+    if (!studentId || !feeStructureId || !paymentMethod) {
+      setLoading(false);
+      return;
+    }
 
     const paid = parseFloat(amountPaid);
-    if (isNaN(paid) || paid < 0) {
+    if (isNaN(paid) || paid <= 0) {
       setError("Please enter a valid amount.");
+      setLoading(false);
       return;
     }
 
     const selectedStructure = feeStructures.find((fs) => fs.id === feeStructureId);
-    if (!selectedStructure) return;
+    if (!selectedStructure) {
+      setLoading(false);
+      return;
+    }
 
     const structureAmount = selectedStructure.amount;
     const status =
@@ -81,8 +89,6 @@ export function RecordPaymentForm({
         : paid > 0
         ? "partial"
         : "overdue";
-
-    setLoading(true);
     const supabase = createClient();
     const { error: insertError } = await supabase.from("fee_payments").insert({
       school_id: schoolId,
