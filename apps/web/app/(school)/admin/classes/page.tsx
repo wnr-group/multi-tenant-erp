@@ -1,8 +1,12 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
-import { DataTable } from "@/components/data-table";
+import { PageHeader } from "@/components/page-header";
+import { ActionDialog } from "@/components/action-dialog";
+import { FilterableDataTable } from "@/components/filterable-data-table";
+import { EmptyState } from "@/components/empty-state";
 import { AddClassForm } from "./add-class-form";
 import { AddSectionForm } from "./add-section-form";
+import { School } from "lucide-react";
 
 export default async function ClassesPage() {
   const supabase = await createServerSupabaseClient();
@@ -21,41 +25,59 @@ export default async function ClassesPage() {
     .order("name");
 
   const sectionRows = (sections ?? []).map((s) => {
-    const cls = (s.class as unknown as { name: string } | null);
-    return {
-      id: s.id,
-      class_name: cls?.name ?? "",
-      section_name: s.name,
-    };
+    const cls = s.class as unknown as { name: string } | null;
+    return { id: s.id, class_name: cls?.name ?? "", section_name: s.name };
   });
 
   return (
-    <div>
-      <h1 className="mb-6 text-2xl font-bold text-gray-900">Classes</h1>
-      <div className="mb-6 rounded-lg bg-white p-6 shadow-sm">
-        <AddClassForm schoolId={schoolId} />
+    <div className="space-y-10">
+      <div>
+        <PageHeader
+          title="Classes"
+          description="Manage classes and sections for your school."
+          action={
+            <ActionDialog trigger="+ Add Class" title="Add Class">
+              {(onSuccess) => <AddClassForm schoolId={schoolId} onSuccess={onSuccess} />}
+            </ActionDialog>
+          }
+          stats={[
+            { label: "Total Classes", value: (classes ?? []).length },
+            { label: "Total Sections", value: sectionRows.length },
+          ]}
+        />
+        <FilterableDataTable
+          data={classes ?? []}
+          columns={[
+            { header: "Class Name", accessor: "name" },
+            { header: "Order", accessor: "order" },
+          ]}
+          searchKeys={["name"]}
+          searchPlaceholder="Search classes..."
+          emptyState={<EmptyState icon={School} title="No classes yet" description="Add your first class to get started." />}
+        />
       </div>
-      <DataTable
-        data={classes ?? []}
-        columns={[
-          { header: "Class Name", accessor: "name" },
-          { header: "Order", accessor: "order" },
-        ]}
-        emptyMessage="No classes yet."
-      />
 
-      <h2 className="mb-4 mt-10 text-xl font-bold text-gray-900">Sections</h2>
-      <div className="mb-6 rounded-lg bg-white p-6 shadow-sm">
-        <AddSectionForm schoolId={schoolId} classes={classes ?? []} />
+      <div>
+        <PageHeader
+          title="Sections"
+          description="Assign sections to classes."
+          action={
+            <ActionDialog trigger="+ Add Section" title="Add Section">
+              {(onSuccess) => <AddSectionForm schoolId={schoolId} classes={classes ?? []} onSuccess={onSuccess} />}
+            </ActionDialog>
+          }
+        />
+        <FilterableDataTable
+          data={sectionRows}
+          columns={[
+            { header: "Class", accessor: "class_name" },
+            { header: "Section", accessor: "section_name" },
+          ]}
+          searchKeys={["class_name", "section_name"]}
+          searchPlaceholder="Search sections..."
+          emptyState={<EmptyState icon={School} title="No sections yet" description="Add sections after creating classes." />}
+        />
       </div>
-      <DataTable
-        data={sectionRows}
-        columns={[
-          { header: "Class", accessor: "class_name" },
-          { header: "Section", accessor: "section_name" },
-        ]}
-        emptyMessage="No sections yet."
-      />
     </div>
   );
 }

@@ -16,9 +16,10 @@ interface ClassOption {
 interface AddSectionFormProps {
   schoolId: string;
   classes: ClassOption[];
+  onSuccess?: () => void;
 }
 
-export function AddSectionForm({ schoolId, classes }: AddSectionFormProps) {
+export function AddSectionForm({ schoolId, classes, onSuccess }: AddSectionFormProps) {
   const router = useRouter();
   const [classId, setClassId] = useState("");
   const [sectionName, setSectionName] = useState("");
@@ -38,6 +39,7 @@ export function AddSectionForm({ schoolId, classes }: AddSectionFormProps) {
     setSectionName("");
     setLoading(false);
     router.refresh();
+    onSuccess?.();
   }
 
   return (

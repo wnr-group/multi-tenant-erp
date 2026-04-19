@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function AddClassForm({ schoolId }: { schoolId: string }) {
+export function AddClassForm({ schoolId, onSuccess }: { schoolId: string; onSuccess?: () => void }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -20,6 +20,7 @@ export function AddClassForm({ schoolId }: { schoolId: string }) {
     setName("");
     setLoading(false);
     router.refresh();
+    onSuccess?.();
   }
 
   return (
