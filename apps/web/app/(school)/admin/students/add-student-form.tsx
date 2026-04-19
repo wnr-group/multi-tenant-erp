@@ -11,7 +11,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 interface ClassOption { id: string; name: string }
 interface SectionOption { id: string; name: string }
 
-export function AddStudentForm({ schoolId, classes }: { schoolId: string; classes: ClassOption[] }) {
+export function AddStudentForm({ schoolId, classes, onSuccess }: { schoolId: string; classes: ClassOption[]; onSuccess?: () => void }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -58,6 +58,7 @@ export function AddStudentForm({ schoolId, classes }: { schoolId: string; classe
     setName(""); setEmail(""); setRollNumber(""); setClassId(""); setSectionId("");
     setLoading(false);
     router.refresh();
+    onSuccess?.();
   }
 
   return (
