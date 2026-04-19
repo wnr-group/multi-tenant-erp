@@ -3,6 +3,7 @@ import { getSchoolId } from "@/lib/school";
 import { DataTable } from "@/components/data-table";
 import { Badge } from "@/components/ui/badge";
 import { AddFeeStructureForm } from "./add-fee-structure-form";
+import { RecordPaymentForm } from "./record-payment-form";
 
 export default async function FeesPage() {
   const supabase = await createServerSupabaseClient();
@@ -10,7 +11,7 @@ export default async function FeesPage() {
 
   const { data: feeStructures } = await supabase
     .from("fee_structures")
-    .select("id, fee_type, amount, due_date, class:classes(name), academic_year:academic_years(name)")
+    .select("id, fee_type, amount, due_date, class_id, class:classes(name), academic_year:academic_years(name)")
     .eq("school_id", schoolId)
     .order("created_at", { ascending: false });
 
@@ -25,6 +26,12 @@ export default async function FeesPage() {
     .select("id, name")
     .eq("school_id", schoolId)
     .order("start_date", { ascending: false });
+
+  const { data: studentProfiles } = await supabase
+    .from("student_profiles")
+    .select("id, class_id, profile:profiles(id, full_name)")
+    .eq("school_id", schoolId)
+    .order("created_at", { ascending: true });
 
   const { data: payments } = await supabase
     .from("fee_payments")
@@ -44,6 +51,22 @@ export default async function FeesPage() {
       due_date: fs.due_date ?? "—",
     };
   });
+
+  const studentOptions = (studentProfiles ?? []).map((sp) => {
+    const profile = (sp.profile as unknown as { id: string; full_name: string } | null);
+    return {
+      id: profile?.id ?? sp.id,
+      name: profile?.full_name ?? "Unknown",
+      classId: sp.class_id,
+    };
+  });
+
+  const feeStructureOptions = (feeStructures ?? []).map((fs) => ({
+    id: fs.id,
+    feeType: fs.fee_type,
+    amount: Number(fs.amount),
+    classId: fs.class_id,
+  }));
 
   const paymentRows = (payments ?? []).map((p) => {
     const student = (p.student as unknown as { full_name: string } | null);
@@ -82,6 +105,15 @@ export default async function FeesPage() {
         ]}
         emptyMessage="No fee structures yet."
       />
+
+      <h2 className="mb-4 mt-10 text-xl font-semibold text-gray-800">Record Payment</h2>
+      <div className="mb-6 rounded-lg bg-white p-6 shadow-sm">
+        <RecordPaymentForm
+          schoolId={schoolId}
+          students={studentOptions}
+          feeStructures={feeStructureOptions}
+        />
+      </div>
 
       <h2 className="mb-4 mt-10 text-xl font-semibold text-gray-800">Fee Payments</h2>
       <DataTable
