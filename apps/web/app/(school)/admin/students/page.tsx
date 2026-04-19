@@ -3,10 +3,9 @@ import { GraduationCap, MoreHorizontal } from "lucide-react";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
 import { PageHeader } from "@/components/page-header";
-import { ActionDialog } from "@/components/action-dialog";
 import { FilterableDataTable } from "@/components/filterable-data-table";
 import { EmptyState } from "@/components/empty-state";
-import { AddStudentForm } from "./add-student-form";
+import { AddStudentDialog } from "./add-student-dialog";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -73,17 +72,7 @@ export default async function StudentsPage() {
       <PageHeader
         title="Students"
         description="Manage student enrollment and profiles."
-        action={
-          <ActionDialog trigger="+ Add Student" title="Add Student">
-            {(onSuccess) => (
-              <AddStudentForm
-                schoolId={schoolId}
-                classes={classes ?? []}
-                onSuccess={onSuccess}
-              />
-            )}
-          </ActionDialog>
-        }
+        action={<AddStudentDialog schoolId={schoolId} classes={classes ?? []} />}
         stats={[
           { label: "Total Students", value: rows.length },
           { label: "Classes", value: (classes ?? []).length },

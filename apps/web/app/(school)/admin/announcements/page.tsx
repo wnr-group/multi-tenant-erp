@@ -2,10 +2,9 @@ import { Megaphone } from "lucide-react";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
 import { PageHeader } from "@/components/page-header";
-import { ActionDialog } from "@/components/action-dialog";
 import { FilterableDataTable } from "@/components/filterable-data-table";
 import { EmptyState } from "@/components/empty-state";
-import { CreateAnnouncementForm } from "./create-announcement-form";
+import { CreateAnnouncementDialog } from "./create-announcement-dialog";
 
 export default async function AnnouncementsPage() {
   const supabase = await createServerSupabaseClient();
@@ -36,17 +35,7 @@ export default async function AnnouncementsPage() {
       <PageHeader
         title="Announcements"
         description="Broadcast messages to students, teachers, or everyone."
-        action={
-          <ActionDialog trigger="+ New Announcement" title="New Announcement">
-            {(onSuccess) => (
-              <CreateAnnouncementForm
-                schoolId={schoolId}
-                createdBy={user!.id}
-                onSuccess={onSuccess}
-              />
-            )}
-          </ActionDialog>
-        }
+        action={<CreateAnnouncementDialog schoolId={schoolId} createdBy={user!.id} />}
         stats={[
           { label: "Total Sent", value: rows.length },
           { label: "This Month", value: thisMonthCount },
@@ -76,17 +65,7 @@ export default async function AnnouncementsPage() {
             icon={Megaphone}
             title="No announcements yet"
             description="Post your first announcement to reach your school community."
-            action={
-              <ActionDialog trigger="+ New Announcement" title="New Announcement">
-                {(onSuccess) => (
-                  <CreateAnnouncementForm
-                    schoolId={schoolId}
-                    createdBy={user!.id}
-                    onSuccess={onSuccess}
-                  />
-                )}
-              </ActionDialog>
-            }
+            action={<CreateAnnouncementDialog schoolId={schoolId} createdBy={user!.id} />}
           />
         }
       />

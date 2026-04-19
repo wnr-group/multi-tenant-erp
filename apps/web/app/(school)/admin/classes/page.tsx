@@ -1,11 +1,9 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
 import { PageHeader } from "@/components/page-header";
-import { ActionDialog } from "@/components/action-dialog";
 import { FilterableDataTable } from "@/components/filterable-data-table";
 import { EmptyState } from "@/components/empty-state";
-import { AddClassForm } from "./add-class-form";
-import { AddSectionForm } from "./add-section-form";
+import { AddClassDialog, AddSectionDialog } from "./class-dialogs";
 import { School } from "lucide-react";
 
 export default async function ClassesPage() {
@@ -35,11 +33,7 @@ export default async function ClassesPage() {
         <PageHeader
           title="Classes"
           description="Manage classes and sections for your school."
-          action={
-            <ActionDialog trigger="+ Add Class" title="Add Class">
-              {(onSuccess) => <AddClassForm schoolId={schoolId} onSuccess={onSuccess} />}
-            </ActionDialog>
-          }
+          action={<AddClassDialog schoolId={schoolId} />}
           stats={[
             { label: "Total Classes", value: (classes ?? []).length },
             { label: "Total Sections", value: sectionRows.length },
@@ -61,11 +55,7 @@ export default async function ClassesPage() {
         <PageHeader
           title="Sections"
           description="Assign sections to classes."
-          action={
-            <ActionDialog trigger="+ Add Section" title="Add Section">
-              {(onSuccess) => <AddSectionForm schoolId={schoolId} classes={classes ?? []} onSuccess={onSuccess} />}
-            </ActionDialog>
-          }
+          action={<AddSectionDialog schoolId={schoolId} classes={classes ?? []} />}
         />
         <FilterableDataTable
           data={sectionRows}

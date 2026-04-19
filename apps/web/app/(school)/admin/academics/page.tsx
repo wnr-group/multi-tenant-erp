@@ -2,12 +2,10 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
 import { Calendar } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
-import { ActionDialog } from "@/components/action-dialog";
 import { FilterableDataTable } from "@/components/filterable-data-table";
 import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
-import { AddAcademicYearForm } from "./add-academic-year-form";
-import { AddExamForm } from "./add-exam-form";
+import { AddAcademicYearDialog, AddExamDialog } from "./academic-dialogs";
 
 export default async function AcademicsPage() {
   const supabase = await createServerSupabaseClient();
@@ -54,13 +52,7 @@ export default async function AcademicsPage() {
         <PageHeader
           title="Academics"
           description="Manage academic years and exams for your school."
-          action={
-            <ActionDialog trigger="+ Add Academic Year" title="Add Academic Year">
-              {(onSuccess) => (
-                <AddAcademicYearForm schoolId={schoolId} onSuccess={onSuccess} />
-              )}
-            </ActionDialog>
-          }
+          action={<AddAcademicYearDialog schoolId={schoolId} />}
           stats={[
             { label: "Academic Years", value: years.length },
             { label: "Current Year", value: currentYear?.name ?? "—" },
@@ -102,15 +94,10 @@ export default async function AcademicsPage() {
           title="Exams"
           description="Track all exams across academic years."
           action={
-            <ActionDialog trigger="+ Add Exam" title="Add Exam">
-              {(onSuccess) => (
-                <AddExamForm
-                  schoolId={schoolId}
-                  academicYears={years.map((y) => ({ id: y.id, name: y.name }))}
-                  onSuccess={onSuccess}
-                />
-              )}
-            </ActionDialog>
+            <AddExamDialog
+              schoolId={schoolId}
+              academicYears={years.map((y) => ({ id: y.id, name: y.name }))}
+            />
           }
         />
 

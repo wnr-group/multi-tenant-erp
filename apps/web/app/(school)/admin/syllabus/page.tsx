@@ -2,10 +2,9 @@ import { Upload } from "lucide-react";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
 import { PageHeader } from "@/components/page-header";
-import { ActionDialog } from "@/components/action-dialog";
 import { FilterableDataTable } from "@/components/filterable-data-table";
 import { EmptyState } from "@/components/empty-state";
-import { UploadSyllabusForm } from "./upload-syllabus-form";
+import { UploadSyllabusDialog } from "./upload-syllabus-dialog";
 
 export default async function SyllabusPage() {
   const supabase = await createServerSupabaseClient();
@@ -74,16 +73,6 @@ export default async function SyllabusPage() {
     name: y.name,
   }));
 
-  const uploadForm = (onSuccess: () => void) => (
-    <UploadSyllabusForm
-      schoolId={schoolId}
-      classes={classesData}
-      subjects={subjectsData}
-      academicYears={academicYearsData}
-      onSuccess={onSuccess}
-    />
-  );
-
   return (
     <div>
       <PageHeader
@@ -94,9 +83,12 @@ export default async function SyllabusPage() {
           { label: "Classes Covered", value: classesCovered },
         ]}
         action={
-          <ActionDialog trigger="+ Upload Syllabus" title="Upload Syllabus">
-            {uploadForm}
-          </ActionDialog>
+          <UploadSyllabusDialog
+            schoolId={schoolId}
+            classes={classesData}
+            subjects={subjectsData}
+            academicYears={academicYearsData}
+          />
         }
       />
 
@@ -140,9 +132,12 @@ export default async function SyllabusPage() {
             title="No syllabus files yet"
             description="Upload syllabus PDFs for each class and subject."
             action={
-              <ActionDialog trigger="+ Upload Syllabus" title="Upload Syllabus">
-                {uploadForm}
-              </ActionDialog>
+              <UploadSyllabusDialog
+                schoolId={schoolId}
+                classes={classesData}
+                subjects={subjectsData}
+                academicYears={academicYearsData}
+              />
             }
           />
         }

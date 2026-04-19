@@ -3,10 +3,9 @@ import { Users } from "lucide-react";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
 import { PageHeader } from "@/components/page-header";
-import { ActionDialog } from "@/components/action-dialog";
 import { FilterableDataTable } from "@/components/filterable-data-table";
 import { EmptyState } from "@/components/empty-state";
-import { InviteTeacherForm } from "./invite-teacher-form";
+import { InviteTeacherDialog } from "./invite-teacher-dialog";
 
 export default async function TeachersPage() {
   const supabase = await createServerSupabaseClient();
@@ -31,13 +30,7 @@ export default async function TeachersPage() {
       <PageHeader
         title="Teachers"
         description="Manage your school's teaching staff."
-        action={
-          <ActionDialog trigger="+ Invite Teacher" title="Invite Teacher">
-            {(onSuccess) => (
-              <InviteTeacherForm schoolId={schoolId} onSuccess={onSuccess} />
-            )}
-          </ActionDialog>
-        }
+        action={<InviteTeacherDialog schoolId={schoolId} />}
         stats={[{ label: "Total Teachers", value: rows.length }]}
       />
 
@@ -62,13 +55,7 @@ export default async function TeachersPage() {
             icon={Users}
             title="No teachers yet"
             description="Invite your first teacher to get started."
-            action={
-              <ActionDialog trigger="+ Invite Teacher" title="Invite Teacher">
-                {(onSuccess) => (
-                  <InviteTeacherForm schoolId={schoolId} onSuccess={onSuccess} />
-                )}
-              </ActionDialog>
-            }
+            action={<InviteTeacherDialog schoolId={schoolId} />}
           />
         }
       />

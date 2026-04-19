@@ -2,10 +2,9 @@ import { BookOpen } from "lucide-react";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
 import { PageHeader } from "@/components/page-header";
-import { ActionDialog } from "@/components/action-dialog";
 import { FilterableDataTable } from "@/components/filterable-data-table";
 import { EmptyState } from "@/components/empty-state";
-import { AddSubjectForm } from "./add-subject-form";
+import { AddSubjectDialog } from "./add-subject-dialog";
 
 export default async function SubjectsPage() {
   const supabase = await createServerSupabaseClient();
@@ -53,17 +52,7 @@ export default async function SubjectsPage() {
           { label: "Total Subjects", value: totalSubjects },
           { label: "Classes Covered", value: classesCovered },
         ]}
-        action={
-          <ActionDialog trigger="+ Add Subject" title="Add Subject">
-            {(onSuccess) => (
-              <AddSubjectForm
-                schoolId={schoolId}
-                classes={classesData}
-                onSuccess={onSuccess}
-              />
-            )}
-          </ActionDialog>
-        }
+        action={<AddSubjectDialog schoolId={schoolId} classes={classesData} />}
       />
 
       <FilterableDataTable
@@ -92,17 +81,7 @@ export default async function SubjectsPage() {
             icon={BookOpen}
             title="No subjects yet"
             description="Add subjects so teachers can assign homework and enter marks."
-            action={
-              <ActionDialog trigger="+ Add Subject" title="Add Subject">
-                {(onSuccess) => (
-                  <AddSubjectForm
-                    schoolId={schoolId}
-                    classes={classesData}
-                    onSuccess={onSuccess}
-                  />
-                )}
-              </ActionDialog>
-            }
+            action={<AddSubjectDialog schoolId={schoolId} classes={classesData} />}
           />
         }
       />
