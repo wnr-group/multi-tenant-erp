@@ -16,9 +16,11 @@ interface ClassOption {
 export function AddSubjectForm({
   schoolId,
   classes,
+  onSuccess,
 }: {
   schoolId: string;
   classes: ClassOption[];
+  onSuccess?: () => void;
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -41,6 +43,7 @@ export function AddSubjectForm({
     setClassId("");
     setLoading(false);
     router.refresh();
+    onSuccess?.();
   }
 
   return (
