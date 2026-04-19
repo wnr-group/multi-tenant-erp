@@ -1,6 +1,10 @@
+import { Megaphone } from "lucide-react";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
-import { DataTable } from "@/components/data-table";
+import { PageHeader } from "@/components/page-header";
+import { ActionDialog } from "@/components/action-dialog";
+import { FilterableDataTable } from "@/components/filterable-data-table";
+import { EmptyState } from "@/components/empty-state";
 import { CreateAnnouncementForm } from "./create-announcement-form";
 
 export default async function AnnouncementsPage() {
@@ -14,17 +18,78 @@ export default async function AnnouncementsPage() {
     .eq("school_id", schoolId)
     .order("created_at", { ascending: false });
 
+  const now = new Date();
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+  const rows = (announcements ?? []).map((a) => ({
+    id: a.id,
+    title: a.title as string,
+    target_type: a.target_type as string,
+    date: new Date(a.created_at).toLocaleDateString(),
+    created_at: a.created_at as string,
+  }));
+
+  const thisMonthCount = rows.filter((r) => r.created_at >= thisMonthStart).length;
+
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold text-gray-900">Announcements</h1>
-      <div className="mb-6 rounded-lg bg-white p-6 shadow-sm">
-        <CreateAnnouncementForm schoolId={schoolId} createdBy={user!.id} />
-      </div>
-      <DataTable data={announcements ?? []} columns={[
-        { header: "Title", accessor: "title" },
-        { header: "Target", accessor: "target_type" },
-        { header: "Date", accessor: (row) => new Date(row.created_at).toLocaleDateString() },
-      ]} emptyMessage="No announcements yet." />
+      <PageHeader
+        title="Announcements"
+        description="Broadcast messages to students, teachers, or everyone."
+        action={
+          <ActionDialog trigger="+ New Announcement" title="New Announcement">
+            {(onSuccess) => (
+              <CreateAnnouncementForm
+                schoolId={schoolId}
+                createdBy={user!.id}
+                onSuccess={onSuccess}
+              />
+            )}
+          </ActionDialog>
+        }
+        stats={[
+          { label: "Total Sent", value: rows.length },
+          { label: "This Month", value: thisMonthCount },
+        ]}
+      />
+
+      <FilterableDataTable
+        data={rows}
+        columns={[
+          { header: "Title", accessor: "title" },
+          { header: "Target", accessor: "target_type" },
+          { header: "Date", accessor: "date" },
+        ]}
+        searchKeys={["title"]}
+        searchPlaceholder="Search by title…"
+        filter={{
+          label: "All Targets",
+          options: [
+            { label: "School", value: "school" },
+            { label: "Students", value: "students" },
+            { label: "Teachers", value: "teachers" },
+          ],
+          filterFn: (row, value) => row.target_type === value,
+        }}
+        emptyState={
+          <EmptyState
+            icon={Megaphone}
+            title="No announcements yet"
+            description="Post your first announcement to reach your school community."
+            action={
+              <ActionDialog trigger="+ New Announcement" title="New Announcement">
+                {(onSuccess) => (
+                  <CreateAnnouncementForm
+                    schoolId={schoolId}
+                    createdBy={user!.id}
+                    onSuccess={onSuccess}
+                  />
+                )}
+              </ActionDialog>
+            }
+          />
+        }
+      />
     </div>
   );
 }

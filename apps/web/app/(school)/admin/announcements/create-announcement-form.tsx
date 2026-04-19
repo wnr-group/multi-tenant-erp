@@ -7,7 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function CreateAnnouncementForm({ schoolId, createdBy }: { schoolId: string; createdBy: string }) {
+export function CreateAnnouncementForm({
+  schoolId,
+  createdBy,
+  onSuccess,
+}: {
+  schoolId: string;
+  createdBy: string;
+  onSuccess?: () => void;
+}) {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -23,6 +31,7 @@ export function CreateAnnouncementForm({ schoolId, createdBy }: { schoolId: stri
     setTitle(""); setContent("");
     setLoading(false);
     router.refresh();
+    onSuccess?.();
   }
 
   return (
