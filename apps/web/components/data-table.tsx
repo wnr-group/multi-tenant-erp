@@ -16,12 +16,14 @@ interface DataTableProps<T> {
   columns: Column<T>[];
   data: T[];
   emptyMessage?: string;
+  renderActions?: (row: T) => React.ReactNode;
 }
 
 export function DataTable<T extends { id: string }>({
   columns,
   data,
   emptyMessage = "No records found.",
+  renderActions,
 }: DataTableProps<T>) {
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-card">
@@ -36,13 +38,14 @@ export function DataTable<T extends { id: string }>({
                 {col.header}
               </TableHead>
             ))}
+            {renderActions && <TableHead className="w-12" />}
           </TableRow>
         </TableHeader>
         <TableBody>
           {data.length === 0 ? (
             <TableRow>
               <TableCell
-                colSpan={columns.length}
+                colSpan={columns.length + (renderActions ? 1 : 0)}
                 className="py-12 text-center text-sm text-muted-foreground"
               >
                 {emptyMessage}
@@ -58,6 +61,11 @@ export function DataTable<T extends { id: string }>({
                       : (row[col.accessor] as React.ReactNode)}
                   </TableCell>
                 ))}
+                {renderActions && (
+                  <TableCell className="text-right">
+                    {renderActions(row)}
+                  </TableCell>
+                )}
               </TableRow>
             ))
           )}
