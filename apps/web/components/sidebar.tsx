@@ -71,9 +71,10 @@ export function Sidebar({ title, items, brandColor, userName, userRole }: Sideba
   const pathname = usePathname();
 
   // Generate sidebar colors from brand color, or fall back to indigo
-  const sidebarBg = brandColor ? darken(brandColor, 0.8) : "#1e1b4b";
-  const logoBg = brandColor ?? "#4f46e5";
-  const dividerColor = brandColor ? "rgba(255,255,255,0.12)" : "#3730a380";
+  const isValidHex = brandColor && /^#[0-9a-fA-F]{6}$/.test(brandColor);
+  const sidebarBg = isValidHex ? darken(brandColor, 0.8) : "#1e1b4b";
+  const logoBg = isValidHex ? brandColor : "#4f46e5";
+  const dividerColor = isValidHex ? "rgba(255,255,255,0.12)" : "#3730a380";
   // Inactive text: use white with good opacity for readability on any dark bg
   const inactiveText = "rgba(255,255,255,0.6)";
 
