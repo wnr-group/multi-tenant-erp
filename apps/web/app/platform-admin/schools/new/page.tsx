@@ -56,10 +56,15 @@ export default function NewSchoolPage() {
           <Input value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="school2.lvh.me" required />
         </div>
         <div>
-          <Label>Primary Color (hex)</Label>
+          <Label>Primary Color</Label>
           <div className="flex items-center gap-2">
-            <Input value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} placeholder="#2563EB" />
-            <div className="h-8 w-8 rounded border" style={{ backgroundColor: primaryColor }} />
+            <input
+              type="color"
+              value={primaryColor}
+              onChange={(e) => setPrimaryColor(e.target.value)}
+              className="h-10 w-12 cursor-pointer rounded border border-input bg-transparent p-1"
+            />
+            <Input value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} placeholder="#2563EB" className="flex-1" />
           </div>
         </div>
         <div>

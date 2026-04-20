@@ -123,15 +123,18 @@ export function OverviewTab({ school, roleCounts }: Props) {
           <div className="space-y-1.5">
             <Label htmlFor="school-color">Primary Color</Label>
             <div className="flex items-center gap-2">
-              <div
-                className="h-8 w-8 shrink-0 rounded-md border"
-                style={{ backgroundColor: primaryColor || "#6366f1" }}
+              <input
+                type="color"
+                value={primaryColor || "#6366f1"}
+                onChange={(e) => setPrimaryColor(e.target.value)}
+                className="h-10 w-12 cursor-pointer rounded border border-input bg-transparent p-1"
               />
               <Input
                 id="school-color"
                 value={primaryColor}
                 onChange={(e) => setPrimaryColor(e.target.value)}
                 placeholder="#6366f1"
+                className="flex-1"
               />
             </div>
           </div>
