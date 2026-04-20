@@ -137,15 +137,27 @@ export function ClassesDataTable({
   }
 
   async function deleteClass(row: ClassRow) {
-    if (!confirm(`Delete "${row.name}"? This will also delete all its sections.`)) return;
+    if (!confirm(
+      `Delete "${row.name}"?\n\nThis will also delete all associated:\n• Sections\n• Subjects\n• Student assignments\n• Timetable entries\n• Syllabus entries\n• Fee structures\n\nThis cannot be undone.`
+    )) return;
+
     const supabase = createClient();
-    await supabase.from("sections").delete().eq("class_id", row.id);
+
+    // Delete non-cascading associations first (these FKs lack ON DELETE CASCADE)
+    await Promise.all([
+      supabase.from("student_profiles").update({ class_id: null, section_id: null }).eq("class_id", row.id),
+      supabase.from("timetable_entries").delete().eq("class_id", row.id),
+      supabase.from("syllabus").delete().eq("class_id", row.id),
+      supabase.from("fee_structures").delete().eq("class_id", row.id),
+    ]);
+
+    // Delete the class — sections + subjects cascade automatically
     const { error } = await supabase.from("classes").delete().eq("id", row.id);
     if (error) {
       toast.error(error.message);
       return;
     }
-    toast.success(`"${row.name}" deleted.`);
+    toast.success(`"${row.name}" and all associations deleted.`);
     router.refresh();
   }
 
