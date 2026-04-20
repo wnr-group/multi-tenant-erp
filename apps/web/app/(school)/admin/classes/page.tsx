@@ -26,12 +26,9 @@ export default async function ClassesPage() {
     return { id: s.id, class_name: cls?.name ?? "", section_name: s.name };
   });
 
-  const hasClasses = (classes ?? []).length > 0;
-
   return (
     <div className="space-y-10">
-      {/* Show Quick Setup when no classes exist */}
-      {!hasClasses && <ClassesQuickSetup schoolId={schoolId} />}
+      <ClassesQuickSetup schoolId={schoolId} />
 
       <div>
         <PageHeader
