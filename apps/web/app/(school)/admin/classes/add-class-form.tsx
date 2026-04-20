@@ -17,7 +17,15 @@ export function AddClassForm({ schoolId, onSuccess }: { schoolId: string; onSucc
     e.preventDefault();
     setLoading(true);
     const supabase = createClient();
-    await supabase.from("classes").insert({ school_id: schoolId, name });
+    const { data: maxRow } = await supabase
+      .from("classes")
+      .select("order")
+      .eq("school_id", schoolId)
+      .order("order", { ascending: false })
+      .limit(1)
+      .single();
+    const nextOrder = (maxRow?.order ?? 0) + 1;
+    await supabase.from("classes").insert({ school_id: schoolId, name, order: nextOrder });
     setName("");
     setLoading(false);
     toast.success("Class added.");

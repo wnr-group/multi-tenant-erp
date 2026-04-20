@@ -96,11 +96,21 @@ export function ClassesQuickSetup({ schoolId }: { schoolId: string }) {
     setLoading(true);
     const supabase = createClient();
 
+    // Get current max order to continue from
+    const { data: maxRow } = await supabase
+      .from("classes")
+      .select("order")
+      .eq("school_id", schoolId)
+      .order("order", { ascending: false })
+      .limit(1)
+      .single();
+    const startOrder = (maxRow?.order ?? 0) + 1;
+
     // Create classes with order
     const classRows = allClasses.map((name, i) => ({
       school_id: schoolId,
       name,
-      order: i + 1,
+      order: startOrder + i,
     }));
 
     const { data: createdClasses, error: classError } = await supabase

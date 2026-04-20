@@ -40,7 +40,7 @@ export default async function ClassesPage() {
             { label: "Total Sections", value: sectionRows.length },
           ]}
         />
-        <ClassesDataTable classes={classes ?? []} />
+        <ClassesDataTable classes={classes ?? []} schoolId={schoolId} />
       </div>
 
       <div>
