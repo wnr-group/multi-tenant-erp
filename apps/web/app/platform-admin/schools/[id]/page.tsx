@@ -2,13 +2,22 @@ import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { ToggleActiveButton } from "./toggle-active-button";
 import { ViewAsButton } from "./view-as-button";
+import { SchoolTabs } from "./school-tabs";
+import { OverviewTab } from "./overview-tab";
+import { UsersTab } from "./users-tab";
+import { ImportTab } from "./import-tab";
 
 export default async function SchoolDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const { id } = await params;
+  const { tab } = await searchParams;
+  const activeTab = tab ?? "overview";
+
   const supabase = createServiceSupabaseClient();
   const { data: school } = await supabase
     .from("schools")
@@ -18,34 +27,46 @@ export default async function SchoolDetailPage({
 
   if (!school) notFound();
 
-  // Get user IDs + roles from user_roles, then fetch their profiles
+  // Fetch all role rows (including inactive) for the users tab
   const { data: roleRows } = await supabase
     .from("user_roles")
-    .select("user_id, role")
-    .eq("school_id", id)
-    .eq("is_active", true);
+    .select("id, user_id, role, is_active")
+    .eq("school_id", id);
 
-  const userIds = (roleRows ?? []).map((r) => r.user_id);
-  const roleMap = new Map((roleRows ?? []).map((r) => [r.user_id, r.role]));
-
+  const userIds = [...new Set((roleRows ?? []).map((r) => r.user_id))];
   const { data: profiles } = userIds.length > 0
-    ? await supabase
-        .from("profiles")
-        .select("id, full_name, email")
-        .in("id", userIds)
+    ? await supabase.from("profiles").select("id, full_name, email").in("id", userIds)
     : { data: [] };
 
-  const users = (profiles ?? []).map((p) => ({
-    ...p,
-    role: roleMap.get(p.id) ?? "",
-  }));
+  const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
+
+  const users = (roleRows ?? []).map((r) => {
+    const profile = profileMap.get(r.user_id);
+    return {
+      id: r.user_id,
+      roleId: r.id,
+      full_name: profile?.full_name ?? "",
+      email: profile?.email ?? "",
+      role: r.role,
+      is_active: r.is_active,
+    };
+  });
+
+  // Compute role counts for overview
+  const roleCounts = {
+    school_admin: users.filter((u) => u.role === "school_admin" && u.is_active).length,
+    principal: users.filter((u) => u.role === "principal" && u.is_active).length,
+    teacher: users.filter((u) => u.role === "teacher" && u.is_active).length,
+    student: users.filter((u) => u.role === "student" && u.is_active).length,
+    parent: users.filter((u) => u.role === "parent" && u.is_active).length,
+  };
 
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{school.name}</h1>
-          <p className="text-sm text-gray-500">{school.contact_email}</p>
+          <p className="text-sm text-gray-500">{school.contact_email} · {school.domain}</p>
         </div>
         <div className="flex gap-2">
           <ToggleActiveButton schoolId={school.id} isActive={school.is_active} />
@@ -53,27 +74,17 @@ export default async function SchoolDetailPage({
         </div>
       </div>
 
-      <div className="rounded-lg bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-base font-semibold text-gray-800">Users ({users?.length ?? 0})</h2>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-gray-500">
-              <th className="pb-2">Name</th>
-              <th className="pb-2">Email</th>
-              <th className="pb-2">Role</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((u) => (
-              <tr key={u.id} className="border-b last:border-0">
-                <td className="py-2">{u.full_name}</td>
-                <td className="py-2 text-gray-500">{u.email}</td>
-                <td className="py-2 text-gray-500">{u.role}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <SchoolTabs schoolId={school.id} />
+
+      {activeTab === "overview" && (
+        <OverviewTab school={school} roleCounts={roleCounts} />
+      )}
+      {activeTab === "users" && (
+        <UsersTab schoolId={school.id} users={users} />
+      )}
+      {activeTab === "import" && (
+        <ImportTab schoolId={school.id} />
+      )}
     </div>
   );
 }
