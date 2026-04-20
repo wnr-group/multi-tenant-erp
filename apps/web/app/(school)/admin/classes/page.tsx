@@ -49,7 +49,7 @@ export default async function ClassesPage() {
           description="Assign sections to classes."
           action={<AddSectionDialog schoolId={schoolId} classes={classes ?? []} />}
         />
-        <SectionsDataTable sectionRows={sectionRows} />
+        <SectionsDataTable sectionRows={sectionRows} schoolId={schoolId} classes={(classes ?? []).map(c => ({ id: c.id, name: c.name }))} />
       </div>
     </div>
   );
