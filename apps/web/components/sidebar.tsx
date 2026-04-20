@@ -7,8 +7,9 @@ import {
   LayoutDashboard, School, GraduationCap, Users, BookOpen,
   Calendar, ClipboardList, DollarSign, Megaphone, Settings,
   Clock, FileText, MessageSquare, UserCheck,
-  Building2, BarChart3, Shield, Upload,
+  Building2, BarChart3, Shield, Upload, LogOut,
 } from "lucide-react";
+import { createClient } from "@/lib/supabase";
 import type { LucideIcon } from "lucide-react";
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -125,12 +126,23 @@ export function Sidebar({ title, items, brandColor, userName, userRole }: Sideba
             >
               {userName.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()}
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="truncate text-xs font-medium text-white/90">{userName}</p>
               <p className="truncate text-[11px] text-white/50">
                 {ROLE_LABELS[userRole ?? ""] ?? userRole}
               </p>
             </div>
+            <button
+              onClick={async () => {
+                const supabase = createClient();
+                await supabase.auth.signOut();
+                window.location.href = "/login";
+              }}
+              title="Sign out"
+              className="shrink-0 rounded-md p-1.5 text-white/40 transition-colors hover:bg-white/10 hover:text-white/80"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
           </div>
         </>
       )}
