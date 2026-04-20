@@ -1,4 +1,4 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { ExitContextButton } from "./exit-context-button";
 
 export async function ContextSwitchBanner() {
@@ -6,6 +6,9 @@ export async function ContextSwitchBanner() {
   const actingAs = cookieStore.get("acting_as")?.value;
 
   if (!actingAs) return null;
+
+  const headersList = await headers();
+  const realRole = headersList.get("x-real-role") ?? "school_admin";
 
   const roleLabels: Record<string, string> = {
     school_admin: "School Admin",
@@ -20,7 +23,7 @@ export async function ContextSwitchBanner() {
         <span className="mx-2 text-amber-400">&middot;</span>
         Actions logged under your real identity
       </span>
-      <ExitContextButton />
+      <ExitContextButton realRole={realRole} />
     </div>
   );
 }
