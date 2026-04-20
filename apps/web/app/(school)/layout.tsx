@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { createServerSupabaseClient } from "../../lib/supabase/server";
+import { getSchoolId } from "@/lib/school";
 import { Sidebar } from "@/components/sidebar";
 import { TopBar } from "@/components/top-bar";
 
@@ -86,11 +87,13 @@ export default async function SchoolLayout({
   let brandColor: string | undefined;
   let schoolName = "School ERP";
 
-  if (profile?.school_id) {
+  // Resolve school: from profile first, then from domain (for super_admins acting on school domains)
+  const schoolId = profile?.school_id ?? (await getSchoolId());
+  if (schoolId) {
     const { data: school } = await supabase
       .from("schools")
       .select("name, primary_color")
-      .eq("id", profile.school_id)
+      .eq("id", schoolId)
       .single();
     brandColor = school?.primary_color ?? undefined;
     schoolName = school?.name ?? "School ERP";
