@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,8 +14,6 @@ export default function NewSchoolPage() {
   const [domain, setDomain] = useState("");
   const [primaryColor, setPrimaryColor] = useState("#2563EB");
   const [contactEmail, setContactEmail] = useState("");
-  const [adminEmail, setAdminEmail] = useState("");
-  const [adminName, setAdminName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -36,32 +35,8 @@ export default function NewSchoolPage() {
       return;
     }
 
-    try {
-      const res = await fetch("/api/invite-user", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        redirect: "error",
-        body: JSON.stringify({
-          email: adminEmail,
-          fullName: adminName,
-          schoolId: school.id,
-          role: "school_admin",
-        }),
-      });
-
-      if (!res.ok) {
-        const { error: msg } = await res.json();
-        setError(msg ?? "Failed to invite admin");
-        setLoading(false);
-        return;
-      }
-    } catch {
-      setError("Failed to invite admin — please try again");
-      setLoading(false);
-      return;
-    }
-
-    router.push("/platform-admin/schools");
+    toast.success("School created. Now invite users from the school detail page.");
+    router.push(`/platform-admin/schools/${school.id}`);
     router.refresh();
   }
 
@@ -91,18 +66,8 @@ export default function NewSchoolPage() {
           <Label>School Contact Email</Label>
           <Input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} />
         </div>
-        <hr className="my-2" />
-        <p className="text-sm font-medium text-gray-700">School Admin</p>
-        <div>
-          <Label>Admin Full Name</Label>
-          <Input value={adminName} onChange={(e) => setAdminName(e.target.value)} required />
-        </div>
-        <div>
-          <Label>Admin Email</Label>
-          <Input type="email" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} required />
-        </div>
         <Button type="submit" disabled={loading} className="w-full">
-          {loading ? "Creating…" : "Create School & Invite Admin"}
+          {loading ? "Creating…" : "Create School"}
         </Button>
       </form>
     </div>
