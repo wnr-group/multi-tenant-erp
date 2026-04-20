@@ -143,13 +143,24 @@ export function ClassesDataTable({
 
     const supabase = createClient();
 
-    // Delete non-cascading associations first (these FKs lack ON DELETE CASCADE)
-    await Promise.all([
+    // Get section IDs for this class (needed for timetable cleanup)
+    const { data: classSections } = await supabase
+      .from("sections")
+      .select("id")
+      .eq("class_id", row.id);
+    const sectionIds = (classSections ?? []).map((s) => s.id);
+
+    // Delete non-cascading associations first
+    const cleanups = [
       supabase.from("student_profiles").update({ class_id: null, section_id: null }).eq("class_id", row.id),
-      supabase.from("timetable").delete().eq("class_id", row.id),
       supabase.from("syllabus").delete().eq("class_id", row.id),
       supabase.from("fee_structures").delete().eq("class_id", row.id),
-    ]);
+    ];
+    // Timetable references section_id, not class_id
+    if (sectionIds.length > 0) {
+      cleanups.push(supabase.from("timetable").delete().in("section_id", sectionIds));
+    }
+    await Promise.all(cleanups);
 
     // Delete the class — sections + subjects cascade automatically
     const { error } = await supabase.from("classes").delete().eq("id", row.id);
