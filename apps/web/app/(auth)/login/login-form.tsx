@@ -20,14 +20,21 @@ export function LoginForm({
   const [loading, setLoading] = useState(false);
   const initialized = useRef(false);
 
-  // Clear any stale session on mount to prevent auth refresh loops
+  // Handle session on mount
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
+
+    const params = new URLSearchParams(window.location.search);
+    const reason = params.get("reason");
+
     const supabase = createClient();
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        // User has an active session — redirect them away from login
+      if (session && reason === "no_access") {
+        // Middleware sent us here because user has no role on this domain — sign out
+        supabase.auth.signOut();
+      } else if (session && !reason) {
+        // User has a valid session — redirect them away from login
         window.location.href = "/";
       }
     });

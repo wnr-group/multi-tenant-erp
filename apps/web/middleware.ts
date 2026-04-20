@@ -101,12 +101,12 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!role) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.redirect(new URL("/login?reason=no_access", request.url));
   }
 
   if (isPlatformAdmin) {
     if (role !== "super_admin") {
-      return NextResponse.redirect(new URL("/login", request.url));
+      return NextResponse.redirect(new URL("/login?reason=no_access", request.url));
     }
     if (!pathname.startsWith("/platform-admin") && !pathname.startsWith("/api")) {
       return NextResponse.redirect(
