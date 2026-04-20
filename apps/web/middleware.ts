@@ -130,14 +130,17 @@ export async function middleware(request: NextRequest) {
     response.headers.set("x-real-role", role);
   }
 
-  if (role === "super_admin" && !actingAsCookie) {
-    // Redirect super_admin to the admin domain's dashboard
-    const isLocalDev = domain.endsWith(".lvh.me") || domain.includes("localhost");
-    const port = host.includes(":") ? `:${host.split(":")[1]}` : "";
-    const adminUrl = isLocalDev
-      ? `http://core.lvh.me${port}/platform-admin/dashboard`
-      : `https://${PLATFORM_ADMIN_DOMAINS[0]}/platform-admin/dashboard`;
-    return NextResponse.redirect(adminUrl);
+  if (role === "super_admin" && !actingAsCookie && !isPlatformAdmin) {
+    // Super admin on a school domain — auto-enter as school_admin
+    const cookieDomain = host.includes("lvh.me") ? ".lvh.me" : host.includes("balajierp.com") ? ".balajierp.com" : undefined;
+    response.cookies.set("acting_as", "school_admin", {
+      path: "/",
+      domain: cookieDomain,
+      maxAge: 60 * 60 * 8, // 8 hours
+    });
+    response.headers.set("x-acting-as", "school_admin");
+    response.headers.set("x-real-role", "super_admin");
+    return NextResponse.redirect(new URL("/admin/dashboard", request.url));
   }
 
   // Skip role-based redirects for API routes and auth routes
