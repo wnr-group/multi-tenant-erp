@@ -28,7 +28,7 @@ export function LoginForm({
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         // User has an active session — redirect them away from login
-        router.push("/");
+        window.location.href = "/";
       }
     });
   }, [router]);
@@ -58,7 +58,8 @@ export function LoginForm({
       return;
     }
 
-    router.push("/");
+    // Hard navigation so middleware can redirect to the correct role-based dashboard
+    window.location.href = "/";
   }
 
   return (
