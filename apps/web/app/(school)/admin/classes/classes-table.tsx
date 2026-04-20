@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { School, ArrowUp, ArrowDown, Pencil, Trash2 } from "lucide-react";
+import { School, GripVertical, Pencil, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { FilterableDataTable } from "@/components/filterable-data-table";
 import { EmptyState } from "@/components/empty-state";
@@ -24,7 +24,7 @@ interface SectionRow {
   section_name: string;
 }
 
-// ─── Classes Table ───
+// ─── Sortable Classes List ───
 
 export function ClassesDataTable({
   classes,
@@ -34,30 +34,83 @@ export function ClassesDataTable({
   schoolId: string;
 }) {
   const router = useRouter();
-  const [moving, setMoving] = useState<string | null>(null);
+  const [items, setItems] = useState(() =>
+    [...classes].sort((a, b) => a.order - b.order)
+  );
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
   const [editClass, setEditClass] = useState<ClassRow | null>(null);
   const [editName, setEditName] = useState("");
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
 
-  async function moveClass(classId: string, direction: "up" | "down") {
+  // Sync when server data changes
+  if (classes.length !== items.length || classes.some((c, i) => {
     const sorted = [...classes].sort((a, b) => a.order - b.order);
-    const idx = sorted.findIndex((c) => c.id === classId);
-    if (idx < 0) return;
-    const swapIdx = direction === "up" ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= sorted.length) return;
+    return sorted[i]?.id !== items[i]?.id;
+  })) {
+    setItems([...classes].sort((a, b) => a.order - b.order));
+  }
 
-    setMoving(classId);
+  function handleDragStart(e: React.DragEvent, id: string) {
+    setDragId(id);
+    e.dataTransfer.effectAllowed = "move";
+    // Make drag image slightly transparent
+    if (e.currentTarget instanceof HTMLElement) {
+      e.dataTransfer.setDragImage(e.currentTarget, 0, 0);
+    }
+  }
+
+  function handleDragOver(e: React.DragEvent, id: string) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (id !== overId) setOverId(id);
+  }
+
+  function handleDragLeave() {
+    setOverId(null);
+  }
+
+  async function handleDrop(e: React.DragEvent, targetId: string) {
+    e.preventDefault();
+    setOverId(null);
+
+    if (!dragId || dragId === targetId) {
+      setDragId(null);
+      return;
+    }
+
+    const fromIdx = items.findIndex((c) => c.id === dragId);
+    const toIdx = items.findIndex((c) => c.id === targetId);
+    if (fromIdx < 0 || toIdx < 0) return;
+
+    // Reorder locally
+    const newItems = [...items];
+    const [moved] = newItems.splice(fromIdx, 1);
+    newItems.splice(toIdx, 0, moved);
+
+    // Assign new sequential order values
+    const updates = newItems.map((item, i) => ({
+      id: item.id,
+      order: i + 1,
+    }));
+
+    setItems(newItems.map((item, i) => ({ ...item, order: i + 1 })));
+    setDragId(null);
+
+    // Persist to DB
     const supabase = createClient();
-    const current = sorted[idx];
-    const swap = sorted[swapIdx];
-
-    await Promise.all([
-      supabase.from("classes").update({ order: swap.order }).eq("id", current.id),
-      supabase.from("classes").update({ order: current.order }).eq("id", swap.id),
-    ]);
-
-    setMoving(null);
+    await Promise.all(
+      updates.map((u) =>
+        supabase.from("classes").update({ order: u.order }).eq("id", u.id)
+      )
+    );
     router.refresh();
+  }
+
+  function handleDragEnd() {
+    setDragId(null);
+    setOverId(null);
   }
 
   function openEdit(row: ClassRow) {
@@ -86,11 +139,8 @@ export function ClassesDataTable({
   async function deleteClass(row: ClassRow) {
     if (!confirm(`Delete "${row.name}"? This will also delete all its sections.`)) return;
     const supabase = createClient();
-
-    // Delete sections first (FK constraint)
     await supabase.from("sections").delete().eq("class_id", row.id);
     const { error } = await supabase.from("classes").delete().eq("id", row.id);
-
     if (error) {
       toast.error(error.message);
       return;
@@ -99,63 +149,94 @@ export function ClassesDataTable({
     router.refresh();
   }
 
+  const filtered = search
+    ? items.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
+    : items;
+
+  if (items.length === 0) {
+    return (
+      <EmptyState
+        icon={School}
+        title="No classes yet"
+        description="Use Quick Setup above to create classes."
+      />
+    );
+  }
+
   return (
     <>
-      <FilterableDataTable
-        data={classes}
-        columns={[
-          {
-            header: "#",
-            accessor: (row) => (
-              <span className="text-xs text-gray-400">{row.order}</span>
-            ),
-          },
-          { header: "Class Name", accessor: "name" },
-        ]}
-        searchKeys={["name"]}
-        searchPlaceholder="Search classes..."
-        renderActions={(row) => (
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => moveClass(row.id, "up")}
-              disabled={moving === row.id}
-              className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-30"
-              title="Move up"
-            >
-              <ArrowUp className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={() => moveClass(row.id, "down")}
-              disabled={moving === row.id}
-              className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-30"
-              title="Move down"
-            >
-              <ArrowDown className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={() => openEdit(row)}
-              className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-blue-600"
-              title="Edit"
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={() => deleteClass(row)}
-              className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600"
-              title="Delete"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        )}
-        emptyState={
-          <EmptyState
-            icon={School}
-            title="No classes yet"
-            description="Use Quick Setup above to create classes."
+      <div className="space-y-3">
+        {/* Search */}
+        <div className="relative">
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search classes..."
+            className="pl-9"
           />
-        }
-      />
+          <svg
+            className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+
+        {/* Sortable list */}
+        <div className="overflow-hidden rounded-lg border bg-white">
+          {filtered.map((row) => (
+            <div
+              key={row.id}
+              draggable={!search}
+              onDragStart={(e) => handleDragStart(e, row.id)}
+              onDragOver={(e) => handleDragOver(e, row.id)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, row.id)}
+              onDragEnd={handleDragEnd}
+              className={`flex items-center gap-3 border-b px-4 py-2.5 last:border-0 transition-colors ${
+                dragId === row.id ? "opacity-40" : ""
+              } ${
+                overId === row.id && dragId !== row.id
+                  ? "border-t-2 border-t-indigo-500 bg-indigo-50"
+                  : "hover:bg-gray-50"
+              }`}
+            >
+              {/* Drag handle */}
+              {!search && (
+                <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-gray-300 active:cursor-grabbing" />
+              )}
+
+              {/* Order badge */}
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-gray-100 text-xs font-medium text-gray-500">
+                {row.order}
+              </span>
+
+              {/* Name */}
+              <span className="flex-1 text-sm font-medium text-gray-900">{row.name}</span>
+
+              {/* Actions */}
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => openEdit(row)}
+                  className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-blue-600"
+                  title="Rename"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={() => deleteClass(row)}
+                  className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-red-600"
+                  title="Delete"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* Edit class dialog */}
       <Dialog open={!!editClass} onOpenChange={(open) => { if (!open) setEditClass(null); }}>
@@ -251,14 +332,14 @@ export function SectionsDataTable({
           <div className="flex items-center gap-1">
             <button
               onClick={() => openEdit(row)}
-              className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-blue-600"
-              title="Edit"
+              className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-blue-600"
+              title="Rename"
             >
               <Pencil className="h-3.5 w-3.5" />
             </button>
             <button
               onClick={() => deleteSection(row)}
-              className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600"
+              className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-red-600"
               title="Delete"
             >
               <Trash2 className="h-3.5 w-3.5" />
