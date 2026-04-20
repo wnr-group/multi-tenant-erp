@@ -3,6 +3,7 @@ import { getSchoolId } from "@/lib/school";
 import { PageHeader } from "@/components/page-header";
 import { AddClassDialog, AddSectionDialog } from "./class-dialogs";
 import { ClassesDataTable, SectionsDataTable } from "./classes-table";
+import { ClassesQuickSetup } from "./classes-quick-setup";
 
 export default async function ClassesPage() {
   const supabase = await createServerSupabaseClient();
@@ -25,8 +26,13 @@ export default async function ClassesPage() {
     return { id: s.id, class_name: cls?.name ?? "", section_name: s.name };
   });
 
+  const hasClasses = (classes ?? []).length > 0;
+
   return (
     <div className="space-y-10">
+      {/* Show Quick Setup when no classes exist */}
+      {!hasClasses && <ClassesQuickSetup schoolId={schoolId} />}
+
       <div>
         <PageHeader
           title="Classes"
