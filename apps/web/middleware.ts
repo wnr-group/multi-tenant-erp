@@ -1,7 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/auth/callback", "/invite"];
+const PUBLIC_PATHS = ["/login", "/auth/callback", "/invite", "/download-app"];
 // Production: admin.balajierp.com | Local dev: core.lvh.me
 const PLATFORM_ADMIN_DOMAINS = ["admin.balajierp.com", "core.lvh.me"];
 
