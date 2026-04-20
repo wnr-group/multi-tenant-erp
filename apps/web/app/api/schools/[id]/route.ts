@@ -22,7 +22,7 @@ export async function PATCH(
 
   const { id } = await params;
   const body = await request.json();
-  const allowed = ["name", "domain", "primary_color", "contact_email"];
+  const allowed = ["name", "domain", "primary_color", "contact_email", "app_store_url", "play_store_url"];
   const updates: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) updates[key] = body[key];

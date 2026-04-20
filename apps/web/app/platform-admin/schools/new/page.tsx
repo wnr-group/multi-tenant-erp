@@ -14,6 +14,8 @@ export default function NewSchoolPage() {
   const [domain, setDomain] = useState("");
   const [primaryColor, setPrimaryColor] = useState("#2563EB");
   const [contactEmail, setContactEmail] = useState("");
+  const [appStoreUrl, setAppStoreUrl] = useState("");
+  const [playStoreUrl, setPlayStoreUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -25,7 +27,7 @@ export default function NewSchoolPage() {
     const supabase = createClient();
     const { data: school, error: schoolError } = await supabase
       .from("schools")
-      .insert({ name, domain, primary_color: primaryColor, contact_email: contactEmail })
+      .insert({ name, domain, primary_color: primaryColor, contact_email: contactEmail, app_store_url: appStoreUrl || null, play_store_url: playStoreUrl || null })
       .select()
       .single();
 
@@ -70,6 +72,16 @@ export default function NewSchoolPage() {
         <div>
           <Label>School Contact Email</Label>
           <Input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} />
+        </div>
+        <hr className="my-2" />
+        <p className="text-sm font-medium text-gray-700">Mobile App Links (optional)</p>
+        <div>
+          <Label>App Store URL (iOS)</Label>
+          <Input value={appStoreUrl} onChange={(e) => setAppStoreUrl(e.target.value)} placeholder="https://apps.apple.com/..." />
+        </div>
+        <div>
+          <Label>Play Store URL (Android)</Label>
+          <Input value={playStoreUrl} onChange={(e) => setPlayStoreUrl(e.target.value)} placeholder="https://play.google.com/..." />
         </div>
         <Button type="submit" disabled={loading} className="w-full">
           {loading ? "Creating…" : "Create School"}

@@ -13,6 +13,8 @@ interface School {
   domain: string;
   primary_color: string;
   contact_email: string;
+  app_store_url: string | null;
+  play_store_url: string | null;
 }
 
 interface RoleCounts {
@@ -42,6 +44,8 @@ export function OverviewTab({ school, roleCounts }: Props) {
   const [domain, setDomain] = useState(school.domain);
   const [primaryColor, setPrimaryColor] = useState(school.primary_color);
   const [contactEmail, setContactEmail] = useState(school.contact_email);
+  const [appStoreUrl, setAppStoreUrl] = useState(school.app_store_url ?? "");
+  const [playStoreUrl, setPlayStoreUrl] = useState(school.play_store_url ?? "");
   const [saving, setSaving] = useState(false);
 
   async function handleSave() {
@@ -55,6 +59,8 @@ export function OverviewTab({ school, roleCounts }: Props) {
           domain,
           primary_color: primaryColor,
           contact_email: contactEmail,
+          app_store_url: appStoreUrl || null,
+          play_store_url: playStoreUrl || null,
         }),
       });
       if (!res.ok) {
@@ -135,6 +141,30 @@ export function OverviewTab({ school, roleCounts }: Props) {
                 onChange={(e) => setPrimaryColor(e.target.value)}
                 placeholder="#6366f1"
                 className="flex-1"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="col-span-full mt-2 border-t pt-4">
+          <p className="mb-3 text-sm font-medium text-gray-700">Mobile App Links</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="app-store">App Store URL (iOS)</Label>
+              <Input
+                id="app-store"
+                value={appStoreUrl}
+                onChange={(e) => setAppStoreUrl(e.target.value)}
+                placeholder="https://apps.apple.com/..."
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="play-store">Play Store URL (Android)</Label>
+              <Input
+                id="play-store"
+                value={playStoreUrl}
+                onChange={(e) => setPlayStoreUrl(e.target.value)}
+                placeholder="https://play.google.com/..."
               />
             </div>
           </div>
