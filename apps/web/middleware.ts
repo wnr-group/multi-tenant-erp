@@ -153,6 +153,9 @@ export async function middleware(request: NextRequest) {
     if (effectiveRole === "teacher" && !pathname.startsWith("/teacher")) {
       return NextResponse.redirect(new URL("/teacher/dashboard", request.url));
     }
+    if ((effectiveRole === "student" || effectiveRole === "parent") && !pathname.startsWith("/download-app")) {
+      return NextResponse.redirect(new URL("/download-app", request.url));
+    }
   }
 
   return response;
