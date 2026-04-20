@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import { Sidebar } from "@/components/sidebar";
 import { TopBar } from "@/components/top-bar";
@@ -75,7 +76,11 @@ export default async function SchoolLayout({
     redirect("/login");
   }
 
-  const role = roleRow.role as string;
+  const realRole = roleRow.role as string;
+  const cookieStore = await cookies();
+  const actingAs = cookieStore.get("acting_as")?.value;
+  const VALID_ROLES = ["super_admin", "school_admin", "principal", "teacher", "student", "parent"];
+  const effectiveRole = actingAs && VALID_ROLES.includes(actingAs) ? actingAs : realRole;
   const userName = profile?.full_name ?? user.email ?? "User";
 
   let brandColor: string | undefined;
@@ -91,7 +96,7 @@ export default async function SchoolLayout({
     schoolName = school?.name ?? "School ERP";
   }
 
-  const navItems = NAV_ITEMS[role] ?? [];
+  const navItems = NAV_ITEMS[effectiveRole] ?? [];
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
@@ -100,12 +105,12 @@ export default async function SchoolLayout({
         items={navItems}
         brandColor={brandColor}
         userName={userName}
-        userRole={role}
+        userRole={effectiveRole}
       />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar
           userName={userName}
-          userRole={role}
+          userRole={effectiveRole}
           brandColor={brandColor}
         />
         <main className="flex-1 overflow-y-auto p-8">
