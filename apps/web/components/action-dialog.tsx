@@ -7,7 +7,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 
 interface ActionDialogProps {
@@ -20,16 +19,18 @@ export function ActionDialog({ trigger, title, children }: ActionDialogProps) {
   const [open, setOpen] = useState(false);
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => setOpen(isOpen)}>
-      <DialogTrigger render={<Button size="sm" />}>
+    <>
+      <Button size="sm" onClick={() => setOpen(true)}>
         {trigger}
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-        </DialogHeader>
-        <div className="pt-2">{children(() => setOpen(false))}</div>
-      </DialogContent>
-    </Dialog>
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+          </DialogHeader>
+          <div className="pt-2">{children(() => setOpen(false))}</div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
