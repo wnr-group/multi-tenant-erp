@@ -3,6 +3,7 @@ import { getSchoolId } from "@/lib/school";
 import { PageHeader } from "@/components/page-header";
 import { AddSubjectDialog } from "./add-subject-dialog";
 import { SubjectsTable } from "./subjects-table";
+import { SubjectsQuickSetup } from "./subjects-quick-setup";
 
 export default async function SubjectsPage() {
   const supabase = await createServerSupabaseClient();
@@ -47,7 +48,9 @@ export default async function SubjectsPage() {
   }));
 
   return (
-    <div>
+    <div className="space-y-10">
+      <SubjectsQuickSetup schoolId={schoolId} classes={classesData} />
+
       <PageHeader
         title="Subjects"
         description="Manage subjects taught in each class."
@@ -58,12 +61,14 @@ export default async function SubjectsPage() {
         action={<AddSubjectDialog schoolId={schoolId} classes={classesData} />}
       />
 
-      <SubjectsTable
-        rows={rows}
-        classFilterOptions={classFilterOptions}
-        schoolId={schoolId}
-        classesData={classesData}
-      />
+      <div>
+        <SubjectsTable
+          rows={rows}
+          classFilterOptions={classFilterOptions}
+          schoolId={schoolId}
+          classesData={classesData}
+        />
+      </div>
     </div>
   );
 }
