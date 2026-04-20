@@ -133,14 +133,13 @@ export async function middleware(request: NextRequest) {
   if (role === "super_admin" && !actingAsCookie && !isPlatformAdmin) {
     // Super admin on a school domain — auto-enter as school_admin
     const cookieDomain = host.includes("lvh.me") ? ".lvh.me" : host.includes("balajierp.com") ? ".balajierp.com" : undefined;
-    response.cookies.set("acting_as", "school_admin", {
+    const redirectRes = NextResponse.redirect(new URL("/admin/dashboard", request.url));
+    redirectRes.cookies.set("acting_as", "school_admin", {
       path: "/",
       domain: cookieDomain,
       maxAge: 60 * 60 * 8, // 8 hours
     });
-    response.headers.set("x-acting-as", "school_admin");
-    response.headers.set("x-real-role", "super_admin");
-    return NextResponse.redirect(new URL("/admin/dashboard", request.url));
+    return redirectRes;
   }
 
   // Skip role-based redirects for API routes and auth routes
