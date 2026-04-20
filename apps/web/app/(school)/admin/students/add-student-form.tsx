@@ -21,7 +21,6 @@ export function AddStudentForm({ schoolId, classes, onSuccess }: { schoolId: str
   const [sectionId, setSectionId] = useState("");
   const [sections, setSections] = useState<SectionOption[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!classId) return;
@@ -34,41 +33,35 @@ export function AddStudentForm({ schoolId, classes, onSuccess }: { schoolId: str
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
     setLoading(true);
 
-    const res = await fetch("/api/invite-user", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email, fullName: name, schoolId, role: "student",
-        extraInserts: [{
-          table: "student_profiles",
-          data: { school_id: schoolId, class_id: classId, section_id: sectionId, roll_number: rollNumber },
-        }],
-      }),
+    const supabase = createClient();
+    const { error } = await supabase.from("student_profiles").insert({
+      school_id: schoolId,
+      full_name: name,
+      email: email || null,
+      class_id: classId || null,
+      section_id: sectionId || null,
+      roll_number: rollNumber || null,
     });
 
-    if (!res.ok) {
-      const { error: msg } = await res.json();
-      setError(msg ?? "Failed");
-      toast.error(msg ?? "Something went wrong. Please try again.");
+    if (error) {
+      toast.error(error.message);
       setLoading(false);
       return;
     }
 
     setName(""); setEmail(""); setRollNumber(""); setClassId(""); setSectionId("");
     setLoading(false);
-    toast.success("Student added successfully.");
+    toast.success("Student added.");
     router.refresh();
     onSuccess?.();
   }
 
   return (
     <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
-      {error && <p className="col-span-2 text-sm text-red-600">{error}</p>}
       <div><Label>Full Name</Label><Input value={name} onChange={(e) => setName(e.target.value)} required /></div>
-      <div><Label>Email</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
+      <div><Label>Email (optional)</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
       <div><Label>Roll Number</Label><Input value={rollNumber} onChange={(e) => setRollNumber(e.target.value)} /></div>
       <div>
         <Label>Class</Label>
@@ -90,7 +83,7 @@ export function AddStudentForm({ schoolId, classes, onSuccess }: { schoolId: str
         />
       </div>
       <div className="col-span-2">
-        <Button type="submit" disabled={loading || !sectionId}>{loading ? "Adding…" : "Add Student"}</Button>
+        <Button type="submit" disabled={loading}>{loading ? "Adding…" : "Add Student"}</Button>
       </div>
     </form>
   );

@@ -104,63 +104,59 @@ export async function POST(
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     try {
-      // a. Invite user by email
-      const { data: inviteData, error: inviteError } =
-        await adminClient.auth.admin.inviteUserByEmail(row.email, {
-          data: {
-            full_name: row.full_name,
-            invited_role: role,
-            school_name: school?.name ?? "School",
-          },
-          redirectTo,
-        });
-
-      if (inviteError || !inviteData?.user) {
-        throw new Error(inviteError?.message ?? "Failed to invite user");
-      }
-
-      const userId = inviteData.user.id;
-
-      // b. Insert user_roles
-      const { error: roleError } = await adminClient
-        .from("user_roles")
-        .insert({ user_id: userId, school_id: schoolId, role });
-      if (roleError) throw new Error(`user_roles: ${roleError.message}`);
-
-      // c. Update profiles
-      const { error: profileError } = await adminClient
-        .from("profiles")
-        .update({ school_id: schoolId, full_name: row.full_name })
-        .eq("id", userId);
-      if (profileError) throw new Error(`profiles: ${profileError.message}`);
-
-      // d. Student-specific insert
       if (role === "student") {
+        // Students are data-only records — no auth account needed
         const className = row.class_name?.toLowerCase() ?? "";
         const sectionName = row.section_name?.toLowerCase() ?? "";
-        const classId = classMap.get(className);
-        if (!classId) throw new Error(`Class not found: ${row.class_name}`);
-        const sectionId = sectionMap.get(`${classId}:${sectionName}`);
-        if (!sectionId) throw new Error(`Section not found: ${row.section_name}`);
+        const classId = className ? classMap.get(className) : undefined;
+        const sectionId = classId && sectionName
+          ? sectionMap.get(`${classId}:${sectionName}`)
+          : undefined;
 
         const { error: studentError } = await adminClient
           .from("student_profiles")
           .insert({
-            profile_id: userId,
             school_id: schoolId,
-            class_id: classId,
-            section_id: sectionId,
+            full_name: row.full_name,
+            email: row.email || null,
+            class_id: classId ?? null,
+            section_id: sectionId ?? null,
             roll_number: row.roll_number ?? null,
           });
-        if (studentError) throw new Error(`student_profiles: ${studentError.message}`);
-      }
+        if (studentError) throw new Error(studentError.message);
+      } else {
+        // Teachers and parents get auth accounts via invite
+        const { data: inviteData, error: inviteError } =
+          await adminClient.auth.admin.inviteUserByEmail(row.email, {
+            data: {
+              full_name: row.full_name,
+              invited_role: role,
+              school_name: school?.name ?? "School",
+            },
+            redirectTo,
+          });
 
-      // e. Teacher-specific insert
-      if (role === "teacher") {
-        const { error: teacherError } = await adminClient
-          .from("teacher_profiles")
-          .insert({ profile_id: userId, school_id: schoolId });
-        if (teacherError) throw new Error(`teacher_profiles: ${teacherError.message}`);
+        if (inviteError || !inviteData?.user) {
+          throw new Error(inviteError?.message ?? "Failed to invite user");
+        }
+
+        const userId = inviteData.user.id;
+
+        const { error: roleError } = await adminClient
+          .from("user_roles")
+          .insert({ user_id: userId, school_id: schoolId, role });
+        if (roleError) throw new Error(`user_roles: ${roleError.message}`);
+
+        await adminClient
+          .from("profiles")
+          .update({ school_id: schoolId, full_name: row.full_name })
+          .eq("id", userId);
+
+        if (role === "teacher") {
+          await adminClient
+            .from("teacher_profiles")
+            .insert({ profile_id: userId, school_id: schoolId });
+        }
       }
 
       results.push({ row: i, status: "ok" });

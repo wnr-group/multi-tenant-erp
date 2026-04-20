@@ -58,6 +58,22 @@ export async function POST(
     ? `${protocol}://${school.domain}${port}/invite`
     : undefined;
 
+  // Students are data-only records — no auth account
+  if (role === "student") {
+    const { error: studentError } = await adminClient
+      .from("student_profiles")
+      .insert({
+        school_id: schoolId,
+        full_name: fullName,
+        email: email || null,
+      });
+    if (studentError) {
+      return NextResponse.json({ error: studentError.message }, { status: 400 });
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  // All other roles get auth accounts via invite
   const { data: inviteData, error: inviteError } =
     await adminClient.auth.admin.inviteUserByEmail(email, {
       data: {
@@ -91,12 +107,6 @@ export async function POST(
   if (role === "teacher") {
     await adminClient
       .from("teacher_profiles")
-      .insert({ profile_id: userId, school_id: schoolId });
-  }
-
-  if (role === "student") {
-    await adminClient
-      .from("student_profiles")
       .insert({ profile_id: userId, school_id: schoolId });
   }
 

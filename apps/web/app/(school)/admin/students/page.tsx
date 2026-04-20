@@ -12,7 +12,7 @@ export default async function StudentsPage() {
     supabase
       .from("student_profiles")
       .select(
-        "id, roll_number, admission_number, profile:profiles(full_name, email), class:classes(name), section:sections(name)"
+        "id, full_name, email, roll_number, admission_number, class:classes(name), section:sections(name)"
       )
       .eq("school_id", schoolId),
     supabase
@@ -23,12 +23,11 @@ export default async function StudentsPage() {
   ]);
 
   const rows = (students ?? []).map((s) => {
-    const p = s.profile as unknown as { full_name: string } | null;
     const c = s.class as unknown as { name: string } | null;
     const sec = s.section as unknown as { name: string } | null;
     return {
       id: s.id,
-      name: p?.full_name ?? "",
+      name: s.full_name ?? "",
       roll: s.roll_number ?? "",
       class_name: c?.name ?? "",
       section: sec?.name ?? "",

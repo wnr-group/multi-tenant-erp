@@ -18,7 +18,6 @@ const ROLES = [
   { value: "school_admin", label: "School Admin" },
   { value: "principal", label: "Principal" },
   { value: "teacher", label: "Teacher" },
-  { value: "student", label: "Student" },
   { value: "parent", label: "Parent" },
 ] as const;
 
