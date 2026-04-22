@@ -74,24 +74,39 @@ export async function POST(
   }
 
   // All other roles get auth accounts via invite
-  const { data: inviteData, error: inviteError } =
-    await adminClient.auth.admin.inviteUserByEmail(email, {
-      data: {
-        full_name: fullName,
-        invited_role: roleLabels[role] ?? role,
-        school_name: school?.name ?? "School",
+  // Direct fetch to GoTrue — bypasses Supabase JS client JWT handling
+  // which is incompatible with CLI v2's asymmetric signing keys
+  const inviteRes = await fetch(
+    `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/invite`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        "Authorization": `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}`,
       },
-      redirectTo,
-    });
+      body: JSON.stringify({
+        email,
+        data: {
+          full_name: fullName,
+          invited_role: roleLabels[role] ?? role,
+          school_name: school?.name ?? "School",
+        },
+        redirect_to: redirectTo,
+      }),
+    }
+  );
 
-  if (inviteError || !inviteData.user) {
+  const inviteResult = await inviteRes.json();
+
+  if (!inviteRes.ok || !inviteResult.id) {
     return NextResponse.json(
-      { error: inviteError?.message ?? "Failed to invite user" },
+      { error: inviteResult.msg ?? inviteResult.error_description ?? "Failed to invite user" },
       { status: 400 }
     );
   }
 
-  const userId = inviteData.user.id;
+  const userId = inviteResult.id;
 
   await adminClient.from("user_roles").insert({
     user_id: userId,
