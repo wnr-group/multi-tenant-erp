@@ -14,7 +14,7 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, description, action, stats }: PageHeaderProps) {
   return (
-    <div className="mb-8">
+    <div className="mb-8 animate-fade-in-up">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{title}</h1>

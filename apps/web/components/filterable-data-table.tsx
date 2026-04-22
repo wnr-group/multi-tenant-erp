@@ -62,7 +62,7 @@ export function FilterableDataTable<T extends { id: string }>({
   }, [data, query, filterValue, searchKeys, filter]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fade-in-up">
       <div className="flex items-center gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

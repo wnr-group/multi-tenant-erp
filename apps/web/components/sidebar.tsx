@@ -104,7 +104,7 @@ export function Sidebar({ title, items, brandColor, userName, userRole }: Sideba
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors",
+                "flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-200",
                 isActive
                   ? "bg-white/15 text-white"
                   : "hover:bg-white/[0.08] hover:text-white"

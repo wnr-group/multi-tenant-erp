@@ -26,7 +26,7 @@ export function DataTable<T extends { id: string }>({
   renderActions,
 }: DataTableProps<T>) {
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-card">
+    <div className="overflow-hidden rounded-lg border border-border bg-card animate-fade-in-up">
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/40 hover:bg-muted/40">
