@@ -64,11 +64,11 @@ export default async function TeacherDashboard() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-3 gap-4">
-        {stats.map((s) => {
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {stats.map((s, index) => {
           const Icon = s.icon;
           return (
-            <div key={s.label} className="flex items-center gap-4 rounded-xl border border-border bg-card p-5">
+            <div key={s.label} className="flex items-center gap-4 rounded-xl border border-border bg-card p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md animate-fade-in-up" style={{ animationDelay: `${index * 60}ms` }}>
               <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${s.iconBg} ${s.iconColor}`}>
                 <Icon className="h-6 w-6" />
               </div>
@@ -87,7 +87,7 @@ export default async function TeacherDashboard() {
           <p className="text-sm text-muted-foreground">No periods scheduled for today.</p>
         </div>
       ) : (
-        <div className="grid gap-3">
+        <div className="grid gap-3 animate-fade-in-up" style={{ animationDelay: "200ms" }}>
           {slots.map((slot) => {
             const subject = slot.subject as unknown as { name: string } | null;
             const section = slot.section as unknown as { name: string; class: { name: string } | null } | null;
@@ -110,7 +110,7 @@ export default async function TeacherDashboard() {
 
       {/* Row 2 — Section Attendance + Homework */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 transition-shadow duration-200 hover:shadow-md animate-fade-in-up" style={{ animationDelay: "300ms" }}>
           <CardHeader>
             <CardTitle>Section Attendance Rate</CardTitle>
           </CardHeader>
@@ -118,7 +118,7 @@ export default async function TeacherDashboard() {
             <SectionAttendanceChart data={MOCK_SECTION_ATTENDANCE} />
           </CardContent>
         </Card>
-        <Card>
+        <Card className="transition-shadow duration-200 hover:shadow-md animate-fade-in-up" style={{ animationDelay: "360ms" }}>
           <CardHeader>
             <CardTitle>Homework</CardTitle>
           </CardHeader>
