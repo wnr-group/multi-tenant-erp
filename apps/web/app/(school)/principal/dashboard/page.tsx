@@ -110,10 +110,10 @@ export default async function PrincipalDashboard() {
 
       {/* Row 1 — Stat Cards */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {stats.map((s) => {
+        {stats.map((s, index) => {
           const Icon = s.icon;
           return (
-            <div key={s.label} className="flex items-center gap-4 rounded-xl border border-border bg-card p-5">
+            <div key={s.label} className="flex items-center gap-4 rounded-xl border border-border bg-card p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md animate-fade-in-up" style={{ animationDelay: `${index * 60}ms` }}>
               <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${s.iconBg} ${s.iconColor}`}>
                 <Icon className="h-6 w-6" />
               </div>
@@ -128,7 +128,7 @@ export default async function PrincipalDashboard() {
 
       {/* Row 2 — Weekly Attendance Trend + Class Attendance */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 transition-shadow duration-200 hover:shadow-md animate-fade-in-up" style={{ animationDelay: "240ms" }}>
           <CardHeader>
             <CardTitle>Weekly Attendance Trend</CardTitle>
           </CardHeader>
@@ -136,7 +136,7 @@ export default async function PrincipalDashboard() {
             <WeeklyAttendanceChart data={MOCK_WEEKLY_ATTENDANCE} />
           </CardContent>
         </Card>
-        <Card>
+        <Card className="transition-shadow duration-200 hover:shadow-md animate-fade-in-up" style={{ animationDelay: "300ms" }}>
           <CardHeader>
             <CardTitle>Attendance by Class</CardTitle>
           </CardHeader>
@@ -148,7 +148,7 @@ export default async function PrincipalDashboard() {
 
       {/* Row 3 — Discipline Incidents + Announcements */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card>
+        <Card className="transition-shadow duration-200 hover:shadow-md animate-fade-in-up" style={{ animationDelay: "360ms" }}>
           <CardHeader>
             <CardTitle>Discipline Incidents</CardTitle>
           </CardHeader>
@@ -156,7 +156,7 @@ export default async function PrincipalDashboard() {
             <DisciplineChart data={MOCK_DISCIPLINE_DATA} />
           </CardContent>
         </Card>
-        <Card>
+        <Card className="transition-shadow duration-200 hover:shadow-md animate-fade-in-up" style={{ animationDelay: "420ms" }}>
           <CardHeader>
             <CardTitle>Recent Announcements</CardTitle>
           </CardHeader>
