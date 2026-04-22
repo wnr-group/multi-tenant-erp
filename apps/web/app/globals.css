@@ -36,6 +36,21 @@
   }
 }
 
+/* Staggered animation delays */
+@layer utilities {
+  .stagger-1 { animation-delay: 0ms; }
+  .stagger-2 { animation-delay: 60ms; }
+  .stagger-3 { animation-delay: 120ms; }
+  .stagger-4 { animation-delay: 180ms; }
+  .stagger-5 { animation-delay: 240ms; }
+  .stagger-6 { animation-delay: 300ms; }
+
+  /* Cards start invisible, animation fills forwards to visible */
+  .animate-fade-in-up {
+    opacity: 0;
+  }
+}
+
 /* When a school brand color is set, override primary buttons and focus rings */
 @layer utilities {
   [style*="--school-color"] .bg-primary {
