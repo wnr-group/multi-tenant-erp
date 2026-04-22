@@ -39,7 +39,7 @@ export default async function TeacherDashboard() {
   return (
     <div>
       <h1 className="mb-2 text-2xl font-semibold text-foreground">
-        Good morning, {profile?.full_name ?? "Teacher"}!
+        Good morning, {profile?.full_name || "Teacher"}!
       </h1>
       <p className="mb-6 text-sm text-muted-foreground">
         Today is {todayLabel}. Here are your periods for the day.

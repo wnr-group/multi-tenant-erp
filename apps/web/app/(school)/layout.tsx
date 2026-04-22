@@ -82,7 +82,7 @@ export default async function SchoolLayout({
   const actingAs = cookieStore.get("acting_as")?.value;
   const VALID_ROLES = ["super_admin", "school_admin", "principal", "teacher", "student", "parent"];
   const effectiveRole = actingAs && VALID_ROLES.includes(actingAs) ? actingAs : realRole;
-  const userName = profile?.full_name ?? user.email ?? "User";
+  const userName = profile?.full_name || user.email || "User";
 
   let brandColor: string | undefined;
   let schoolName = "School ERP";
