@@ -102,7 +102,7 @@ export default async function SchoolLayout({
   const navItems = NAV_ITEMS[effectiveRole] ?? [];
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    <div className="flex h-screen overflow-hidden bg-muted">
       <Sidebar
         title={schoolName}
         items={navItems}

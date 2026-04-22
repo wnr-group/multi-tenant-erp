@@ -44,16 +44,16 @@ export function TopBar({ userName, userRole, brandColor }: TopBarProps) {
     <header className="flex h-14 shrink-0 items-center justify-between border-b bg-white px-6">
       <nav className="flex items-center gap-1.5 text-sm">
         {segments.length === 0 ? (
-          <span className="font-semibold text-gray-900">Dashboard</span>
+          <span className="font-semibold text-foreground">Dashboard</span>
         ) : (
           segments.map((seg, i) => (
             <span key={i} className="flex items-center gap-1.5">
-              {i > 0 && <ChevronRight className="h-3.5 w-3.5 text-gray-300" />}
+              {i > 0 && <ChevronRight className="h-3.5 w-3.5 text-border" />}
               <span
                 className={
                   i === segments.length - 1
-                    ? "font-semibold text-gray-900"
-                    : "text-gray-400"
+                    ? "font-semibold text-foreground"
+                    : "text-muted-foreground/60"
                 }
               >
                 {formatSegment(seg)}
@@ -64,10 +64,10 @@ export function TopBar({ userName, userRole, brandColor }: TopBarProps) {
       </nav>
       <div className="flex items-center gap-3">
         <div className="text-right">
-          <p className="text-sm font-medium leading-none text-gray-900">
+          <p className="text-sm font-medium leading-none text-foreground">
             {userName}
           </p>
-          <p className="mt-0.5 text-xs text-gray-500">{roleLabel}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{roleLabel}</p>
         </div>
         <div
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
