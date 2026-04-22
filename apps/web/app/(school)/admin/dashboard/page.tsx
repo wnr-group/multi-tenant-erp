@@ -42,7 +42,9 @@ const MOCK_CLASS_DATA: ClassCount[] = [
   { class: "Cls 12", students: 68 },
 ];
 
-const MOCK_ANNOUNCEMENTS = [
+type Announcement = { title: string; date: string; type: "Event" | "Exam" | "Holiday" | "General" };
+
+const MOCK_ANNOUNCEMENTS: Announcement[] = [
   { title: "Annual Sports Day", date: "Apr 18, 2026", type: "Event" },
   { title: "Mid-Term Exam Schedule Released", date: "Apr 10, 2026", type: "Exam" },
   { title: "Summer Vacation Notice", date: "Apr 5, 2026", type: "Holiday" },

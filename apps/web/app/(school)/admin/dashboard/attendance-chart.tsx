@@ -11,7 +11,10 @@ interface AttendanceChartProps {
   data: AttendanceData;
 }
 
-const COLORS = ["#10b981", "#f43f5e"];
+const COLOR_MAP: Record<string, string> = {
+  Present: "#10b981",
+  Absent: "#f43f5e",
+};
 
 export function AttendanceChart({ data }: AttendanceChartProps) {
   const chartData = [
@@ -34,8 +37,8 @@ export function AttendanceChart({ data }: AttendanceChartProps) {
               startAngle={90}
               endAngle={-270}
             >
-              {chartData.map((_, index) => (
-                <Cell key={index} fill={COLORS[index]} />
+              {chartData.map((entry) => (
+                <Cell key={entry.name} fill={COLOR_MAP[entry.name]} />
               ))}
             </Pie>
             <Tooltip formatter={(value) => typeof value === "number" ? `${value}%` : value} />
