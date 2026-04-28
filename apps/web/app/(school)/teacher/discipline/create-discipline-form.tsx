@@ -3,15 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
-
-interface StudentOption {
-  id: string;
-  full_name: string;
-}
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 const CATEGORIES = [
   { value: "behavioral", label: "Behavioral" },
@@ -21,65 +16,65 @@ const CATEGORIES = [
 
 const SEVERITIES = [
   { value: "verbal", label: "Verbal Warning" },
-  { value: "written", label: "Written Notice" },
+  { value: "written", label: "Written Warning" },
   { value: "suspension", label: "Suspension" },
 ];
 
-export function CreateDisciplineForm({
-  teacherId,
-  schoolId,
-  students,
-}: {
-  teacherId: string;
+interface Props {
   schoolId: string;
-  students: StudentOption[];
-}) {
+  sectionId: string;
+  students: { value: string; label: string }[];
+  userId: string;
+}
+
+export function CreateDisciplineForm({
+  schoolId,
+  sectionId: _sectionId,
+  students,
+  userId,
+}: Props) {
   const router = useRouter();
-  const today = new Date().toISOString().slice(0, 10);
   const [studentId, setStudentId] = useState("");
   const [category, setCategory] = useState("");
   const [severity, setSeverity] = useState("");
   const [description, setDescription] = useState("");
-  const [date, setDate] = useState(today);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!studentId || !category || !severity) return;
-    setError(null);
     setLoading(true);
     const supabase = createClient();
-    const { error: err } = await supabase.from("discipline_records").insert({
+    const { error } = await supabase.from("discipline_records").insert({
       school_id: schoolId,
-      teacher_id: teacherId,
       student_id: studentId,
       category,
       severity,
       description: description || null,
-      date: date || today,
+      recorded_by: userId,
     });
     setLoading(false);
-    if (err) {
-      setError(err.message);
+    if (error) {
+      toast.error(error.message);
       return;
     }
+    toast.success("Incident logged successfully.");
     setStudentId("");
     setCategory("");
     setSeverity("");
     setDescription("");
-    setDate(today);
     router.refresh();
   }
 
   return (
-    <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-      {error && <p className="col-span-2 text-sm text-red-600">{error}</p>}
-
+    <form
+      onSubmit={handleSubmit}
+      className="grid grid-cols-1 gap-4 sm:grid-cols-2"
+    >
       <div>
         <Label>Student</Label>
         <NativeSelect
-          options={students.map((s) => ({ value: s.id, label: s.full_name }))}
+          options={students}
           value={studentId}
           onChange={(e) => setStudentId(e.target.value)}
           placeholder="Select student"
@@ -88,18 +83,9 @@ export function CreateDisciplineForm({
       </div>
 
       <div>
-        <Label>Date</Label>
-        <Input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-        />
-      </div>
-
-      <div>
         <Label>Category</Label>
         <NativeSelect
-          options={CATEGORIES.map((c) => ({ value: c.value, label: c.label }))}
+          options={CATEGORIES}
           value={category}
           onChange={(e) => setCategory(e.target.value)}
           placeholder="Select category"
@@ -110,7 +96,7 @@ export function CreateDisciplineForm({
       <div>
         <Label>Severity</Label>
         <NativeSelect
-          options={SEVERITIES.map((s) => ({ value: s.value, label: s.label }))}
+          options={SEVERITIES}
           value={severity}
           onChange={(e) => setSeverity(e.target.value)}
           placeholder="Select severity"

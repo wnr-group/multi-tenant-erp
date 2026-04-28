@@ -1,5 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
+import { getActiveSection } from "@/lib/section-context";
+import { NoSectionPrompt } from "../no-section-prompt";
 import { DataTable } from "@/components/data-table";
 import { Badge } from "@/components/ui/badge";
 import { CreateDisciplineForm } from "./create-discipline-form";
@@ -13,42 +15,60 @@ function severityVariant(severity: string | null): SeverityVariant {
 }
 
 export default async function TeacherDisciplinePage() {
+  const sectionId = await getActiveSection();
+  if (!sectionId) return <NoSectionPrompt />;
+
   const supabase = await createServerSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const schoolId = (await getSchoolId())!;
 
-  const [{ data: records }, { data: students }] = await Promise.all([
-    supabase
-      .from("discipline_records")
-      .select(
-        "id, category, severity, description, date, student:student_profiles(profile:profiles(full_name))"
-      )
-      .eq("teacher_id", user!.id)
-      .order("date", { ascending: false }),
-    supabase
-      .from("student_profiles")
-      .select("id, profile:profiles(full_name)")
-      .eq("school_id", schoolId),
-  ]);
+  // Fetch students enrolled in the active section
+  const { data: enrollments } = await supabase
+    .from("student_sections")
+    .select("student_id, student:student_profiles(id, profile:profiles(full_name))")
+    .eq("section_id", sectionId);
 
-  const rows = (records ?? []).map((r) => {
-    const sp = r.student as unknown as {
+  // Build student lookup map and dropdown options
+  const studentMap = new Map<string, string>();
+  const studentOptions: { value: string; label: string }[] = [];
+
+  for (const row of enrollments ?? []) {
+    const sp = row.student as unknown as {
+      id: string;
       profile: { full_name: string } | null;
     } | null;
-    return {
-      id: r.id,
-      student_name: sp?.profile?.full_name ?? "—",
-      category: r.category ?? "—",
-      severity: r.severity,
-      description: r.description ?? "—",
-      date: r.date ? new Date(r.date).toLocaleDateString() : "—",
-    };
-  });
+    if (sp) {
+      const name = sp.profile?.full_name ?? "—";
+      studentMap.set(sp.id, name);
+      studentOptions.push({ value: sp.id, label: name });
+    }
+  }
 
-  const studentOptions = (students ?? []).map((s) => {
-    const p = s.profile as unknown as { full_name: string } | null;
-    return { id: s.id, full_name: p?.full_name ?? "—" };
-  });
+  const studentIds = Array.from(studentMap.keys());
+
+  // Fetch discipline records for students in this section
+  const { data: records } = await supabase
+    .from("discipline_records")
+    .select("id, student_id, category, severity, description, created_at")
+    .eq("school_id", schoolId)
+    .in(
+      "student_id",
+      studentIds.length > 0
+        ? studentIds
+        : ["00000000-0000-0000-0000-000000000000"]
+    )
+    .order("created_at", { ascending: false });
+
+  const rows = (records ?? []).map((r) => ({
+    id: r.id,
+    student_name: studentMap.get(r.student_id) ?? "—",
+    category: r.category ?? "—",
+    severity: r.severity as string | null,
+    description: r.description ?? "—",
+    date: r.created_at ? new Date(r.created_at).toLocaleDateString() : "—",
+  }));
 
   return (
     <div>
@@ -59,9 +79,10 @@ export default async function TeacherDisciplinePage() {
           Log Incident
         </h2>
         <CreateDisciplineForm
-          teacherId={user!.id}
           schoolId={schoolId}
+          sectionId={sectionId}
           students={studentOptions}
+          userId={user!.id}
         />
       </div>
 
