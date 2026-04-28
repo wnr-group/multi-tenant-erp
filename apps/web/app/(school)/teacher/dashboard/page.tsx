@@ -1,13 +1,11 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { Clock, BookOpen, GraduationCap } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { getSchoolId } from "@/lib/school";
+import { getActiveSection } from "@/lib/section-context";
+import { NoSectionPrompt } from "../no-section-prompt";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SectionAttendanceChart } from "./section-attendance-chart";
-import { HomeworkChart } from "./homework-chart";
 import type { SectionAttendance } from "./section-attendance-chart";
-import type { HomeworkData } from "./homework-chart";
-
-const DAYS = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+import Link from "next/link";
 
 function getLastNSchoolDays(n: number): Date[] {
   const days: Date[] = [];
@@ -22,152 +20,247 @@ function getLastNSchoolDays(n: number): Date[] {
 }
 
 export default async function TeacherDashboard() {
-  const supabase = await createServerSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const sectionId = await getActiveSection();
 
-  const todayIndex = new Date().getDay() || 7;
-  const todayLabel = DAYS[todayIndex];
-
-  const [
-    { data: profile },
-    { data: teacherProfile },
-    { data: slots },
-  ] = await Promise.all([
-    supabase.from("profiles").select("full_name").eq("id", user!.id).single(),
-    supabase.from("teacher_profiles").select("class_teacher_of").eq("profile_id", user!.id).single(),
-    supabase.from("timetable")
-      .select("id, period, subject:subjects(name), section:sections(name, class:classes(name))")
-      .eq("teacher_id", user!.id)
-      .eq("day_of_week", todayIndex)
-      .order("period"),
-  ]);
-
-  const classTeacherOf = teacherProfile?.class_teacher_of ?? null;
-  const periodsToday = slots?.length ?? 0;
-
-  // My students (students in my section)
-  const { count: myStudentCount } = classTeacherOf
-    ? await supabase.from("student_profiles").select("*", { count: "exact", head: true })
-        .eq("section_id", classTeacherOf)
-    : { count: 0 };
-
-  // Section attendance for my class_teacher_of section (last 7 school days)
-  const schoolDays = getLastNSchoolDays(7);
-  const earliest = schoolDays[0].toISOString().slice(0, 10);
-  const today = new Date().toISOString().slice(0, 10);
-
-  let sectionAttendance: SectionAttendance[] = [];
-  if (classTeacherOf) {
-    const { data: sectionInfo } = await supabase
-      .from("sections")
-      .select("name, class:classes(name)")
-      .eq("id", classTeacherOf)
-      .single();
-
-    const { data: attRows } = await supabase
-      .from("attendance_records")
-      .select("date, status")
-      .eq("section_id", classTeacherOf)
-      .gte("date", earliest)
-      .lte("date", today);
-
-    const cls = sectionInfo?.class as unknown as { name: string } | null;
-    const sectionLabel = `${cls?.name?.replace("Class ", "") ?? ""}${sectionInfo?.name ?? ""}`;
-
-    const present = (attRows ?? []).filter((r) => r.status === "present").length;
-    const total = attRows?.length ?? 0;
-    const pct = total > 0 ? Math.round((present / total) * 100) : 0;
-    sectionAttendance = [{ section: sectionLabel, percent: pct }];
+  if (!sectionId) {
+    return <NoSectionPrompt />;
   }
 
-  // Homework: count assigned vs submitted (homework table has no submission tracking yet → show 0)
-  const { count: homeworkAssigned } = await supabase
-    .from("homework")
-    .select("*", { count: "exact", head: true })
-    .eq("teacher_id", user!.id);
-  const homeworkData: HomeworkData = {
-    submitted: homeworkAssigned && homeworkAssigned > 0 ? 65 : 0, // placeholder % until submission table exists
-    pending: homeworkAssigned && homeworkAssigned > 0 ? 35 : 100,
-  };
+  const [supabase, schoolId] = await Promise.all([
+    createServerSupabaseClient(),
+    getSchoolId(),
+  ]);
 
-  const stats: { label: string; value: string | number; icon: LucideIcon; iconBg: string; iconColor: string }[] = [
-    { label: "Periods Today", value: periodsToday,          icon: Clock,         iconBg: "bg-indigo-50",  iconColor: "text-indigo-600"  },
-    { label: "My Sections",   value: classTeacherOf ? 1 : 0, icon: BookOpen,     iconBg: "bg-violet-50",  iconColor: "text-violet-600"  },
-    { label: "My Students",   value: myStudentCount ?? 0,   icon: GraduationCap, iconBg: "bg-emerald-50", iconColor: "text-emerald-600" },
-  ];
+  const today = new Date().toISOString().slice(0, 10);
+
+  // --- Parallel: section info + student count + today attendance + class teacher ---
+  const [
+    { data: sectionData },
+    { count: studentCount },
+    { data: todayAttRows },
+    { data: classTeacher },
+  ] = await Promise.all([
+    supabase
+      .from("sections")
+      .select("name, class:classes(name)")
+      .eq("id", sectionId)
+      .single(),
+
+    supabase
+      .from("student_profiles")
+      .select("*", { count: "exact", head: true })
+      .eq("section_id", sectionId),
+
+    supabase
+      .from("attendance_records")
+      .select("status")
+      .eq("section_id", sectionId)
+      .eq("date", today),
+
+    supabase
+      .from("teacher_profiles")
+      .select("profile_id, profiles(full_name)")
+      .eq("class_teacher_of", sectionId)
+      .maybeSingle(),
+  ]);
+
+  // Section display name
+  const cls = sectionData?.class as unknown as { name: string } | null;
+  const className = cls?.name ?? "";
+  const sectionName = sectionData?.name ?? "";
+  const sectionLabel = `${className} – Section ${sectionName}`;
+
+  // Class teacher name
+  const teacherProfiles = classTeacher?.profiles as unknown as { full_name: string } | null;
+  const classTeacherName = teacherProfiles?.full_name ?? null;
+
+  // Today's attendance numbers
+  const totalToday = todayAttRows?.length ?? 0;
+  const presentToday = (todayAttRows ?? []).filter((r) => r.status === "present").length;
+
+  // Mark attendance URL
+  const markAttendanceHref = `/teacher/attendance/mark?sectionId=${sectionId}&date=${today}`;
+
+  // --- 7-day attendance trend ---
+  const schoolDays = getLastNSchoolDays(7);
+  const earliest = schoolDays[0].toISOString().slice(0, 10);
+
+  const { data: trendRows } = await supabase
+    .from("attendance_records")
+    .select("date, status")
+    .eq("section_id", sectionId)
+    .gte("date", earliest)
+    .lte("date", today);
+
+  const trendData: SectionAttendance[] = schoolDays.map((day) => {
+    const dateStr = day.toISOString().slice(0, 10);
+    const dayRows = (trendRows ?? []).filter((r) => r.date === dateStr);
+    const total = dayRows.length;
+    const present = dayRows.filter((r) => r.status === "present").length;
+    const percent = total > 0 ? Math.round((present / total) * 100) : 0;
+    // Short label: e.g. "Mon 14"
+    const label = day.toLocaleDateString("en-IN", { weekday: "short", day: "numeric" });
+    return { section: label, percent };
+  });
+
+  // --- Upcoming homework (next 5, due_date >= today) ---
+  const { data: homeworkRows } = await supabase
+    .from("homework")
+    .select("id, title, due_date, subject:subjects(name)")
+    .eq("section_id", sectionId)
+    .gte("due_date", today)
+    .order("due_date", { ascending: true })
+    .limit(5);
+
+  // --- Recent discipline incidents (last 3) ---
+  // Step 1: get student IDs in this section
+  const { data: sectionStudents } = await supabase
+    .from("student_profiles")
+    .select("id, profiles(full_name)")
+    .eq("section_id", sectionId);
+
+  const studentIds = (sectionStudents ?? []).map((s) => s.id);
+
+  // Step 2: query discipline records
+  let disciplineRows: { category: string; severity: string; created_at: string; student_id: string }[] = [];
+  if (studentIds.length > 0 && schoolId) {
+    const { data } = await supabase
+      .from("discipline_records")
+      .select("category, severity, created_at, student_id")
+      .eq("school_id", schoolId)
+      .in("student_id", studentIds)
+      .order("created_at", { ascending: false })
+      .limit(3);
+    disciplineRows = data ?? [];
+  }
+
+  // Build student name lookup
+  const studentNameMap: Record<string, string> = {};
+  for (const s of sectionStudents ?? []) {
+    const p = s.profiles as unknown as { full_name: string } | null;
+    studentNameMap[s.id] = p?.full_name ?? "Unknown Student";
+  }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">
-          Good morning, {profile?.full_name || "Teacher"}!
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Today is {todayLabel}. Here are your periods for the day.
-        </p>
+      {/* Section Header */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">{sectionLabel}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {classTeacherName ? `Class Teacher: ${classTeacherName}` : "No class teacher assigned"}
+            {" · "}
+            {studentCount ?? 0} students
+          </p>
+        </div>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {stats.map((s, index) => {
-          const Icon = s.icon;
-          return (
-            <div key={s.label} className="flex items-center gap-4 rounded-xl border border-border bg-card p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md animate-fade-in-up" style={{ animationDelay: `${index * 60}ms` }}>
-              <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${s.iconBg} ${s.iconColor}`}>
-                <Icon className="h-6 w-6" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-2xl font-bold text-foreground">{s.value}</p>
-                <p className="text-xs font-medium text-muted-foreground">{s.label}</p>
-              </div>
+      {/* Today's Attendance Card */}
+      <Card className="transition-shadow duration-200 hover:shadow-md">
+        <CardHeader>
+          <CardTitle>Today&apos;s Attendance</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-end gap-6">
+            <div className="flex items-baseline gap-2">
+              <span className="text-5xl font-bold text-foreground">{presentToday}</span>
+              <span className="text-2xl text-muted-foreground">/ {totalToday}</span>
             </div>
-          );
-        })}
-      </div>
+            {totalToday > 0 && (
+              <span className="mb-1 text-sm font-medium text-emerald-600">
+                {Math.round((presentToday / totalToday) * 100)}% present
+              </span>
+            )}
+          </div>
+          <div className="mt-4">
+            <Link
+              href={markAttendanceHref}
+              className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+            >
+              {totalToday > 0 ? "Edit Attendance" : "Mark Attendance"}
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Today's Schedule */}
-      {!slots || slots.length === 0 ? (
-        <div className="rounded-xl border border-border bg-card p-8 text-center">
-          <p className="text-sm text-muted-foreground">No periods scheduled for today.</p>
-        </div>
-      ) : (
-        <div className="grid gap-3 animate-fade-in-up" style={{ animationDelay: "200ms" }}>
-          {slots.map((slot) => {
-            const subject = slot.subject as unknown as { name: string } | null;
-            const section = slot.section as unknown as { name: string; class: { name: string } | null } | null;
-            return (
-              <div key={slot.id} className="flex items-center gap-4 rounded-xl border border-border bg-card p-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 font-bold text-sm">
-                  P{slot.period}
-                </div>
-                <div>
-                  <p className="font-medium text-foreground">{subject?.name ?? "—"}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {section?.class?.name ?? ""}{section?.name ? ` · Section ${section.name}` : ""}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {/* 7-Day Attendance Trend */}
+      <Card className="transition-shadow duration-200 hover:shadow-md">
+        <CardHeader>
+          <CardTitle>7-Day Attendance Trend</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <SectionAttendanceChart data={trendData} />
+        </CardContent>
+      </Card>
 
-      {/* Row 2 — Section Attendance + Homework */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2 transition-shadow duration-200 hover:shadow-md animate-fade-in-up" style={{ animationDelay: "300ms" }}>
-          <CardHeader><CardTitle>Section Attendance Rate</CardTitle></CardHeader>
+      {/* Upcoming Homework + Recent Discipline */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {/* Upcoming Homework */}
+        <Card className="transition-shadow duration-200 hover:shadow-md">
+          <CardHeader>
+            <CardTitle>Upcoming Homework</CardTitle>
+          </CardHeader>
           <CardContent>
-            {sectionAttendance.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">No section assigned yet.</p>
+            {!homeworkRows || homeworkRows.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                No upcoming homework.
+              </p>
             ) : (
-              <SectionAttendanceChart data={sectionAttendance} />
+              <ul className="space-y-3">
+                {homeworkRows.map((hw) => {
+                  const subject = hw.subject as unknown as { name: string } | null;
+                  return (
+                    <li key={hw.id} className="flex items-start justify-between gap-3 rounded-lg border border-border p-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-foreground">{hw.title}</p>
+                        <p className="text-xs text-muted-foreground">{subject?.name ?? "—"}</p>
+                      </div>
+                      <span className="shrink-0 rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                        {hw.due_date}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
             )}
           </CardContent>
         </Card>
-        <Card className="transition-shadow duration-200 hover:shadow-md animate-fade-in-up" style={{ animationDelay: "360ms" }}>
-          <CardHeader><CardTitle>Homework</CardTitle></CardHeader>
-          <CardContent className="flex justify-center">
-            <HomeworkChart data={homeworkData} />
+
+        {/* Recent Discipline Incidents */}
+        <Card className="transition-shadow duration-200 hover:shadow-md">
+          <CardHeader>
+            <CardTitle>Recent Discipline Incidents</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {disciplineRows.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                No recent incidents.
+              </p>
+            ) : (
+              <ul className="space-y-3">
+                {disciplineRows.map((inc, i) => (
+                  <li key={i} className="flex items-start justify-between gap-3 rounded-lg border border-border p-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {studentNameMap[inc.student_id] ?? "Unknown Student"}
+                      </p>
+                      <p className="text-xs text-muted-foreground capitalize">{inc.category}</p>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-medium ${
+                        inc.severity === "high"
+                          ? "bg-rose-50 text-rose-700"
+                          : inc.severity === "medium"
+                          ? "bg-amber-50 text-amber-700"
+                          : "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      {inc.severity}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </CardContent>
         </Card>
       </div>
