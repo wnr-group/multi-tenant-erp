@@ -30,10 +30,14 @@ export function AttendanceMarkForm({
   students,
   sectionId,
   date,
+  schoolId,
+  markedBy,
 }: {
   students: StudentRow[];
   sectionId: string;
   date: string;
+  schoolId: string;
+  markedBy: string;
 }) {
   const router = useRouter();
   const [statuses, setStatuses] = useState<Record<string, AttendanceStatus>>(
@@ -60,10 +64,12 @@ export function AttendanceMarkForm({
     const supabase = createClient();
 
     const records = students.map((s) => ({
+      school_id: schoolId,
       student_id: s.id,
       section_id: sectionId,
       date,
       status: statuses[s.id] ?? "present",
+      marked_by: markedBy,
     }));
 
     const { error: err } = await supabase

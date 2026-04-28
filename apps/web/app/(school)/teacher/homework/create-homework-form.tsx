@@ -66,12 +66,13 @@ export function CreateHomeworkForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!title || !sectionId || !subjectId) return;
+    if (!title || !classId || !sectionId || !subjectId) return;
     setError(null);
     setLoading(true);
     const supabase = createClient();
     const { error: err } = await supabase.from("homework").insert({
       school_id: schoolId,
+      class_id: classId,
       teacher_id: teacherId,
       section_id: sectionId,
       subject_id: subjectId,
@@ -165,7 +166,7 @@ export function CreateHomeworkForm({
       <div className="col-span-2">
         <Button
           type="submit"
-          disabled={loading || !title || !sectionId || !subjectId}
+          disabled={loading || !title || !classId || !sectionId || !subjectId}
         >
           {loading ? "Assigning…" : "Assign Homework"}
         </Button>

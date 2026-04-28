@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getSchoolId } from "@/lib/school";
 import { AttendanceMarkForm } from "./attendance-mark-form";
 
 export default async function AttendanceMarkPage({
@@ -17,6 +18,8 @@ export default async function AttendanceMarkPage({
   }
 
   const supabase = await createServerSupabaseClient();
+  const schoolId = (await getSchoolId())!;
+  const { data: { user } } = await supabase.auth.getUser();
 
   const { data: sectionRow } = await supabase
     .from("sections")
@@ -26,9 +29,9 @@ export default async function AttendanceMarkPage({
 
   const { data: students } = await supabase
     .from("student_profiles")
-    .select("id, roll_number, profile:profiles(full_name)")
+    .select("id, roll_number, full_name")
     .eq("section_id", sectionId)
-    .order("roll_number");
+    .order("full_name");
 
   const { data: existing } = await supabase
     .from("attendance_records")
@@ -41,15 +44,12 @@ export default async function AttendanceMarkPage({
     existingMap[rec.student_id] = rec.status ?? "present";
   }
 
-  const studentRows = (students ?? []).map((s) => {
-    const profile = s.profile as unknown as { full_name: string } | null;
-    return {
-      id: s.id,
-      roll_number: s.roll_number ?? "",
-      full_name: profile?.full_name ?? "—",
-      status: existingMap[s.id] ?? "present",
-    };
-  });
+  const studentRows = (students ?? []).map((s) => ({
+    id: s.id,
+    roll_number: s.roll_number ?? "",
+    full_name: s.full_name ?? "—",
+    status: existingMap[s.id] ?? "present",
+  }));
 
   const sec = sectionRow as unknown as {
     name: string;
@@ -71,6 +71,8 @@ export default async function AttendanceMarkPage({
           students={studentRows}
           sectionId={sectionId}
           date={date}
+          schoolId={schoolId}
+          markedBy={user!.id}
         />
       </div>
     </div>
