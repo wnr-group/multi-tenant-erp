@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getSchoolId } from "@/lib/school";
 import { FeedbackList } from "./feedback-list";
 
 export default async function TeacherFeedbackPage() {
@@ -7,11 +8,14 @@ export default async function TeacherFeedbackPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const schoolId = (await getSchoolId())!;
+
   const { data: feedback } = await supabase
     .from("feedback")
     .select(
       "id, subject, message, status, created_at, response, from_user:profiles!feedback_from_user_id_fkey(full_name)"
     )
+    .eq("school_id", schoolId)
     .eq("to_role", "teacher")
     .order("created_at", { ascending: false });
 
