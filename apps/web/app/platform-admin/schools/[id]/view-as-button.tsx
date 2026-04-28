@@ -11,19 +11,9 @@ import {
 export function ViewAsButton({ schoolDomain }: { schoolDomain: string }) {
   const [loading, setLoading] = useState(false);
 
-  async function switchContext(role: string) {
+  function viewAs(role: string) {
     if (!schoolDomain) return;
     setLoading(true);
-    // Call API to log the audit entry
-    await fetch("/api/context-switch", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role }),
-    });
-    // Set cookie client-side with parent domain so it's shared across subdomains
-    const host = window.location.hostname;
-    const parentDomain = host.includes("lvh.me") ? ".lvh.me" : host.includes("balajierp.com") ? ".balajierp.com" : "";
-    document.cookie = `acting_as=${role}; path=/; domain=${parentDomain}; max-age=${60 * 60 * 8}; samesite=lax`;
     const port = window.location.port ? `:${window.location.port}` : "";
     const path = role === "school_admin" ? "admin" : role;
     window.location.href = `http://${schoolDomain}${port}/${path}/dashboard`;
@@ -38,13 +28,13 @@ export function ViewAsButton({ schoolDomain }: { schoolDomain: string }) {
         View as…
       </DropdownMenuTrigger>
       <DropdownMenuContent>
-        <DropdownMenuItem onClick={() => switchContext("school_admin")}>
+        <DropdownMenuItem onClick={() => viewAs("school_admin")}>
           School Admin
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => switchContext("principal")}>
+        <DropdownMenuItem onClick={() => viewAs("principal")}>
           Principal
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => switchContext("teacher")}>
+        <DropdownMenuItem onClick={() => viewAs("teacher")}>
           Teacher
         </DropdownMenuItem>
       </DropdownMenuContent>

@@ -1,6 +1,5 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
-import { SwitchRolePanel } from "@/components/switch-role-panel";
 import { Users, GraduationCap, BookOpen, IndianRupee } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -194,7 +193,6 @@ export default async function AdminDashboard() {
         </Card>
       </div>
 
-      <SwitchRolePanel roles={["principal", "teacher"]} />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { ContextSwitchBanner } from "@/components/context-switch-banner";
+import { getActiveSection } from "@/lib/section-context";
 
 export default async function TeacherLayout({
   children,
@@ -18,15 +18,19 @@ export default async function TeacherLayout({
     .select("role")
     .eq("user_id", user.id)
     .eq("is_active", true)
+    .limit(1)
     .single();
 
   const allowed = ["teacher", "principal", "school_admin", "super_admin"];
   if (!roleRow || !allowed.includes(roleRow.role)) redirect("/login");
 
-  return (
-    <>
-      <ContextSwitchBanner />
-      {children}
-    </>
-  );
+  if (roleRow.role !== "teacher") {
+    const activeSection = await getActiveSection();
+    if (!activeSection) {
+      const dest = roleRow.role === "principal" ? "/principal/dashboard" : "/admin/dashboard";
+      redirect(dest);
+    }
+  }
+
+  return <>{children}</>;
 }

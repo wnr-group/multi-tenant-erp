@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { ContextSwitchBanner } from "@/components/context-switch-banner";
 
 export default async function AdminLayout({
   children,
@@ -18,15 +17,11 @@ export default async function AdminLayout({
     .select("role")
     .eq("user_id", user.id)
     .eq("is_active", true)
+    .limit(1)
     .single();
 
   const allowed = ["school_admin", "super_admin"];
   if (!roleRow || !allowed.includes(roleRow.role)) redirect("/login");
 
-  return (
-    <>
-      <ContextSwitchBanner />
-      {children}
-    </>
-  );
+  return <>{children}</>;
 }
