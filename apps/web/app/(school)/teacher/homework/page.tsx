@@ -1,26 +1,36 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
+import { getActiveSection } from "@/lib/section-context";
 import { DataTable } from "@/components/data-table";
 import { CreateHomeworkForm } from "./create-homework-form";
+import { NoSectionPrompt } from "../no-section-prompt";
 
 export default async function HomeworkPage() {
+  const sectionId = await getActiveSection();
+  if (!sectionId) return <NoSectionPrompt />;
+
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   const schoolId = (await getSchoolId())!;
 
-  const [{ data: homework }, { data: classes }] = await Promise.all([
+  const [{ data: homework }, { data: classes }, { data: activeSection }] = await Promise.all([
     supabase
       .from("homework")
       .select(
         "id, title, description, due_date, subject:subjects(name), section:sections(name, class:classes(name))"
       )
-      .eq("teacher_id", user!.id)
+      .eq("section_id", sectionId)
       .order("due_date", { ascending: false }),
     supabase
       .from("classes")
       .select("id, name")
       .eq("school_id", schoolId)
       .order("name"),
+    supabase
+      .from("sections")
+      .select("class_id")
+      .eq("id", sectionId)
+      .single(),
   ]);
 
   const rows = (homework ?? []).map((h) => {
@@ -51,6 +61,8 @@ export default async function HomeworkPage() {
           teacherId={user!.id}
           schoolId={schoolId}
           classes={(classes ?? []).map((c) => ({ id: c.id, name: c.name }))}
+          activeSectionId={sectionId}
+          activeSectionClassId={activeSection?.class_id ?? undefined}
         />
       </div>
 

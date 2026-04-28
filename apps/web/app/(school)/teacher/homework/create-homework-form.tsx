@@ -27,10 +27,14 @@ export function CreateHomeworkForm({
   teacherId,
   schoolId,
   classes,
+  activeSectionId,
+  activeSectionClassId,
 }: {
   teacherId: string;
   schoolId: string;
   classes: ClassOption[];
+  activeSectionId?: string;
+  activeSectionClassId?: string;
 }) {
   const router = useRouter();
   const [title, setTitle] = useState("");
@@ -63,6 +67,23 @@ export function CreateHomeworkForm({
       setSubjectId("");
     });
   }, [classId]);
+
+  // Pre-fill class when active section's class is known
+  useEffect(() => {
+    if (activeSectionClassId) {
+      setClassId(activeSectionClassId);
+    }
+  }, [activeSectionClassId]);
+
+  // Pre-fill section once sections have loaded for the active class
+  useEffect(() => {
+    if (activeSectionId && sections.length > 0) {
+      const match = sections.find((s) => s.id === activeSectionId);
+      if (match) {
+        setSectionId(match.id);
+      }
+    }
+  }, [activeSectionId, sections]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
