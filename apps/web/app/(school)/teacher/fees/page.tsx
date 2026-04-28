@@ -34,20 +34,15 @@ export default async function TeacherFeesPage() {
     .eq("class_id", classId ?? "00000000-0000-0000-0000-000000000000");
 
   // Fetch students in this section
-  const { data: enrollments } = await supabase
-    .from("student_sections")
-    .select("student_id, student:student_profiles(id, full_name)")
-    .eq("section_id", sectionId);
+  const { data: students } = await supabase
+    .from("student_profiles")
+    .select("id, full_name")
+    .eq("section_id", sectionId)
+    .order("full_name");
 
   const studentMap = new Map<string, string>();
-  for (const row of enrollments ?? []) {
-    const sp = row.student as unknown as {
-      id: string;
-      full_name: string | null;
-    } | null;
-    if (sp) {
-      studentMap.set(sp.id, sp.full_name ?? "—");
-    }
+  for (const sp of students ?? []) {
+    studentMap.set(sp.id, sp.full_name ?? "—");
   }
 
   const studentIds = Array.from(studentMap.keys());

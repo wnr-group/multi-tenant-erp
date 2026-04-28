@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 type AttendanceStatus = "present" | "absent" | "late" | "half_day";
 
@@ -79,8 +80,11 @@ export function AttendanceMarkForm({
     setSaving(false);
     if (err) {
       setError(err.message);
+      toast.error("Failed to save attendance.");
       return;
     }
+    toast.success("Attendance saved successfully.");
+    router.push(`/teacher/attendance`);
     router.refresh();
   }
 

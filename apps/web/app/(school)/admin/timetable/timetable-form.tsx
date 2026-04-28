@@ -93,13 +93,30 @@ export function TimetableForm({
       ? [1, 2, 3, 4, 5]
       : [parseInt(dayOfWeek, 10)];
 
+    const periodNum = parseInt(period, 10);
+
+    // Pre-check for existing slots to give clear feedback
+    const { data: existing } = await supabase
+      .from("timetable")
+      .select("day_of_week")
+      .eq("school_id", schoolId)
+      .eq("section_id", sectionId)
+      .eq("period", periodNum)
+      .in("day_of_week", days);
+
+    if (existing && existing.length > 0) {
+      setSaving(false);
+      toast.error("One or more slots already exist for this section/day/period combination.");
+      return;
+    }
+
     const rows = days.map((d) => ({
       school_id: schoolId,
       section_id: sectionId,
       subject_id: subjectId,
       teacher_id: teacherId,
       day_of_week: d,
-      period: parseInt(period, 10),
+      period: periodNum,
     }));
 
     const { error } = await supabase.from("timetable").insert(rows);
