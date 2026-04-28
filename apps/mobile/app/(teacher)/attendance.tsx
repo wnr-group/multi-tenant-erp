@@ -36,14 +36,14 @@ export default function TeacherAttendance() {
 
     const { data: studentData } = await supabase
       .from("student_profiles")
-      .select("profile_id, roll_number, full_name")
+      .select("id, roll_number, full_name, admission_number")
       .eq("section_id", sectionId)
-      .order("roll_number");
+      .order("full_name");
 
-    const studentList: Student[] = (studentData ?? []).map((s: any) => ({
-      id: s.profile_id,
+    const studentList: Student[] = (studentData ?? []).map((s: any, idx: number) => ({
+      id: s.id,
       full_name: s.full_name ?? "Student",
-      roll_number: s.roll_number,
+      roll_number: s.roll_number || s.admission_number || String(idx + 1),
     }));
 
     const { data: existing } = await supabase
