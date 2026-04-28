@@ -104,9 +104,15 @@ export default async function TimetablePage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-foreground">Timetable</h1>
+      <div>
+        <h1 className="text-2xl font-semibold text-foreground">Timetable</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Assign teachers to class sections, subjects, and periods.
+        </p>
+      </div>
 
       <div className="rounded-lg border border-border bg-card p-6">
+        <h2 className="mb-4 text-lg font-medium text-foreground">Assign Teacher</h2>
         <TimetableForm
           schoolId={schoolId}
           teachers={teacherOptions}
@@ -116,7 +122,10 @@ export default async function TimetablePage() {
         />
       </div>
 
-      <TimetableTable rows={tableRows} schoolId={schoolId} />
+      <div>
+        <h2 className="mb-4 text-lg font-medium text-foreground">Current Assignments</h2>
+        <TimetableTable rows={tableRows} schoolId={schoolId} />
+      </div>
     </div>
   );
 }

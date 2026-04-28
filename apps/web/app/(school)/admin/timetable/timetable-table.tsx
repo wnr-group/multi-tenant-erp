@@ -23,7 +23,7 @@ interface TimetableTableProps {
   schoolId: string;
 }
 
-export function TimetableTable({ rows, schoolId: _schoolId }: TimetableTableProps) {
+export function TimetableTable({ rows }: TimetableTableProps) {
   const router = useRouter();
 
   async function handleDelete(row: Row) {

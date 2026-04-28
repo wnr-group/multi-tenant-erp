@@ -81,7 +81,7 @@ export function TimetableForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!teacherId || !classId || !sectionId || !subjectId || !dayOfWeek || !period) {
+    if (!teacherId || !classId || !sectionId || !subjectId || !period || (!dayOfWeek && !allWeekdays)) {
       toast.error("Please fill in all fields.");
       return;
     }
