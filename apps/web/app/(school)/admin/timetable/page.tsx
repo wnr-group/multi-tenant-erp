@@ -1,9 +1,9 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
-import { DataTable } from "@/components/data-table";
-import { AddTimetableForm } from "./add-timetable-form";
+import { TimetableForm } from "./timetable-form";
+import { TimetableTable } from "./timetable-table";
 
-const DAY_LABELS: Record<number, string> = {
+const DAY_NAMES: Record<number, string> = {
   1: "Monday",
   2: "Tuesday",
   3: "Wednesday",
@@ -16,83 +16,107 @@ export default async function TimetablePage() {
   const supabase = await createServerSupabaseClient();
   const schoolId = (await getSchoolId())!;
 
-  const { data: slots } = await supabase
-    .from("timetable")
-    .select("id, day_of_week, period, teacher_id, subject:subjects(name), section:sections(name, class:classes(name))")
-    .eq("school_id", schoolId)
-    .order("day_of_week")
-    .order("period");
+  const [
+    { data: teacherProfiles },
+    { data: classes },
+    { data: sections },
+    { data: subjects },
+    { data: slots },
+  ] = await Promise.all([
+    supabase
+      .from("teacher_profiles")
+      .select("profile_id, profile:profiles(full_name)")
+      .eq("school_id", schoolId),
+    supabase
+      .from("classes")
+      .select("id, name, order")
+      .eq("school_id", schoolId)
+      .order("order"),
+    supabase
+      .from("sections")
+      .select("id, name, class_id")
+      .eq("school_id", schoolId),
+    supabase
+      .from("subjects")
+      .select("id, name, class_id")
+      .eq("school_id", schoolId),
+    supabase
+      .from("timetable")
+      .select(
+        "id, day_of_week, period, teacher_id, section:sections(name, class:classes(name, order)), subject:subjects(name)"
+      )
+      .eq("school_id", schoolId)
+      .order("day_of_week")
+      .order("period"),
+  ]);
 
-  const { data: sections } = await supabase
-    .from("sections")
-    .select("id, name, class:classes(name)")
-    .eq("school_id", schoolId)
-    .order("name");
-
-  const { data: subjects } = await supabase
-    .from("subjects")
-    .select("id, name")
-    .eq("school_id", schoolId)
-    .order("name");
-
-  const { data: teachers } = await supabase
-    .from("teacher_profiles")
-    .select("profile_id, profile:profiles(full_name)")
-    .eq("school_id", schoolId);
-
-  // Build teacher name lookup: profile_id (= auth user id) → full_name
+  // Build a teacher name lookup from teacher_profiles
   const teacherNameMap = new Map(
-    (teachers ?? []).map((t) => {
-      const p = (t.profile as unknown as { full_name: string } | null);
+    (teacherProfiles ?? []).map((t) => {
+      const p = t.profile as unknown as { full_name: string } | null;
       return [t.profile_id, p?.full_name ?? ""] as const;
     })
   );
 
-  const rows = (slots ?? []).map((s) => {
-    const subject = (s.subject as unknown as { name: string } | null);
-    const section = (s.section as unknown as { name: string; class: { name: string } | null } | null);
+  const teacherOptions = (teacherProfiles ?? []).map((t) => {
+    const p = t.profile as unknown as { full_name: string } | null;
+    return { value: t.profile_id, label: p?.full_name ?? "" };
+  });
+
+  const classOptions = (classes ?? []).map((c) => ({
+    value: c.id,
+    label: c.name,
+    order: c.order as number,
+  }));
+
+  const sectionOptions = (sections ?? []).map((s) => ({
+    value: s.id,
+    label: s.name,
+    classId: s.class_id,
+  }));
+
+  const subjectOptions = (subjects ?? []).map((s) => ({
+    value: s.id,
+    label: s.name,
+    classId: s.class_id,
+  }));
+
+  const tableRows = (slots ?? []).map((s) => {
+    const section = s.section as unknown as {
+      name: string;
+      class: { name: string; order: number } | null;
+    } | null;
+    const subject = s.subject as unknown as { name: string } | null;
+    const className = section?.class?.name ?? "";
+    const classOrder = section?.class?.order ?? 0;
     return {
       id: s.id,
-      day: DAY_LABELS[s.day_of_week] ?? String(s.day_of_week),
-      period: String(s.period),
-      section: section ? `${section.class?.name ?? ""} - ${section.name}` : "",
-      subject: subject?.name ?? "",
       teacher: teacherNameMap.get(s.teacher_id) ?? "",
+      class: className,
+      classOrder,
+      section: section?.name ?? "",
+      subject: subject?.name ?? "",
+      day: DAY_NAMES[s.day_of_week] ?? String(s.day_of_week),
+      dayOfWeek: s.day_of_week,
+      period: s.period,
     };
   });
 
-  const sectionOptions = (sections ?? []).map((sec) => {
-    const cls = (sec.class as unknown as { name: string } | null);
-    return { id: sec.id, label: `${cls?.name ?? ""} - ${sec.name}` };
-  });
-
-  const teacherOptions = (teachers ?? []).map((t) => {
-    const p = (t.profile as unknown as { full_name: string } | null);
-    return { id: t.profile_id, label: p?.full_name ?? "" };
-  });
-
   return (
-    <div>
-      <h1 className="mb-6 text-2xl font-bold text-gray-900">Timetable</h1>
-      <div className="mb-6 rounded-lg bg-white p-6 shadow-sm">
-        <AddTimetableForm
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold text-foreground">Timetable</h1>
+
+      <div className="rounded-lg border border-border bg-card p-6">
+        <TimetableForm
           schoolId={schoolId}
-          sections={sectionOptions}
-          subjects={(subjects ?? []).map((s) => ({ id: s.id, name: s.name }))}
           teachers={teacherOptions}
+          classes={classOptions}
+          sections={sectionOptions}
+          subjects={subjectOptions}
         />
       </div>
-      <DataTable
-        data={rows}
-        columns={[
-          { header: "Day", accessor: "day" },
-          { header: "Period", accessor: "period" },
-          { header: "Section", accessor: "section" },
-          { header: "Subject", accessor: "subject" },
-          { header: "Teacher", accessor: "teacher" },
-        ]}
-        emptyMessage="No timetable entries yet."
-      />
+
+      <TimetableTable rows={tableRows} schoolId={schoolId} />
     </div>
   );
 }
