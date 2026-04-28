@@ -1,62 +1,98 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
+import { getActiveSection } from "@/lib/section-context";
+import { NoSectionPrompt } from "../../no-section-prompt";
 import { MarksEntryForm } from "./marks-entry-form";
 
 export default async function ExamMarksPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ examId: string }>;
+  searchParams: Promise<{ sectionId?: string }>;
 }) {
   const { examId } = await params;
+  const { sectionId: sectionIdParam } = await searchParams;
+
+  // Prefer sectionId from query param, fallback to active section header
+  const sectionId = sectionIdParam ?? (await getActiveSection());
+
+  if (!sectionId) {
+    return <NoSectionPrompt />;
+  }
+
   const supabase = await createServerSupabaseClient();
   const schoolId = (await getSchoolId())!;
 
-  const { data: exam } = await supabase
-    .from("exams")
-    .select("id, name")
-    .eq("id", examId)
+  // Look up the section to get its class_id
+  const { data: sectionRow } = await supabase
+    .from("sections")
+    .select("id, name, class_id, class:classes(name)")
+    .eq("id", sectionId)
     .single();
 
-  // Get subjects for this school
-  const { data: subjects } = await supabase
-    .from("subjects")
-    .select("id, name")
-    .eq("school_id", schoolId)
-    .order("name");
+  const sec = sectionRow as unknown as {
+    id: string;
+    name: string;
+    class_id: string;
+    class: { name: string } | null;
+  } | null;
 
-  // Get all students for this school
-  const { data: students } = await supabase
-    .from("student_profiles")
-    .select("id, roll_number, profile:profiles(full_name), section:sections(name, class:classes(name))")
-    .eq("school_id", schoolId)
-    .order("roll_number");
+  const sectionLabel = sec
+    ? `${sec.class?.name ?? ""} – Section ${sec.name}`
+    : sectionId;
 
-  // Existing results for this exam
-  const { data: existingResults } = await supabase
-    .from("exam_results")
-    .select("student_id, subject_id, marks_obtained, max_marks")
-    .eq("exam_id", examId);
+  const [{ data: exam }, { data: subjects }, { data: students }, { data: existingResults }] =
+    await Promise.all([
+      supabase
+        .from("exams")
+        .select("id, name")
+        .eq("id", examId)
+        .single(),
+
+      // Subjects scoped to the section's class
+      sec?.class_id
+        ? supabase
+            .from("subjects")
+            .select("id, name")
+            .eq("school_id", schoolId)
+            .eq("class_id", sec.class_id)
+            .order("name")
+        : supabase
+            .from("subjects")
+            .select("id, name")
+            .eq("school_id", schoolId)
+            .order("name"),
+
+      // Students scoped to this section only
+      supabase
+        .from("student_profiles")
+        .select("id, roll_number, profile:profiles(full_name)")
+        .eq("section_id", sectionId)
+        .order("roll_number"),
+
+      // Existing results for this exam
+      supabase
+        .from("exam_results")
+        .select("student_id, subject_id, marks_obtained, max_marks")
+        .eq("exam_id", examId),
+    ]);
 
   const studentRows = (students ?? []).map((s) => {
     const profile = s.profile as unknown as { full_name: string } | null;
-    const section = s.section as unknown as {
-      name: string;
-      class: { name: string } | null;
-    } | null;
     return {
       id: s.id,
       roll_number: s.roll_number ?? "",
       full_name: profile?.full_name ?? "—",
-      section_label: section
-        ? `${section.class?.name ?? ""} – ${section.name}`
-        : "—",
+      section_label: sectionLabel,
     };
   });
 
   return (
     <div>
       <h1 className="mb-1 text-2xl font-bold text-gray-900">Enter Marks</h1>
-      <p className="mb-6 text-sm text-gray-500">{exam?.name ?? examId}</p>
+      <p className="mb-1 text-sm text-gray-500">{exam?.name ?? examId}</p>
+      <p className="mb-6 text-xs text-gray-400">{sectionLabel}</p>
       <div className="rounded-lg bg-white p-6 shadow-sm">
         <MarksEntryForm
           examId={examId}

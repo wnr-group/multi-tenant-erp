@@ -1,9 +1,17 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
-import Link from "next/link";
+import { getActiveSection } from "@/lib/section-context";
+import { NoSectionPrompt } from "../no-section-prompt";
 import { DataTable } from "@/components/data-table";
+import Link from "next/link";
 
 export default async function ResultsPage() {
+  const sectionId = await getActiveSection();
+
+  if (!sectionId) {
+    return <NoSectionPrompt />;
+  }
+
   const supabase = await createServerSupabaseClient();
   const schoolId = (await getSchoolId())!;
 
@@ -38,7 +46,7 @@ export default async function ResultsPage() {
             header: "Action",
             accessor: (row) => (
               <Link
-                href={`/teacher/results/${row.id}`}
+                href={`/teacher/results/${row.id}?sectionId=${sectionId}`}
                 className="text-sm font-medium text-blue-600 hover:underline"
               >
                 Enter Marks
