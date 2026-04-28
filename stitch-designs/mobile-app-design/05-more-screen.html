@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-fixed-variant": "#38485d",
+                    "on-tertiary-container": "#eef0ff",
+                    "on-error": "#ffffff",
+                    "error": "#ba1a1a",
+                    "surface-container-high": "#e7e7f3",
+                    "secondary-fixed-dim": "#b7c8e1",
+                    "secondary-fixed": "#d3e4fe",
+                    "inverse-primary": "#b4c5ff",
+                    "tertiary-fixed-dim": "#bec6e0",
+                    "surface-tint": "#0053db",
+                    "outline": "#737686",
+                    "inverse-surface": "#2e3039",
+                    "primary": "#004ac6",
+                    "error-container": "#ffdad6",
+                    "surface": "#faf8ff",
+                    "primary-container": "#2563eb",
+                    "surface-container-highest": "#e1e2ed",
+                    "on-surface": "#191b23",
+                    "on-tertiary": "#ffffff",
+                    "on-error-container": "#93000a",
+                    "on-surface-variant": "#434655",
+                    "surface-container": "#ededf9",
+                    "outline-variant": "#c3c6d7",
+                    "secondary-container": "#d0e1fb",
+                    "on-primary-container": "#eeefff",
+                    "primary-fixed": "#dbe1ff",
+                    "on-secondary-fixed": "#0b1c30",
+                    "tertiary-fixed": "#dae2fd",
+                    "on-secondary-container": "#54647a",
+                    "surface-bright": "#faf8ff",
+                    "background": "#faf8ff",
+                    "surface-container-low": "#f3f3fe",
+                    "on-primary-fixed": "#00174b",
+                    "surface-variant": "#e1e2ed",
+                    "on-secondary": "#ffffff",
+                    "tertiary": "#4d556b",
+                    "on-background": "#191b23",
+                    "on-primary": "#ffffff",
+                    "on-primary-fixed-variant": "#003ea8",
+                    "secondary": "#505f76",
+                    "surface-dim": "#d9d9e5",
+                    "inverse-on-surface": "#f0f0fb",
+                    "primary-fixed-dim": "#b4c5ff",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary-fixed-variant": "#3f465c",
+                    "tertiary-container": "#656d84",
+                    "on-tertiary-fixed": "#131b2e"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "lg": "24px",
+                    "md": "16px",
+                    "base": "4px",
+                    "margin-mobile": "20px",
+                    "xl": "32px",
+                    "sm": "8px",
+                    "xs": "4px",
+                    "gutter": "12px"
+            },
+            "fontFamily": {
+                    "h2": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "h3": ["Inter"],
+                    "label-md": ["Inter"],
+                    "body-md": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "h1": ["Inter"]
+            },
+            "fontSize": {
+                    "h2": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400"}],
+                    "body-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0em", "fontWeight": "400"}],
+                    "h3": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400"}],
+                    "label-sm": ["11px", {"lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                    "h1": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen pb-32">
+<header class="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 shadow-sm flex justify-between items-center w-full px-5 py-4 sticky top-0 z-50">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden bg-secondary-container">
+<img alt="Student profile photo" class="w-full h-full object-cover" data-alt="Close-up professional portrait of a woman with a friendly smile in a modern bright setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBykJ_d_cBMvIxmwrQLd6C6XFZgW5l0bH8jAjM267airFu3e3k-lQ26QLiXslj91ZsnhyMFBItP_iFOlQ6fhZZye2Q_hXiAC6yW05FoYag-EN5RHKeELt3XdNHINmIvCt_lwf_n7jkjutIFXDHlj8aJ--Er9JXfDssaYNv9UC5_jbDGvlSus7qjFhby5eaNkXt_0C2KCWDM3SgUKdmM0y3zNk_9yp24J1InxscrcfoOcowJhiFLpFqs33Mn4p5_YEfjeBfDC6Pj"/>
+</div>
+<div class="flex flex-col">
+<span class="font-h2 text-h2 text-slate-900 dark:text-slate-50">Hi, Alexandra</span>
+<span class="font-label-sm text-label-sm text-slate-500 uppercase">Parent Account</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition-all duration-200">
+<span class="material-symbols-outlined text-blue-600 dark:text-blue-400" data-icon="notifications">notifications</span>
+</button>
+</div>
+</header>
+<main class="px-margin-mobile py-xl max-w-2xl mx-auto">
+<section class="mb-xl">
+<div class="flex items-center justify-between mb-lg">
+<h2 class="font-h1 text-h1">More</h2>
+<span class="bg-primary-container/10 text-primary px-3 py-1 rounded-full font-label-sm text-label-sm">Academic Year 2024-25</span>
+</div>
+<div class="grid grid-cols-1 gap-md">
+<!-- Profile Section (Enhanced) -->
+<div class="bg-white p-md rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-100 flex items-center gap-md group active:scale-[0.98] transition-all">
+<div class="w-12 h-12 rounded-full bg-primary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="person">person</span>
+</div>
+<div class="flex-1">
+<p class="font-label-md text-label-md text-slate-900">Profile</p>
+<p class="font-body-sm text-body-sm text-slate-500">Personal details &amp; security</p>
+</div>
+<span class="material-symbols-outlined text-slate-400 group-hover:text-primary transition-colors" data-icon="chevron_right">chevron_right</span>
+</div>
+<!-- Bento Style Secondary Links -->
+<div class="grid grid-cols-2 gap-md">
+<div class="bg-white p-md rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-100 flex flex-col gap-sm active:scale-[0.98] transition-all">
+<div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="menu_book">menu_book</span>
+</div>
+<p class="font-label-md text-label-md text-slate-900">Homework</p>
+<p class="font-body-sm text-body-sm text-slate-500">Daily assignments &amp; tasks</p>
+</div>
+<div class="bg-white p-md rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-100 flex flex-col gap-sm active:scale-[0.98] transition-all">
+<div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="campaign">campaign</span>
+</div>
+<p class="font-label-md text-label-md text-slate-900">Announcements</p>
+<p class="font-body-sm text-body-sm text-slate-500">School news &amp; updates</p>
+</div>
+</div>
+<!-- Full Width List Items -->
+<div class="flex flex-col gap-base bg-white rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden">
+<button class="w-full flex items-center gap-md px-md py-lg hover:bg-slate-50 transition-colors text-left border-b border-slate-50">
+<div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-primary" data-icon="gavel">gavel</span>
+</div>
+<div class="flex-1">
+<p class="font-label-md text-label-md text-slate-900">Discipline</p>
+</div>
+<span class="material-symbols-outlined text-slate-400" data-icon="chevron_right">chevron_right</span>
+</button>
+<button class="w-full flex items-center gap-md px-md py-lg hover:bg-slate-50 transition-colors text-left">
+<div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-primary" data-icon="rate_review">rate_review</span>
+</div>
+<div class="flex-1">
+<p class="font-label-md text-label-md text-slate-900">Feedback</p>
+</div>
+<span class="material-symbols-outlined text-slate-400" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Quick Stats Section -->
+<section class="mb-xl">
+<h3 class="font-h3 text-h3 mb-md">Child Overview</h3>
+<div class="bg-primary-container text-on-primary-container p-lg rounded-xl relative overflow-hidden">
+<div class="relative z-10">
+<p class="font-label-sm text-label-sm opacity-80 uppercase mb-xs">Attendance</p>
+<div class="flex items-end gap-sm mb-md">
+<span class="font-h1 text-[40px] leading-none">94%</span>
+<span class="font-label-md text-label-md pb-1 text-blue-100">Excellent</span>
+</div>
+<div class="w-full bg-white/20 h-1.5 rounded-full">
+<div class="bg-white h-1.5 rounded-full w-[94%]"></div>
+</div>
+</div>
+<!-- Abstract decorative element -->
+<div class="absolute -right-8 -bottom-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+</div>
+</section>
+<!-- Support Section -->
+<section class="bg-surface-container rounded-xl p-lg flex items-center gap-md border border-slate-200/50">
+<div class="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="help_center">help_center</span>
+</div>
+<div>
+<p class="font-label-md text-label-md">Need assistance?</p>
+<p class="font-body-sm text-body-sm text-slate-500">Contact the support desk anytime.</p>
+</div>
+<button class="ml-auto bg-white px-md py-sm rounded-lg font-label-sm text-label-sm text-primary shadow-sm active:scale-95 transition-all">Support</button>
+</section>
+</main>
+<nav class="fixed bottom-0 left-0 w-full z-50 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-t border-slate-200/50 dark:border-slate-800/50 shadow-[0_-4px_16px_rgba(0,0,0,0.04)] rounded-t-2xl flex justify-around items-center px-4 pb-6 pt-2">
+<button class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 hover:text-blue-500 transition-colors active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined mb-1" data-icon="home">home</span>
+<span class="font-inter text-[10px] font-medium">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 hover:text-blue-500 transition-colors active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined mb-1" data-icon="event_available">event_available</span>
+<span class="font-inter text-[10px] font-medium">Attendance</span>
+</button>
+<button class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 hover:text-blue-500 transition-colors active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined mb-1" data-icon="school">school</span>
+<span class="font-inter text-[10px] font-medium">Academics</span>
+</button>
+<button class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 hover:text-blue-500 transition-colors active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined mb-1" data-icon="payments">payments</span>
+<span class="font-inter text-[10px] font-medium">Fees</span>
+</button>
+<button class="flex flex-col items-center justify-center text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-xl px-3 py-1 active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined mb-1" data-icon="person">person</span>
+<span class="font-inter text-[10px] font-medium">Profile</span>
+</button>
+</nav>
+</body></html>

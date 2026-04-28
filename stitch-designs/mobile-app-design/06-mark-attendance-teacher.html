@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Mark Attendance | Teacher Portal</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed-variant": "#38485d",
+                        "on-tertiary-container": "#eef0ff",
+                        "on-error": "#ffffff",
+                        "error": "#ba1a1a",
+                        "surface-container-high": "#e7e7f3",
+                        "secondary-fixed-dim": "#b7c8e1",
+                        "secondary-fixed": "#d3e4fe",
+                        "inverse-primary": "#b4c5ff",
+                        "tertiary-fixed-dim": "#bec6e0",
+                        "surface-tint": "#0053db",
+                        "outline": "#737686",
+                        "inverse-surface": "#2e3039",
+                        "primary": "#004ac6",
+                        "error-container": "#ffdad6",
+                        "surface": "#faf8ff",
+                        "primary-container": "#2563eb",
+                        "surface-container-highest": "#e1e2ed",
+                        "on-surface": "#191b23",
+                        "on-tertiary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "on-surface-variant": "#434655",
+                        "surface-container": "#ededf9",
+                        "outline-variant": "#c3c6d7",
+                        "secondary-container": "#d0e1fb",
+                        "on-primary-container": "#eeefff",
+                        "primary-fixed": "#dbe1ff",
+                        "on-secondary-fixed": "#0b1c30",
+                        "tertiary-fixed": "#dae2fd",
+                        "on-secondary-container": "#54647a",
+                        "surface-bright": "#faf8ff",
+                        "background": "#faf8ff",
+                        "surface-container-low": "#f3f3fe",
+                        "on-primary-fixed": "#00174b",
+                        "surface-variant": "#e1e2ed",
+                        "on-secondary": "#ffffff",
+                        "tertiary": "#4d556b",
+                        "on-background": "#191b23",
+                        "on-primary": "#ffffff",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "secondary": "#505f76",
+                        "surface-dim": "#d9d9e5",
+                        "inverse-on-surface": "#f0f0fb",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-fixed-variant": "#3f465c",
+                        "tertiary-container": "#656d84",
+                        "on-tertiary-fixed": "#131b2e"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "lg": "24px",
+                        "md": "16px",
+                        "base": "4px",
+                        "margin-mobile": "20px",
+                        "xl": "32px",
+                        "sm": "8px",
+                        "xs": "4px",
+                        "gutter": "12px"
+                    },
+                    "fontFamily": {
+                        "h2": ["Inter"], "body-lg": ["Inter"], "body-sm": ["Inter"], "h3": ["Inter"], "label-md": ["Inter"], "body-md": ["Inter"], "label-sm": ["Inter"], "h1": ["Inter"]
+                    },
+                    "fontSize": {
+                        "h2": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "body-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "h3": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "label-sm": ["11px", {"lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                        "h1": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .segmented-control {
+            background: #ededf9;
+            padding: 2px;
+            border-radius: 8px;
+            display: inline-flex;
+        }
+        .segmented-item {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .segmented-item.active-present { background: #004ac6; color: white; }
+        .segmented-item.active-absent { background: #ba1a1a; color: white; }
+        .segmented-item.active-late { background: #656d84; color: white; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background font-body-md text-on-surface">
+<!-- Top App Bar -->
+<header class="bg-white sticky top-0 z-50 border-b border-slate-100 shadow-sm flex justify-between items-center w-full px-5 py-4">
+<div class="flex items-center gap-3">
+<img alt="Teacher profile photo" class="w-10 h-10 rounded-full object-cover" data-alt="Professional portrait of a friendly female teacher in a brightly lit modern office environment with soft focus background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCu8_AU7aWRnOf1fwtVG0z6tk9p3fbQZyGV9fsONOkEkNfcY1gZInPtQhdtt6rKUv56-JE4nw8Vc7Sxqpr8MTic30TYTsc1zFnSkUwlZ1WhM4odf-eiPSNINMns3p_bj6hw-oyYwLQBoR1XetDQ6x8aX8hOwEaAKI1Cb0arSUvzcsZ_zuxSd7KEWFR9TQdrcj-Azj6OqemHedVNfxLlurHAoWkl2DAZY7Eut7lR4Upv9VPQNstNDmy2VWDfMtOrcnN8TTj8Df2x"/>
+<div>
+<h1 class="font-h3 text-h3 text-slate-900">Attendance</h1>
+<p class="font-body-sm text-body-sm text-slate-500">Class 10-A • Monday, Oct 23</p>
+</div>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-50 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-slate-600" data-icon="notifications">notifications</span>
+</button>
+</header>
+<main class="max-w-md mx-auto pb-32">
+<!-- Selectors Section -->
+<section class="px-margin-mobile py-lg space-y-md">
+<div class="grid grid-cols-2 gap-gutter">
+<div class="space-y-base">
+<label class="font-label-sm text-label-sm text-outline-variant uppercase">Select Class</label>
+<div class="relative">
+<select class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-md py-sm font-body-md appearance-none focus:ring-2 focus:ring-primary focus:border-primary">
+<option>Grade 10-A</option>
+<option>Grade 10-B</option>
+<option>Grade 9-C</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline" data-icon="expand_more">expand_more</span>
+</div>
+</div>
+<div class="space-y-base">
+<label class="font-label-sm text-label-sm text-outline-variant uppercase">Select Date</label>
+<div class="relative">
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-md py-sm font-body-md focus:ring-2 focus:ring-primary focus:border-primary" type="date" value="2023-10-23"/>
+</div>
+</div>
+</div>
+<!-- Bulk Action -->
+<div class="flex items-center justify-between pt-base">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<p class="font-label-md text-label-md text-on-surface-variant">32 Students Found</p>
+</div>
+<button class="flex items-center gap-2 font-label-md text-primary hover:bg-primary-fixed/30 px-3 py-1.5 rounded-full transition-colors active:scale-95">
+<span class="material-symbols-outlined text-[18px]" data-icon="done_all">done_all</span>
+                    Mark All Present
+                </button>
+</div>
+</section>
+<!-- Student List -->
+<section class="space-y-sm px-margin-mobile">
+<!-- Student Row 1 -->
+<div class="bg-white p-md rounded-xl shadow-sm border border-slate-50 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="relative">
+<img alt="Student portrait" class="w-12 h-12 rounded-xl object-cover" data-alt="Close-up portrait of a high school student boy with a neutral expression against a simple grey background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA8oKB3PLghUvUJ6INLxEx4Wz07H3vZBjzBv3-NJboTh78NQeDPku2_By_2q4PiwL0vpdn3g3EDiWNsMYl-8hWroR6Ak06ycBOkiMCHDYTL0G7Ev4PPdvwBYh53jXBb7imnVmCBPGRtAzvoqa6IW0-nq4dNA_GAXp7taWbTh_Xqaf5luIiZt2Njga6Uo70k6pjFp7_DZ3rLn0lIDr6coUVtHUjj5ortAdbrSr358o9QdGsJ0jqFQ5h0bJwpHHI75Gpfgtou_8Vl"/>
+<span class="absolute -bottom-1 -right-1 bg-white px-1.5 py-0.5 rounded-md text-[9px] font-bold shadow-sm border border-slate-100">#01</span>
+</div>
+<div>
+<p class="font-label-md text-on-surface">Aaron Marshall</p>
+<p class="font-body-sm text-slate-400">Roll: 102301</p>
+</div>
+</div>
+<div class="segmented-control">
+<div class="segmented-item active-present">P</div>
+<div class="segmented-item text-slate-500">A</div>
+<div class="segmented-item text-slate-500">L</div>
+</div>
+</div>
+<!-- Student Row 2 -->
+<div class="bg-white p-md rounded-xl shadow-sm border border-slate-50 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="relative">
+<img alt="Student portrait" class="w-12 h-12 rounded-xl object-cover" data-alt="Candid portrait of a smiling young student girl with glasses in a natural outdoor daylight setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCPZkNG03oaSfpgRj-1QiTKo5kNcBHCb-oWNwXfyE6He8S67KK8Gj1MP5cFw1pnwvtJqWwiwV_B72xtAzccgLLuR7ge-99vjDF3dy0U9ORg3BROcmBLxXrcy2yZOtSU4gxv3F3r3lvUpMLOQ0Yhvl_PZfp_b4Wrt4qOfASxMmJOmIGyV7k1YS59V1oQbZGzdx_Su6frRW1ICTlNIXgKzVfudURy4jq27rxZSBTQhP3A8ZtsO0dv5obsck3L2ULgSjC731X-NcBi"/>
+<span class="absolute -bottom-1 -right-1 bg-white px-1.5 py-0.5 rounded-md text-[9px] font-bold shadow-sm border border-slate-100">#02</span>
+</div>
+<div>
+<p class="font-label-md text-on-surface">Beatrix Potter</p>
+<p class="font-body-sm text-slate-400">Roll: 102302</p>
+</div>
+</div>
+<div class="segmented-control">
+<div class="segmented-item text-slate-500">P</div>
+<div class="segmented-item active-absent">A</div>
+<div class="segmented-item text-slate-500">L</div>
+</div>
+</div>
+<!-- Student Row 3 -->
+<div class="bg-white p-md rounded-xl shadow-sm border border-slate-50 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="relative">
+<img alt="Student portrait" class="w-12 h-12 rounded-xl object-cover" data-alt="Portrait of a teenage boy student looking directly at camera with professional soft lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBPk7BvXKRiYGwSVyV_6104FVK_ZQAwrTRoCbmenslUcaDnHSl-gxsrUf-5EgRV_399THUaYJHyTHF7SSh5bxsqDSIa10GWPaePzCcxFS74ULo-R0lvmbJRSMGLDwWYAw6iuAij_IUvhyXD6e2EVt0VqYvlEd0Rk5O7gdy3bpotzLTQrBH04BPLiLejIVhiIgboW-rPUKcmFaOPbfxhh1eOzFLRNLMxZkULPWtNjD41JIempPjqVa9qftR9FYnlJ0rnbLiFZ55D"/>
+<span class="absolute -bottom-1 -right-1 bg-white px-1.5 py-0.5 rounded-md text-[9px] font-bold shadow-sm border border-slate-100">#03</span>
+</div>
+<div>
+<p class="font-label-md text-on-surface">Charlie Dawson</p>
+<p class="font-body-sm text-slate-400">Roll: 102303</p>
+</div>
+</div>
+<div class="segmented-control">
+<div class="segmented-item text-slate-500">P</div>
+<div class="segmented-item text-slate-500">A</div>
+<div class="segmented-item active-late">L</div>
+</div>
+</div>
+<!-- Student Row 4 -->
+<div class="bg-white p-md rounded-xl shadow-sm border border-slate-50 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="relative">
+<img alt="Student portrait" class="w-12 h-12 rounded-xl object-cover" data-alt="Fashionable high school student girl portrait with warm sunny lighting and blurred green trees background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDxBsJkQqYwXHc2vXGX-FY-0I6P0MvOtGBF3TGoasic9nVMT8FSEEG-Fn7v3i_7dixA4TPKbMjlNxzFOnq60g3wnxpNdxLVHZeB7j5lh3QwUgh--Iu414tqW-EZdpJ5AjaTg-UzMUGIjvM5iCnQ_0ZN3M6NpSjOfcohP4pLEFtWOgMwzwW6DCogSMLziTBNA6cXuR76q7SrLz3W9q2uUJO78Qbb9QY_0ZWLbZXOgsYV4SLZqwUSkm9UQPa8JgFEzdhZHdMOYgcC"/>
+<span class="absolute -bottom-1 -right-1 bg-white px-1.5 py-0.5 rounded-md text-[9px] font-bold shadow-sm border border-slate-100">#04</span>
+</div>
+<div>
+<p class="font-label-md text-on-surface">Diana Prince</p>
+<p class="font-body-sm text-slate-400">Roll: 102304</p>
+</div>
+</div>
+<div class="segmented-control">
+<div class="segmented-item active-present">P</div>
+<div class="segmented-item text-slate-500">A</div>
+<div class="segmented-item text-slate-500">L</div>
+</div>
+</div>
+<!-- Student Row 5 -->
+<div class="bg-white p-md rounded-xl shadow-sm border border-slate-50 flex items-center justify-between opacity-80">
+<div class="flex items-center gap-3">
+<div class="relative">
+<img alt="Student portrait" class="w-12 h-12 rounded-xl object-cover" data-alt="Portrait of a young male student in a blue shirt with bright natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCxpifSEBB3co4JrmaSmK86ofopyKlIN3ai1p2THvf7PsKeVTe9kQ2qFpRsjT7DjXvWwHXli1J7DV4n2MoMcfzfgyiHFQTG6ZcPQypgJGS8xz8ph5VSCaF3N7fkpas4nkU0odPjwenCklIg-zI4P04zozL13TliGZtZcUYwYBH3GhktBs1PleSlqH8JDC9R917xcVjIsVNxDTBawW7Gv04_fo1EzqBp3lvt4eZiXIKmUYlkAJyZk_qazHoGTLEva-wYkujGy4NM"/>
+<span class="absolute -bottom-1 -right-1 bg-white px-1.5 py-0.5 rounded-md text-[9px] font-bold shadow-sm border border-slate-100">#05</span>
+</div>
+<div>
+<p class="font-label-md text-on-surface">Ethan Hunt</p>
+<p class="font-body-sm text-slate-400">Roll: 102305</p>
+</div>
+</div>
+<div class="segmented-control">
+<div class="segmented-item text-slate-500">P</div>
+<div class="segmented-item text-slate-500">A</div>
+<div class="segmented-item text-slate-500">L</div>
+</div>
+</div>
+</section>
+<!-- Stats Overview Card -->
+<section class="px-margin-mobile mt-lg">
+<div class="bg-primary-container p-md rounded-2xl text-on-primary-container shadow-md">
+<div class="flex justify-between items-center mb-sm">
+<h4 class="font-label-md">Current Tally</h4>
+<span class="text-xs bg-white/20 px-2 py-0.5 rounded-full">Real-time</span>
+</div>
+<div class="grid grid-cols-3 gap-md">
+<div class="text-center">
+<p class="text-h2 font-h2">28</p>
+<p class="text-[10px] uppercase font-bold opacity-70">Present</p>
+</div>
+<div class="text-center border-x border-white/10">
+<p class="text-h2 font-h2">02</p>
+<p class="text-[10px] uppercase font-bold opacity-70">Absent</p>
+</div>
+<div class="text-center">
+<p class="text-h2 font-h2">01</p>
+<p class="text-[10px] uppercase font-bold opacity-70">Late</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Sticky Bottom Submit -->
+<div class="fixed bottom-[88px] left-0 w-full px-margin-mobile z-40">
+<button class="w-full bg-primary text-on-primary py-md rounded-xl font-h3 shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" data-icon="cloud_upload">cloud_upload</span>
+            Submit Attendance
+        </button>
+</div>
+<!-- Navigation Bar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-2 bg-white/90 backdrop-blur-md border-t border-slate-200/50 shadow-[0_-4px_16px_rgba(0,0,0,0.04)] rounded-t-2xl">
+<div class="flex flex-col items-center justify-center text-slate-400 hover:text-blue-500 transition-colors active:scale-90 duration-150">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="text-[10px] font-medium font-inter mt-1">Home</span>
+</div>
+<div class="flex flex-col items-center justify-center text-blue-600 bg-blue-50 rounded-xl px-3 py-1 active:scale-90 transition-all duration-150">
+<span class="material-symbols-outlined" data-icon="event_available" style="font-variation-settings: 'FILL' 1;">event_available</span>
+<span class="text-[10px] font-medium font-inter mt-1">Attendance</span>
+</div>
+<div class="flex flex-col items-center justify-center text-slate-400 hover:text-blue-500 transition-colors active:scale-90 duration-150">
+<span class="material-symbols-outlined" data-icon="school">school</span>
+<span class="text-[10px] font-medium font-inter mt-1">Academics</span>
+</div>
+<div class="flex flex-col items-center justify-center text-slate-400 hover:text-blue-500 transition-colors active:scale-90 duration-150">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span class="text-[10px] font-medium font-inter mt-1">Fees</span>
+</div>
+<div class="flex flex-col items-center justify-center text-slate-400 hover:text-blue-500 transition-colors active:scale-90 duration-150">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="text-[10px] font-medium font-inter mt-1">Profile</span>
+</div>
+</nav>
+</body></html>

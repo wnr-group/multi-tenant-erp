@@ -19,8 +19,6 @@ export default function TeacherLayout() {
       <Tabs.Screen name="classes" options={{ title: "Classes", tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "school" : "school-outline"} size={22} color={color} /> }} />
       <Tabs.Screen name="discipline" options={{ title: "Discipline", tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "shield" : "shield-outline"} size={22} color={color} /> }} />
       <Tabs.Screen name="profile" options={{ title: "Profile", tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "person" : "person-outline"} size={22} color={color} /> }} />
-      <Tabs.Screen name="homework" options={{ href: null }} />
-      <Tabs.Screen name="results" options={{ href: null }} />
     </Tabs>
   );
 }

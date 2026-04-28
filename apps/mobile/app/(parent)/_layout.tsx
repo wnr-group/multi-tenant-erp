@@ -19,12 +19,6 @@ export default function ParentLayout() {
       <Tabs.Screen name="academics" options={{ title: "Academics", tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "book" : "book-outline"} size={22} color={color} /> }} />
       <Tabs.Screen name="fees" options={{ title: "Fees", tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "wallet" : "wallet-outline"} size={22} color={color} /> }} />
       <Tabs.Screen name="more" options={{ title: "More", tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "grid" : "grid-outline"} size={22} color={color} /> }} />
-      <Tabs.Screen name="results" options={{ href: null }} />
-      <Tabs.Screen name="homework" options={{ href: null }} />
-      <Tabs.Screen name="announcements" options={{ href: null }} />
-      <Tabs.Screen name="feedback" options={{ href: null }} />
-      <Tabs.Screen name="discipline" options={{ href: null }} />
-      <Tabs.Screen name="profile" options={{ href: null }} />
     </Tabs>
   );
 }
