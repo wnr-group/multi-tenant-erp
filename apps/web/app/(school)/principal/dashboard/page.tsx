@@ -11,54 +11,8 @@ import type { DayAttendance } from "./weekly-attendance-chart";
 import type { ClassAttendance } from "./class-attendance-chart";
 import type { DisciplineMonth } from "./discipline-chart";
 
-// ---------------------------------------------------------------------------
-// Mock data — replace each const with a real Supabase query when wiring backend
-// See: docs/superpowers/specs/2026-04-22-principal-teacher-dashboard-charts-design.md
-// ---------------------------------------------------------------------------
-
-const MOCK_WEEKLY_ATTENDANCE: DayAttendance[] = [
-  { day: "Mon", percent: 87 },
-  { day: "Tue", percent: 84 },
-  { day: "Wed", percent: 89 },
-  { day: "Thu", percent: 82 },
-  { day: "Fri", percent: 78 },
-  { day: "Sat", percent: 91 },
-  { day: "Sun", percent: 85 },
-];
-
-const MOCK_CLASS_ATTENDANCE: ClassAttendance[] = [
-  { class: "Cls 1", percent: 92 },
-  { class: "Cls 2", percent: 88 },
-  { class: "Cls 3", percent: 79 },
-  { class: "Cls 4", percent: 85 },
-  { class: "Cls 5", percent: 91 },
-  { class: "Cls 6", percent: 76 },
-  { class: "Cls 7", percent: 83 },
-  { class: "Cls 8", percent: 88 },
-  { class: "Cls 9", percent: 94 },
-  { class: "Cls 10", percent: 80 },
-  { class: "Cls 11", percent: 73 },
-  { class: "Cls 12", percent: 69 },
-];
-
-const MOCK_DISCIPLINE_DATA: DisciplineMonth[] = [
-  { month: "Nov", incidents: 8 },
-  { month: "Dec", incidents: 5 },
-  { month: "Jan", incidents: 11 },
-  { month: "Feb", incidents: 7 },
-  { month: "Mar", incidents: 9 },
-  { month: "Apr", incidents: 12 },
-];
-
-type Announcement = { title: string; date: string; type: "Event" | "Exam" | "Holiday" | "General" };
-
-const MOCK_ANNOUNCEMENTS: Announcement[] = [
-  { title: "Annual Sports Day", date: "Apr 18, 2026", type: "Event" },
-  { title: "Mid-Term Exam Schedule Released", date: "Apr 10, 2026", type: "Exam" },
-  { title: "Summer Vacation Notice", date: "Apr 5, 2026", type: "Holiday" },
-  { title: "Parent-Teacher Meeting", date: "Mar 28, 2026", type: "General" },
-  { title: "Science Exhibition", date: "Mar 20, 2026", type: "Event" },
-];
+const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 const BADGE_COLORS: Record<string, string> = {
   Event: "bg-indigo-100 text-indigo-700",
@@ -67,42 +21,143 @@ const BADGE_COLORS: Record<string, string> = {
   General: "bg-gray-100 text-gray-700",
 };
 
-// ---------------------------------------------------------------------------
+function announcementType(title: string): string {
+  const t = title.toLowerCase();
+  if (t.includes("exam") || t.includes("test") || t.includes("result")) return "Exam";
+  if (t.includes("holiday") || t.includes("vacation") || t.includes("closed")) return "Holiday";
+  if (t.includes("sports") || t.includes("exhibition") || t.includes("day") || t.includes("meeting")) return "Event";
+  return "General";
+}
+
+function getLastNSchoolDays(n: number): Date[] {
+  const days: Date[] = [];
+  let d = new Date();
+  d.setDate(d.getDate() - 1); // start from yesterday
+  while (days.length < n) {
+    const dow = d.getDay();
+    if (dow !== 0 && dow !== 6) days.push(new Date(d));
+    d.setDate(d.getDate() - 1);
+  }
+  return days.reverse();
+}
 
 export default async function PrincipalDashboard() {
   const supabase = await createServerSupabaseClient();
   const schoolId = (await getSchoolId())!;
   const today = new Date().toISOString().slice(0, 10);
 
+  const schoolDays = getLastNSchoolDays(7);
+  const earliest = schoolDays[0].toISOString().slice(0, 10);
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+  sixMonthsAgo.setDate(1);
+
   const [
     { count: presentCount },
     { count: absentCount },
     { count: studentCount },
+    { count: disciplineThisMonth },
+    { data: attendanceRows },
+    { data: classRows },
+    { data: disciplineRows },
+    { data: announcements },
   ] = await Promise.all([
-    supabase
-      .from("attendance_records")
-      .select("*", { count: "exact", head: true })
-      .eq("school_id", schoolId)
-      .eq("date", today)
-      .eq("status", "present"),
-    supabase
-      .from("attendance_records")
-      .select("*", { count: "exact", head: true })
-      .eq("school_id", schoolId)
-      .eq("date", today)
-      .eq("status", "absent"),
-    supabase
-      .from("student_profiles")
-      .select("*", { count: "exact", head: true })
+    supabase.from("attendance_records").select("*", { count: "exact", head: true })
+      .eq("school_id", schoolId).eq("date", today).eq("status", "present"),
+    supabase.from("attendance_records").select("*", { count: "exact", head: true })
+      .eq("school_id", schoolId).eq("date", today).eq("status", "absent"),
+    supabase.from("student_profiles").select("*", { count: "exact", head: true })
       .eq("school_id", schoolId),
+    supabase.from("discipline_records").select("*", { count: "exact", head: true })
+      .eq("school_id", schoolId).gte("created_at", monthStart.toISOString()),
+    supabase.from("attendance_records")
+      .select("date, status")
+      .eq("school_id", schoolId)
+      .gte("date", earliest)
+      .lte("date", today),
+    supabase.from("student_profiles")
+      .select("class_id, classes(name, order)")
+      .eq("school_id", schoolId),
+    supabase.from("discipline_records")
+      .select("created_at")
+      .eq("school_id", schoolId)
+      .gte("created_at", sixMonthsAgo.toISOString()),
+    supabase.from("announcements")
+      .select("title, created_at")
+      .eq("school_id", schoolId)
+      .order("created_at", { ascending: false })
+      .limit(5),
   ]);
 
+  // Weekly attendance trend
+  const weeklyAttendance: DayAttendance[] = schoolDays.map((d) => {
+    const key = d.toISOString().slice(0, 10);
+    const dayRecords = (attendanceRows ?? []).filter((r) => r.date === key);
+    if (dayRecords.length === 0) return null;
+    const present = dayRecords.filter((r) => r.status === "present").length;
+    const pct = Math.round((present / dayRecords.length) * 100);
+    return { day: DAY_LABELS[d.getDay()], percent: pct };
+  }).filter(Boolean) as DayAttendance[];
+
+  // Attendance by class (last 30 days)
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const thirtyKey = thirtyDaysAgo.toISOString().slice(0, 10);
+
+  const { data: classAttendanceRows } = await supabase
+    .from("attendance_records")
+    .select("status, student_profiles(class_id, classes(name, order))")
+    .eq("school_id", schoolId)
+    .gte("date", thirtyKey);
+
+  const classAttMap = new Map<string, { name: string; order: number; present: number; total: number }>();
+  for (const r of classAttendanceRows ?? []) {
+    const sp = r.student_profiles as unknown as { class_id: string; classes: { name: string; order: number } } | null;
+    if (!sp?.classes) continue;
+    const key = sp.class_id;
+    if (!classAttMap.has(key)) classAttMap.set(key, { name: sp.classes.name, order: sp.classes.order, present: 0, total: 0 });
+    const entry = classAttMap.get(key)!;
+    entry.total++;
+    if (r.status === "present") entry.present++;
+  }
+  const classAttendance: ClassAttendance[] = Array.from(classAttMap.values())
+    .sort((a, b) => a.order - b.order)
+    .map((c) => ({
+      class: c.name.replace("Class ", "Cls "),
+      percent: c.total > 0 ? Math.round((c.present / c.total) * 100) : 0,
+    }));
+
+  // Discipline by month (last 6 months)
+  const disciplineByMonth = new Map<string, number>();
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date();
+    d.setMonth(d.getMonth() - i);
+    disciplineByMonth.set(MONTHS[d.getMonth()], 0);
+  }
+  for (const r of disciplineRows ?? []) {
+    const label = MONTHS[new Date(r.created_at).getMonth()];
+    if (disciplineByMonth.has(label)) disciplineByMonth.set(label, (disciplineByMonth.get(label) ?? 0) + 1);
+  }
+  const disciplineData: DisciplineMonth[] = Array.from(disciplineByMonth.entries())
+    .map(([month, incidents]) => ({ month, incidents }));
+
+  const formattedAnnouncements = (announcements ?? []).map((a) => ({
+    title: a.title,
+    date: new Date(a.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
+    type: announcementType(a.title),
+  }));
+
   const stats: { label: string; value: string | number; icon: LucideIcon; iconBg: string; iconColor: string }[] = [
-    { label: "Present Today", value: presentCount ?? 0, icon: UserCheck, iconBg: "bg-emerald-50", iconColor: "text-emerald-600" },
-    { label: "Absent Today", value: absentCount ?? 0, icon: UserX, iconBg: "bg-rose-50", iconColor: "text-rose-600" },
-    { label: "Total Students", value: studentCount ?? 0, icon: GraduationCap, iconBg: "bg-indigo-50", iconColor: "text-indigo-600" },
-    { label: "Discipline (Apr)", value: 12, icon: ShieldAlert, iconBg: "bg-amber-50", iconColor: "text-amber-600" },
+    { label: "Present Today",    value: presentCount ?? 0,         icon: UserCheck,   iconBg: "bg-emerald-50", iconColor: "text-emerald-600" },
+    { label: "Absent Today",     value: absentCount ?? 0,          icon: UserX,       iconBg: "bg-rose-50",    iconColor: "text-rose-600"    },
+    { label: "Total Students",   value: studentCount ?? 0,         icon: GraduationCap, iconBg: "bg-indigo-50", iconColor: "text-indigo-600" },
+    { label: "Discipline (Month)", value: disciplineThisMonth ?? 0, icon: ShieldAlert, iconBg: "bg-amber-50",   iconColor: "text-amber-600"   },
   ];
+
+  // suppress unused variable warning for classRows (used implicitly via classAttendanceRows)
+  void classRows;
 
   return (
     <div className="space-y-6">
@@ -129,40 +184,26 @@ export default async function PrincipalDashboard() {
       {/* Row 2 — Weekly Attendance Trend + Class Attendance */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2 transition-shadow duration-200 hover:shadow-md animate-fade-in-up" style={{ animationDelay: "240ms" }}>
-          <CardHeader>
-            <CardTitle>Weekly Attendance Trend</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <WeeklyAttendanceChart data={MOCK_WEEKLY_ATTENDANCE} />
-          </CardContent>
+          <CardHeader><CardTitle>Weekly Attendance Trend</CardTitle></CardHeader>
+          <CardContent><WeeklyAttendanceChart data={weeklyAttendance} /></CardContent>
         </Card>
         <Card className="transition-shadow duration-200 hover:shadow-md animate-fade-in-up" style={{ animationDelay: "300ms" }}>
-          <CardHeader>
-            <CardTitle>Attendance by Class</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ClassAttendanceChart data={MOCK_CLASS_ATTENDANCE} />
-          </CardContent>
+          <CardHeader><CardTitle>Attendance by Class</CardTitle></CardHeader>
+          <CardContent><ClassAttendanceChart data={classAttendance} /></CardContent>
         </Card>
       </div>
 
-      {/* Row 3 — Discipline Incidents + Announcements */}
+      {/* Row 3 — Discipline + Announcements */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card className="transition-shadow duration-200 hover:shadow-md animate-fade-in-up" style={{ animationDelay: "360ms" }}>
-          <CardHeader>
-            <CardTitle>Discipline Incidents</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <DisciplineChart data={MOCK_DISCIPLINE_DATA} />
-          </CardContent>
+          <CardHeader><CardTitle>Discipline Incidents</CardTitle></CardHeader>
+          <CardContent><DisciplineChart data={disciplineData} /></CardContent>
         </Card>
         <Card className="transition-shadow duration-200 hover:shadow-md animate-fade-in-up" style={{ animationDelay: "420ms" }}>
-          <CardHeader>
-            <CardTitle>Recent Announcements</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Recent Announcements</CardTitle></CardHeader>
           <CardContent>
             <ul className="divide-y divide-border">
-              {MOCK_ANNOUNCEMENTS.map((a) => (
+              {formattedAnnouncements.map((a) => (
                 <li key={a.title} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-foreground">{a.title}</p>
