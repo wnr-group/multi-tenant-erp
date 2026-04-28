@@ -1,114 +1,91 @@
 import { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  ActivityIndicator,
-} from "react-native";
+import { View, Text, ScrollView, TouchableOpacity } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { supabase } from "../../lib/supabase";
+import { useTheme } from "../../lib/theme";
+import { SectionHeader } from "../../components/SectionHeader";
+import { Skeleton, SkeletonCard } from "../../components/Skeleton";
 
-interface TimetableEntry {
-  id: string;
-  period_number: number;
-  start_time: string;
-  end_time: string;
-  subject: { name: string } | null;
-  section: { name: string } | null;
-}
-
-interface Profile {
-  full_name: string;
-  school_id: string;
-}
+interface TodayClass { id: string; period_number: number; subject: string; class_name: string; start_time: string; end_time: string }
 
 export default function TeacherDashboard() {
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [timetable, setTimetable] = useState<TimetableEntry[]>([]);
+  const theme = useTheme();
+  const router = useRouter();
+  const [name, setName] = useState("");
+  const [todayClasses, setTodayClasses] = useState<TodayClass[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function load() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        setLoading(false);
-        return;
-      }
+  useEffect(() => { loadDashboard(); }, []);
 
-      const { data: p } = await supabase
-        .from("profiles")
-        .select("full_name, school_id")
-        .eq("id", user.id)
-        .single();
+  async function loadDashboard() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const today = new Date().toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
+    const [profileRes, scheduleRes] = await Promise.all([
+      supabase.from("profiles").select("full_name").eq("id", user.id).single(),
+      supabase.from("timetable_periods").select("id, period_number, subject, class_name, start_time, end_time").eq("teacher_id", user.id).eq("day_of_week", today).order("period_number"),
+    ]);
+    setName(profileRes.data?.full_name ?? "Teacher");
+    setTodayClasses(scheduleRes.data ?? []);
+    setLoading(false);
+  }
 
-      setProfile(p);
-
-      // 1 = Mon … 7 = Sun (ISO weekday)
-      const today = new Date().getDay() || 7;
-
-      const { data: entries } = await supabase
-        .from("timetable")
-        .select(
-          "id, period_number, start_time, end_time, subjects(name), sections(name)"
-        )
-        .eq("teacher_id", user.id)
-        .eq("day_of_week", today)
-        .order("period_number", { ascending: true });
-
-      const mapped: TimetableEntry[] = (entries ?? []).map((e: Record<string, unknown>) => ({
-        id: e.id as string,
-        period_number: e.period_number as number,
-        start_time: e.start_time as string,
-        end_time: e.end_time as string,
-        subject: (e.subjects as { name: string } | null) ?? null,
-        section: (e.sections as { name: string } | null) ?? null,
-      }));
-
-      setTimetable(mapped);
-      setLoading(false);
-    }
-    load();
-  }, []);
-
-  const dayNames = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-  const todayName = dayNames[new Date().getDay() || 7];
-
-  if (loading) return <ActivityIndicator className="flex-1 mt-20" />;
+  const quickActions = [
+    { icon: "checkmark-circle-outline" as const, label: "Attendance", route: "/(teacher)/attendance" },
+    { icon: "book-outline" as const, label: "Homework", route: "/(teacher)/classes" },
+    { icon: "trophy-outline" as const, label: "Results", route: "/(teacher)/classes" },
+    { icon: "shield-outline" as const, label: "Discipline", route: "/(teacher)/discipline" },
+  ];
 
   return (
-    <ScrollView className="flex-1 bg-gray-50 p-5">
-      <Text className="mt-12 mb-1 text-2xl font-bold text-gray-900">
-        Hello, {profile?.full_name ?? "Teacher"} 👋
-      </Text>
-      <Text className="mb-5 text-sm text-gray-500">
-        {todayName}'s timetable
-      </Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+      <ScrollView contentContainerStyle={{ padding: 20, gap: 24 }} showsVerticalScrollIndicator={false}>
+        {loading ? <Skeleton height={28} width="60%" /> : (
+          <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>
+            Good morning, {name.split(" ")[0]} 👋
+          </Text>
+        )}
 
-      {timetable.length === 0 ? (
-        <View className="rounded-xl bg-white p-6 shadow-sm items-center">
-          <Text className="text-gray-400 text-sm">No classes scheduled for today.</Text>
+        <View>
+          <SectionHeader title="Today's Schedule" />
+          {loading ? (
+            <View style={{ gap: 8 }}><SkeletonCard /><SkeletonCard /></View>
+          ) : todayClasses.length === 0 ? (
+            <Text style={{ textAlign: "center", color: theme.textMuted, fontFamily: "Inter_400Regular", paddingVertical: 20 }}>No classes today</Text>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={{ flexDirection: "row", gap: 12 }}>
+                {todayClasses.map((c) => (
+                  <View key={c.id} style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 16, width: 140, gap: 8, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 2 }}>
+                    <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: theme.primaryLight, alignItems: "center", justifyContent: "center" }}>
+                      <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: theme.primary }}>P{c.period_number}</Text>
+                    </View>
+                    <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>{c.subject}</Text>
+                    <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: theme.textSecondary }}>{c.class_name}</Text>
+                    <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: theme.textMuted }}>{c.start_time} – {c.end_time}</Text>
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+          )}
         </View>
-      ) : (
-        timetable.map((entry) => (
-          <View key={entry.id} className="mb-3 rounded-xl bg-white p-4 shadow-sm">
-            <View className="flex-row items-center justify-between">
-              <Text className="font-semibold text-gray-800">
-                Period {entry.period_number}
-              </Text>
-              <Text className="text-xs text-gray-500">
-                {entry.start_time} – {entry.end_time}
-              </Text>
-            </View>
-            <Text className="mt-1 text-sm text-blue-600 font-medium">
-              {entry.subject?.name ?? "Unknown Subject"}
-            </Text>
-            <Text className="text-xs text-gray-500 mt-0.5">
-              Section: {entry.section?.name ?? "—"}
-            </Text>
+
+        <View>
+          <SectionHeader title="Quick Actions" />
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            {quickActions.map((action) => (
+              <TouchableOpacity key={action.label} onPress={() => router.push(action.route as any)} style={{ flex: 1, backgroundColor: theme.surface, borderRadius: 16, padding: 14, alignItems: "center", gap: 8, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 2 }} activeOpacity={0.7}>
+                <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: theme.primaryLight, alignItems: "center", justifyContent: "center" }}>
+                  <Ionicons name={action.icon} size={20} color={theme.primary} />
+                </View>
+                <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: theme.textSecondary, textAlign: "center" }}>{action.label}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
-        ))
-      )}
-    </ScrollView>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
