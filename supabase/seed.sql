@@ -451,3 +451,67 @@ CROSS JOIN (VALUES
   ('Hindi', 'HIN')
 ) AS sub(name, code)
 WHERE c.school_id = 'aaaaaaaa-0000-0000-0000-000000000001';
+
+-- ---------------------------------------------------------------
+-- TIMETABLE (~120 entries: 5 teachers × ~25 slots each)
+-- Each teacher teaches their subject across 3 sections, Mon-Fri
+-- Section 1 gets P1+P2, Section 2 gets P3+P4, Section 3 gets P5
+-- ---------------------------------------------------------------
+DO $$
+DECLARE
+  teacher_ids UUID[] := ARRAY[
+    'aaaaaaaa-0000-0000-0000-000000000013',
+    'aaaaaaaa-0000-0000-0000-000000000014',
+    'aaaaaaaa-0000-0000-0000-000000000015',
+    'aaaaaaaa-0000-0000-0000-000000000016',
+    'aaaaaaaa-0000-0000-0000-000000000017'
+  ];
+  subject_names TEXT[] := ARRAY['Mathematics', 'English', 'Science', 'Social Studies', 'Hindi'];
+  -- Flat array: 3 sections per teacher, 15 total (index = (t_idx-1)*3 + s_idx)
+  sec_ids UUID[] := ARRAY[
+    'cccccccc-0000-0000-0000-000000000801', 'cccccccc-0000-0000-0000-000000000802', 'cccccccc-0000-0000-0000-000000000701',
+    'cccccccc-0000-0000-0000-000000000101', 'cccccccc-0000-0000-0000-000000000102', 'cccccccc-0000-0000-0000-000000000201',
+    'cccccccc-0000-0000-0000-000000000301', 'cccccccc-0000-0000-0000-000000000302', 'cccccccc-0000-0000-0000-000000000401',
+    'cccccccc-0000-0000-0000-000000000501', 'cccccccc-0000-0000-0000-000000000502', 'cccccccc-0000-0000-0000-000000000601',
+    'cccccccc-0000-0000-0000-000000000701', 'cccccccc-0000-0000-0000-000000000702', 'cccccccc-0000-0000-0000-000000000901'
+  ];
+  t_idx INT;
+  s_idx INT;
+  d INT;
+  p INT;
+  sec_id UUID;
+  sub_id UUID;
+  cls_id UUID;
+  periods INT[];
+BEGIN
+  FOR t_idx IN 1..5 LOOP
+    FOR s_idx IN 1..3 LOOP
+      sec_id := sec_ids[(t_idx - 1) * 3 + s_idx];
+      SELECT class_id INTO cls_id FROM public.sections WHERE id = sec_id;
+      SELECT id INTO sub_id FROM public.subjects
+        WHERE school_id = 'aaaaaaaa-0000-0000-0000-000000000001'
+          AND class_id = cls_id
+          AND name = subject_names[t_idx]
+        LIMIT 1;
+      -- Section 1: P1,P2 | Section 2: P3,P4 | Section 3: P5
+      IF s_idx = 1 THEN periods := ARRAY[1, 2];
+      ELSIF s_idx = 2 THEN periods := ARRAY[3, 4];
+      ELSE periods := ARRAY[5];
+      END IF;
+      FOR d IN 1..5 LOOP
+        FOREACH p IN ARRAY periods LOOP
+          INSERT INTO public.timetable (school_id, teacher_id, section_id, subject_id, day_of_week, period)
+          VALUES (
+            'aaaaaaaa-0000-0000-0000-000000000001',
+            teacher_ids[t_idx],
+            sec_id,
+            sub_id,
+            d,
+            p
+          )
+          ON CONFLICT (section_id, day_of_week, period) DO NOTHING;
+        END LOOP;
+      END LOOP;
+    END LOOP;
+  END LOOP;
+END $$;
