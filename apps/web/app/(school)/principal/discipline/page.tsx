@@ -18,21 +18,20 @@ export default async function DisciplinePage() {
   const { data: records } = await supabase
     .from("discipline_records")
     .select(
-      "id, category, severity, description, date, student:student_profiles(profile:profiles(full_name))"
+      "id, category, severity, description, created_at, student:student_profiles(full_name)"
     )
     .eq("school_id", schoolId)
-    .order("date", { ascending: false });
+    .order("created_at", { ascending: false });
 
   const rows = (records ?? []).map((r) => {
-    const sp = r.student as unknown as { profile: { full_name: string } | null } | null;
-    const studentName = sp?.profile?.full_name ?? "—";
+    const sp = r.student as unknown as { full_name: string } | null;
     return {
       id: r.id,
-      student_name: studentName,
+      student_name: sp?.full_name ?? "—",
       category: r.category ?? "—",
       severity: r.severity,
       description: r.description ?? "—",
-      date: r.date ? new Date(r.date).toLocaleDateString() : "—",
+      date: r.created_at ? new Date(r.created_at).toLocaleDateString() : "—",
     };
   });
 
