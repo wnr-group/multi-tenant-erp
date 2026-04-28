@@ -101,14 +101,14 @@ export function SectionSwitcher({
                 value={section.id}
                 className="bg-gray-900 text-white"
               >
-                {section.name}
+                {section.className} – Section {section.name}
               </option>
             ))}
           </optgroup>
         ))}
       </select>
 
-      {exitUrl && !isTeacher && (
+      {exitUrl && activeSectionId && !isTeacher && (
         <button
           onClick={handleExit}
           className="w-full rounded-lg px-2.5 py-1.5 text-left text-xs font-medium transition-colors text-amber-300 hover:bg-white/[0.08]"
