@@ -432,3 +432,22 @@ BEGIN
     i := i + 2;
   END LOOP;
 END $$;
+
+-- ---------------------------------------------------------------
+-- SUBJECTS (5 per class = 60 total)
+-- ---------------------------------------------------------------
+INSERT INTO public.subjects (school_id, class_id, name, code)
+SELECT
+  'aaaaaaaa-0000-0000-0000-000000000001',
+  c.id,
+  sub.name,
+  sub.code
+FROM public.classes c
+CROSS JOIN (VALUES
+  ('Mathematics', 'MATH'),
+  ('English', 'ENG'),
+  ('Science', 'SCI'),
+  ('Social Studies', 'SST'),
+  ('Hindi', 'HIN')
+) AS sub(name, code)
+WHERE c.school_id = 'aaaaaaaa-0000-0000-0000-000000000001';
