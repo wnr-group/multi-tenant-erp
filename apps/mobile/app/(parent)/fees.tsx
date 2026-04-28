@@ -50,11 +50,12 @@ export default function ParentFees() {
       key: process.env.EXPO_PUBLIC_RAZORPAY_KEY_ID ?? "rzp_test_placeholder",
       amount: amountPaise,
       name: "School ERP",
+      order_id: "",
       prefill: { email: "", contact: "", name: "" },
       theme: { color: theme.primary },
     };
     try {
-      const data = await RazorpayCheckout.open(options);
+      const data = await RazorpayCheckout.open(options as any);
       await supabase.from("fee_payments").update({ status: "paid", amount_paid: payment.amount_due, paid_at: new Date().toISOString(), transaction_id: data.razorpay_payment_id }).eq("id", payment.id);
       loadFees();
     } catch (e: any) {
