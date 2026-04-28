@@ -230,3 +230,89 @@ BEGIN
     END LOOP;
   END LOOP;
 END $$;
+
+-- ---------------------------------------------------------------
+-- FEE STRUCTURES (tiered: Classes 1-4 ₹3000, 5-8 ₹5000, 9-12 ₹7500)
+-- One structure per class, fee_type = 'Tuition'
+-- ---------------------------------------------------------------
+INSERT INTO public.fee_structures (id, school_id, class_id, academic_year_id, fee_type, amount, due_date)
+SELECT
+  gen_random_uuid(),
+  'aaaaaaaa-0000-0000-0000-000000000001',
+  c.id,
+  'aaaaaaaa-0000-0000-0000-000000000002',
+  'Tuition',
+  CASE
+    WHEN c."order" <= 4 THEN 3000
+    WHEN c."order" <= 8 THEN 5000
+    ELSE 7500
+  END,
+  NULL
+FROM public.classes c
+WHERE c.school_id = 'aaaaaaaa-0000-0000-0000-000000000001';
+
+-- ---------------------------------------------------------------
+-- FEE PAYMENTS (6 months: Nov 2025 – Apr 2026)
+-- ~90% paid per month, 10% pending
+-- payment_date = 5th of each month for paid records
+-- ---------------------------------------------------------------
+DO $$
+DECLARE
+  m DATE;
+  sp RECORD;
+  fs_id UUID;
+  fs_amount NUMERIC;
+  rnd FLOAT;
+BEGIN
+  FOR m IN
+    SELECT generate_series::DATE FROM generate_series(
+      '2025-11-01'::DATE,
+      '2026-04-01'::DATE,
+      INTERVAL '1 month'
+    )
+  LOOP
+    FOR sp IN
+      SELECT s.id AS student_id, s.class_id
+      FROM public.student_profiles s
+      WHERE s.school_id = 'aaaaaaaa-0000-0000-0000-000000000001'
+    LOOP
+      SELECT fs.id, fs.amount INTO fs_id, fs_amount
+      FROM public.fee_structures fs
+      WHERE fs.class_id = sp.class_id
+        AND fs.school_id = 'aaaaaaaa-0000-0000-0000-000000000001'
+      LIMIT 1;
+
+      rnd := random();
+
+      IF rnd < 0.90 THEN
+        -- Paid
+        INSERT INTO public.fee_payments (
+          school_id, student_id, fee_structure_id,
+          amount_paid, payment_date, payment_method, status
+        ) VALUES (
+          'aaaaaaaa-0000-0000-0000-000000000001',
+          sp.student_id,
+          fs_id,
+          fs_amount,
+          m + INTERVAL '4 days', -- 5th of month
+          'cash',
+          'paid'
+        );
+      ELSE
+        -- Pending
+        INSERT INTO public.fee_payments (
+          school_id, student_id, fee_structure_id,
+          amount_paid, payment_date, payment_method, status
+        ) VALUES (
+          'aaaaaaaa-0000-0000-0000-000000000001',
+          sp.student_id,
+          fs_id,
+          0,
+          NULL,
+          NULL,
+          'pending'
+        );
+      END IF;
+    END LOOP;
+  END LOOP;
+END $$;
