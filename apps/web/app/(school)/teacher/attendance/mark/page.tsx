@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
+import { getActiveSection } from "@/lib/section-context";
 import { AttendanceMarkForm } from "./attendance-mark-form";
 
 export default async function AttendanceMarkPage({
@@ -7,7 +8,9 @@ export default async function AttendanceMarkPage({
 }: {
   searchParams: Promise<{ sectionId?: string; date?: string }>;
 }) {
-  const { sectionId, date } = await searchParams;
+  const { sectionId: paramSectionId, date } = await searchParams;
+  const activeSectionId = await getActiveSection();
+  const sectionId = paramSectionId ?? activeSectionId;
 
   if (!sectionId || !date) {
     return (
