@@ -22,7 +22,11 @@ export default function ParentAttendance() {
   async function loadAttendance() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { data } = await supabase.from("attendance_records").select("date, status").eq("student_id", user.id).order("date");
+    // Look up parent's student
+    const { data: sp } = await supabase.from("student_profiles").select("profile_id").eq("parent_profile_id", user.id).single();
+    const studentId = sp?.profile_id;
+    if (!studentId) { setLoading(false); return; }
+    const { data } = await supabase.from("attendance_records").select("date, status").eq("student_id", studentId).order("date");
     setRecords((data as AttendanceRecord[]) ?? []);
     setLoading(false);
   }

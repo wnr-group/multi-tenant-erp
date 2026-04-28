@@ -16,7 +16,7 @@ export default function ParentMore() {
   const theme = useTheme();
   const [section, setSection] = useState<Section>("menu");
   const [profile, setProfile] = useState<{ full_name: string; email: string } | null>(null);
-  const [announcements, setAnnouncements] = useState<{ id: string; title: string; body: string; created_at: string }[]>([]);
+  const [announcements, setAnnouncements] = useState<{ id: string; title: string; content: string; created_at: string }[]>([]);
   const [discipline, setDiscipline] = useState<{ id: string; incident_date: string; description: string; action_taken: string }[]>([]);
   const [feedback, setFeedback] = useState("");
   const [loading, setLoading] = useState(false);
@@ -33,7 +33,7 @@ export default function ParentMore() {
 
   async function loadAnnouncements() {
     setLoading(true);
-    const { data } = await supabase.from("announcements").select("id, title, body, created_at").order("created_at", { ascending: false }).limit(20);
+    const { data } = await supabase.from("announcements").select("id, title, content, created_at").order("created_at", { ascending: false }).limit(20);
     setAnnouncements(data ?? []);
     setLoading(false);
   }
@@ -42,8 +42,17 @@ export default function ParentMore() {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
-    const { data } = await supabase.from("discipline_records").select("id, incident_date, description, action_taken").eq("student_id", user.id).order("incident_date", { ascending: false });
-    setDiscipline(data ?? []);
+    // Look up parent's student
+    const { data: sp } = await supabase.from("student_profiles").select("profile_id").eq("parent_profile_id", user.id).single();
+    const studentId = sp?.profile_id;
+    if (!studentId) { setDiscipline([]); setLoading(false); return; }
+    const { data } = await supabase.from("discipline_records").select("id, created_at, description, severity").eq("student_id", studentId).order("created_at", { ascending: false });
+    setDiscipline((data ?? []).map((r: any) => ({
+      id: r.id,
+      incident_date: r.created_at,
+      description: r.description,
+      action_taken: r.severity,
+    })));
     setLoading(false);
   }
 
@@ -78,7 +87,7 @@ export default function ParentMore() {
             announcements.map((a) => (
               <View key={a.id} style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 16, gap: 8 }}>
                 <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>{a.title}</Text>
-                <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: theme.textSecondary }}>{a.body}</Text>
+                <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: theme.textSecondary }}>{a.content}</Text>
                 <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: theme.textMuted }}>{new Date(a.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</Text>
               </View>
             ))

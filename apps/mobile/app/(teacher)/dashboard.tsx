@@ -25,10 +25,17 @@ export default function TeacherDashboard() {
     const today = new Date().toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
     const [profileRes, scheduleRes] = await Promise.all([
       supabase.from("profiles").select("full_name").eq("id", user.id).single(),
-      supabase.from("timetable_periods").select("id, period_number, subject, class_name, start_time, end_time").eq("teacher_id", user.id).eq("day_of_week", today).order("period_number"),
+      supabase.from("timetable").select("id, period, subjects(name), sections(name, classes(name))").eq("teacher_id", user.id).eq("day_of_week", today).order("period"),
     ]);
     setName(profileRes.data?.full_name ?? "Teacher");
-    setTodayClasses(scheduleRes.data ?? []);
+    setTodayClasses((scheduleRes.data ?? []).map((r: any) => ({
+      id: r.id,
+      period_number: r.period,
+      subject: r.subjects?.name ?? "",
+      class_name: r.sections ? `${r.sections.classes?.name ?? ""} ${r.sections.name ?? ""}`.trim() : "",
+      start_time: "",
+      end_time: "",
+    })));
     setLoading(false);
   }
 
@@ -64,7 +71,7 @@ export default function TeacherDashboard() {
                     </View>
                     <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>{c.subject}</Text>
                     <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: theme.textSecondary }}>{c.class_name}</Text>
-                    <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: theme.textMuted }}>{c.start_time} – {c.end_time}</Text>
+                    {c.start_time && c.end_time ? <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: theme.textMuted }}>{c.start_time} – {c.end_time}</Text> : null}
                   </View>
                 ))}
               </View>

@@ -10,7 +10,7 @@ import { SkeletonCard } from "../../components/Skeleton";
 type Tab = "homework" | "results";
 
 interface HomeworkItem { id: string; title: string; subject: string; due_date: string; class_name: string }
-interface ResultItem { id: string; student_name: string; subject: string; marks_obtained: number; total_marks: number; grade: string }
+interface ResultItem { id: string; student_name: string; subject: string; marks_obtained: number; max_marks: number; grade: string }
 
 export default function TeacherClasses() {
   const theme = useTheme();
@@ -29,12 +29,25 @@ export default function TeacherClasses() {
     if (!user) return;
 
     const [hwRes, resultsRes] = await Promise.all([
-      supabase.from("homework_assignments").select("id, title, subject, due_date, class_name").eq("teacher_id", user.id).order("due_date", { ascending: false }).limit(20),
-      supabase.from("results").select("id, subject, marks_obtained, total_marks, grade, profiles(full_name)").eq("teacher_id", user.id).order("created_at", { ascending: false }).limit(30),
+      supabase.from("homework").select("id, title, due_date, subjects(name), sections(name, classes(name))").eq("teacher_id", user.id).order("due_date", { ascending: false }).limit(20),
+      supabase.from("exam_results").select("id, marks_obtained, max_marks, grade, subjects(name), student_profiles!student_id(full_name)").eq("teacher_id", user.id).order("created_at", { ascending: false }).limit(30),
     ]);
 
-    setHomework(hwRes.data ?? []);
-    setResults((resultsRes.data ?? []).map((r: any) => ({ ...r, student_name: r.profiles?.full_name ?? "Student" })));
+    setHomework((hwRes.data ?? []).map((r: any) => ({
+      id: r.id,
+      title: r.title,
+      subject: r.subjects?.name ?? "",
+      due_date: r.due_date,
+      class_name: r.sections ? `${r.sections.classes?.name ?? ""} ${r.sections.name ?? ""}`.trim() : "",
+    })));
+    setResults((resultsRes.data ?? []).map((r: any) => ({
+      id: r.id,
+      student_name: r.student_profiles?.full_name ?? "Student",
+      subject: r.subjects?.name ?? "",
+      marks_obtained: r.marks_obtained,
+      max_marks: r.max_marks,
+      grade: r.grade,
+    })));
     setLoading(false);
   }
 
@@ -45,14 +58,18 @@ export default function TeacherClasses() {
     }
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
-    const { data: roleData } = await supabase.from("user_roles").select("class_id, school_id").eq("user_id", user?.id).eq("is_active", true).single();
-    await supabase.from("homework_assignments").insert({
+    const { data: roleData } = await supabase.from("user_roles").select("school_id").eq("user_id", user?.id).eq("is_active", true).single();
+    const { data: tp } = await supabase.from("teacher_profiles").select("class_teacher_of").eq("profile_id", user?.id).single();
+    const { data: sectionData } = tp?.class_teacher_of
+      ? await supabase.from("sections").select("id, class_id").eq("id", tp.class_teacher_of).single()
+      : { data: null };
+    await supabase.from("homework").insert({
       title: newHW.title.trim(),
-      subject: newHW.subject.trim(),
       due_date: newHW.due_date.trim(),
       description: newHW.description.trim(),
       teacher_id: user?.id,
-      class_id: roleData?.class_id,
+      class_id: sectionData?.class_id,
+      section_id: tp?.class_teacher_of,
       school_id: roleData?.school_id,
     });
     setSaving(false);
@@ -103,7 +120,7 @@ export default function TeacherClasses() {
                 </View>
                 <View style={{ alignItems: "flex-end" }}>
                   <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: theme.primary }}>{r.grade}</Text>
-                  <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: theme.textMuted }}>{r.marks_obtained}/{r.total_marks}</Text>
+                  <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: theme.textMuted }}>{r.marks_obtained}/{r.max_marks}</Text>
                 </View>
               </View>
             ))

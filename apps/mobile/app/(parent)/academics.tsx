@@ -7,7 +7,7 @@ import { StatusBadge } from "../../components/StatusBadge";
 import { SectionHeader } from "../../components/SectionHeader";
 import { SkeletonCard } from "../../components/Skeleton";
 
-interface Result { id: string; subject: string; marks_obtained: number; total_marks: number; grade: string; term: string }
+interface Result { id: string; subject: string; marks_obtained: number; max_marks: number; grade: string; term: string }
 interface Homework { id: string; title: string; subject: string; due_date: string; status: string }
 
 export default function ParentAcademics() {
@@ -22,12 +22,30 @@ export default function ParentAcademics() {
   async function loadData() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+    // Look up parent's student
+    const { data: sp } = await supabase.from("student_profiles").select("profile_id").eq("parent_profile_id", user.id).single();
+    const studentId = sp?.profile_id;
     const [resultsRes, homeworkRes] = await Promise.all([
-      supabase.from("results").select("id, subject, marks_obtained, total_marks, grade, term").eq("student_id", user.id).order("term"),
-      supabase.from("homework_assignments").select("id, title, subject, due_date, status").order("due_date", { ascending: false }).limit(20),
+      studentId
+        ? supabase.from("exam_results").select("id, marks_obtained, max_marks, grade, subjects(name), exams(name)").eq("student_id", studentId).order("created_at", { ascending: false })
+        : Promise.resolve({ data: [] }),
+      supabase.from("homework").select("id, title, due_date, subjects(name)").order("due_date", { ascending: false }).limit(20),
     ]);
-    setResults(resultsRes.data ?? []);
-    setHomework(homeworkRes.data ?? []);
+    setResults((resultsRes.data ?? []).map((r: any) => ({
+      id: r.id,
+      subject: r.subjects?.name ?? "",
+      marks_obtained: r.marks_obtained,
+      max_marks: r.max_marks,
+      grade: r.grade,
+      term: r.exams?.name ?? "",
+    })));
+    setHomework((homeworkRes.data ?? []).map((h: any) => ({
+      id: h.id,
+      title: h.title,
+      subject: h.subjects?.name ?? "",
+      due_date: h.due_date,
+      status: new Date(h.due_date) < new Date() ? "overdue" : "pending",
+    })));
     setLoading(false);
   }
 
@@ -59,7 +77,7 @@ export default function ParentAcademics() {
                 </View>
                 <View style={{ alignItems: "flex-end", gap: 4 }}>
                   <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: theme.primary }}>{r.grade}</Text>
-                  <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: theme.textMuted }}>{r.marks_obtained}/{r.total_marks}</Text>
+                  <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: theme.textMuted }}>{r.marks_obtained}/{r.max_marks}</Text>
                 </View>
               </View>
             ))}

@@ -33,8 +33,24 @@ export default function ParentFees() {
   async function loadFees() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { data } = await supabase.from("fee_payments").select("id, fee_type, amount_due, amount_paid, due_date, status, paid_at, transaction_id").eq("student_id", user.id).order("due_date", { ascending: false });
-    setPayments((data as FeePayment[]) ?? []);
+    // Look up parent's student
+    const { data: sp } = await supabase.from("student_profiles").select("profile_id").eq("parent_profile_id", user.id).single();
+    const studentId = sp?.profile_id;
+    if (!studentId) { setLoading(false); return; }
+    const { data } = await supabase.from("fee_payments")
+      .select("id, amount_paid, payment_date, payment_method, receipt_number, status, razorpay_order_id, fee_structures(fee_type, amount, due_date)")
+      .eq("student_id", studentId)
+      .order("created_at", { ascending: false });
+    setPayments((data ?? []).map((r: any) => ({
+      id: r.id,
+      fee_type: r.fee_structures?.fee_type ?? "",
+      amount_due: r.fee_structures?.amount ?? 0,
+      amount_paid: r.amount_paid,
+      due_date: r.fee_structures?.due_date ?? "",
+      status: r.status,
+      paid_at: r.payment_date,
+      transaction_id: r.receipt_number,
+    })));
     setLoading(false);
   }
 
@@ -56,7 +72,7 @@ export default function ParentFees() {
     };
     try {
       const data = await RazorpayCheckout.open(options as any);
-      await supabase.from("fee_payments").update({ status: "paid", amount_paid: payment.amount_due, paid_at: new Date().toISOString(), transaction_id: data.razorpay_payment_id }).eq("id", payment.id);
+      await supabase.from("fee_payments").update({ status: "paid", amount_paid: payment.amount_due, payment_date: new Date().toISOString(), receipt_number: data.razorpay_payment_id }).eq("id", payment.id);
       loadFees();
     } catch (e: any) {
       if (e?.code !== "PAYMENT_CANCELLED") Alert.alert("Payment failed", e?.description ?? "Try again");

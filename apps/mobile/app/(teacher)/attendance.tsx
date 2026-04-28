@@ -28,28 +28,28 @@ export default function TeacherAttendance() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data: roleData } = await supabase.from("user_roles").select("class_id").eq("user_id", user.id).eq("is_active", true).single();
-    const cid = roleData?.class_id;
-    setClassId(cid);
+    const { data: tp } = await supabase.from("teacher_profiles").select("class_teacher_of").eq("profile_id", user.id).single();
+    const sectionId = tp?.class_teacher_of;
+    setClassId(sectionId);
 
-    if (!cid) { setLoading(false); return; }
+    if (!sectionId) { setLoading(false); return; }
 
     const { data: studentData } = await supabase
       .from("student_profiles")
-      .select("student_id, roll_number, profiles(full_name)")
-      .eq("class_id", cid)
+      .select("profile_id, roll_number, full_name")
+      .eq("section_id", sectionId)
       .order("roll_number");
 
     const studentList: Student[] = (studentData ?? []).map((s: any) => ({
-      id: s.student_id,
-      full_name: s.profiles?.full_name ?? "Student",
+      id: s.profile_id,
+      full_name: s.full_name ?? "Student",
       roll_number: s.roll_number,
     }));
 
     const { data: existing } = await supabase
       .from("attendance_records")
       .select("student_id, status")
-      .eq("class_id", cid)
+      .eq("section_id", sectionId)
       .eq("date", today);
 
     const existingMap = Object.fromEntries((existing ?? []).map((r: any) => [r.student_id, r.status as AttendanceStatus]));
@@ -78,7 +78,7 @@ export default function TeacherAttendance() {
     setSaving(true);
     const records = students.map((s) => ({
       student_id: s.id,
-      class_id: classId,
+      section_id: classId,
       date: today,
       status: statuses[s.id] ?? "present",
     }));

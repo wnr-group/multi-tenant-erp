@@ -7,7 +7,7 @@ import { useTheme } from "../../lib/theme";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { SkeletonCard } from "../../components/Skeleton";
 
-interface DisciplineRecord { id: string; student_name: string; incident_date: string; description: string; action_taken: string }
+interface DisciplineRecord { id: string; student_name: string; incident_date: string; description: string; action_taken: string; category: string }
 
 export default function TeacherDiscipline() {
   const theme = useTheme();
@@ -22,8 +22,15 @@ export default function TeacherDiscipline() {
   async function loadRecords() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { data } = await supabase.from("discipline_records").select("id, incident_date, description, action_taken, profiles(full_name)").eq("teacher_id", user.id).order("incident_date", { ascending: false }).limit(30);
-    setRecords((data ?? []).map((r: any) => ({ ...r, student_name: r.profiles?.full_name ?? "Student" })));
+    const { data } = await supabase.from("discipline_records").select("id, created_at, description, severity, category, student_profiles!student_id(full_name)").eq("recorded_by", user.id).order("created_at", { ascending: false }).limit(30);
+    setRecords((data ?? []).map((r: any) => ({
+      id: r.id,
+      student_name: r.student_profiles?.full_name ?? "Student",
+      incident_date: r.created_at,
+      description: r.description,
+      action_taken: r.severity,
+      category: r.category ?? "",
+    })));
     setLoading(false);
   }
 
@@ -34,12 +41,12 @@ export default function TeacherDiscipline() {
     }
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
-    const { data: roleData } = await supabase.from("user_roles").select("class_id, school_id").eq("user_id", user?.id).eq("is_active", true).single();
+    const { data: roleData } = await supabase.from("user_roles").select("school_id").eq("user_id", user?.id).eq("is_active", true).single();
     await supabase.from("discipline_records").insert({
       description: form.description.trim(),
-      action_taken: form.action_taken.trim(),
-      incident_date: new Date().toISOString().split("T")[0],
-      teacher_id: user?.id,
+      severity: form.action_taken.trim(),
+      category: "general",
+      recorded_by: user?.id,
       school_id: roleData?.school_id,
     });
     setSaving(false);

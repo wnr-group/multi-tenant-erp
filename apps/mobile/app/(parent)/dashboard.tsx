@@ -28,18 +28,23 @@ export default function ParentDashboard() {
   async function loadDashboard() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const [profileRes, attendanceRes, feesRes, homeworkRes, announcementsRes] = await Promise.all([
-      supabase.from("profiles").select("full_name").eq("id", user.id).single(),
-      supabase.from("attendance_records").select("status").eq("student_id", user.id),
-      supabase.from("fee_payments").select("amount_due, amount_paid").eq("student_id", user.id).eq("status", "pending"),
-      supabase.from("homework_assignments").select("id").gte("due_date", new Date().toISOString().split("T")[0]),
+
+    // Look up parent's student
+    const { data: sp } = await supabase.from("student_profiles").select("profile_id, section_id, class_id, full_name").eq("parent_profile_id", user.id).single();
+    const studentId = sp?.profile_id;
+    const studentName = sp?.full_name ?? "Student";
+
+    const [attendanceRes, feesRes, homeworkRes, announcementsRes] = await Promise.all([
+      studentId ? supabase.from("attendance_records").select("status").eq("student_id", studentId) : Promise.resolve({ data: [] }),
+      studentId ? supabase.from("fee_payments").select("amount_paid, fee_structures(amount)").eq("student_id", studentId).eq("status", "pending") : Promise.resolve({ data: [] }),
+      supabase.from("homework").select("id").gte("due_date", new Date().toISOString().split("T")[0]),
       supabase.from("announcements").select("id, title, created_at").order("created_at", { ascending: false }).limit(3),
     ]);
     const totalDays = attendanceRes.data?.length ?? 0;
-    const presentDays = attendanceRes.data?.filter((r) => r.status === "present").length ?? 0;
-    const pendingFees = feesRes.data?.reduce((sum, r) => sum + (r.amount_due - r.amount_paid), 0) ?? 0;
+    const presentDays = attendanceRes.data?.filter((r: any) => r.status === "present").length ?? 0;
+    const pendingFees = (feesRes.data ?? []).reduce((sum: number, r: any) => sum + ((r.fee_structures?.amount ?? 0) - r.amount_paid), 0);
     setData({
-      name: profileRes.data?.full_name ?? "Student",
+      name: studentName,
       attendancePct: totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0,
       pendingFees,
       homeworkDue: homeworkRes.data?.length ?? 0,
