@@ -1,223 +1,165 @@
-import { useEffect, useState, useCallback } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-} from "react-native";
+import { useEffect, useState } from "react";
+import { View, Text, ScrollView, TouchableOpacity, Modal, Alert } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import RazorpayCheckout from "react-native-razorpay";
-import Constants from "expo-constants";
 import { supabase } from "../../lib/supabase";
+import { useTheme } from "../../lib/theme";
+import { PrimaryButton } from "../../components/PrimaryButton";
+import { StatusBadge } from "../../components/StatusBadge";
+import { SectionHeader } from "../../components/SectionHeader";
+import { SkeletonCard } from "../../components/Skeleton";
 
-interface FeeRow {
+interface FeePayment {
   id: string;
-  feeStructureId: string;
-  feeType: string;
-  amount: number;
-  paid: number;
-  status: string;
-  dueDate: string | null;
+  fee_type: string;
+  amount_due: number;
+  amount_paid: number;
+  due_date: string;
+  status: "paid" | "pending" | "overdue";
+  paid_at?: string;
+  transaction_id?: string;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  paid: "text-green-600",
-  partial: "text-yellow-600",
-  overdue: "text-red-600",
-};
-
-const SUPABASE_URL = (Constants.expoConfig?.extra?.supabaseUrl as string) ?? "";
-const RAZORPAY_KEY_ID = (Constants.expoConfig?.extra?.razorpayKeyId as string) ?? "";
-
 export default function ParentFees() {
-  const [fees, setFees] = useState<FeeRow[]>([]);
+  const theme = useTheme();
+  const [payments, setPayments] = useState<FeePayment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [paying, setPaying] = useState<string | null>(null);
-  const [profile, setProfile] = useState<{
-    email: string;
-    phone: string | null;
-    full_name: string;
-  } | null>(null);
+  const [receipt, setReceipt] = useState<FeePayment | null>(null);
+  const [payingId, setPayingId] = useState<string | null>(null);
 
-  const loadFees = useCallback(async () => {
+  useEffect(() => { loadFees(); }, []);
+
+  async function loadFees() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-
-    const { data: p } = await supabase
-      .from("profiles")
-      .select("full_name, email, phone")
-      .eq("id", user.id)
-      .single();
-    setProfile(p);
-
-    const { data: sp } = await supabase
-      .from("student_profiles")
-      .select("class_id, school_id")
-      .eq("profile_id", user.id)
-      .single();
-
-    if (!sp) {
-      setLoading(false);
-      return;
-    }
-
-    const { data: structures } = await supabase
-      .from("fee_structures")
-      .select("id, fee_type, amount, due_date")
-      .eq("school_id", sp.school_id)
-      .eq("class_id", sp.class_id);
-
-    const { data: payments } = await supabase
-      .from("fee_payments")
-      .select("fee_structure_id, amount_paid, status")
-      .eq("student_id", user.id);
-
-    const paymentMap = new Map<string, { paid: number; status: string }>();
-    for (const pay of payments ?? []) {
-      const existing = paymentMap.get(pay.fee_structure_id);
-      const paid = Number(pay.amount_paid);
-      if (!existing || pay.status === "paid") {
-        paymentMap.set(pay.fee_structure_id, { paid, status: pay.status });
-      }
-    }
-
-    const rows: FeeRow[] = (structures ?? []).map((fs) => {
-      const payment = paymentMap.get(fs.id);
-      return {
-        id: fs.id,
-        feeStructureId: fs.id,
-        feeType: fs.fee_type,
-        amount: Number(fs.amount),
-        paid: payment?.paid ?? 0,
-        status: payment?.status ?? "overdue",
-        dueDate: fs.due_date,
-      };
-    });
-
-    setFees(rows);
+    const { data } = await supabase.from("fee_payments").select("id, fee_type, amount_due, amount_paid, due_date, status, paid_at, transaction_id").eq("student_id", user.id).order("due_date", { ascending: false });
+    setPayments((data as FeePayment[]) ?? []);
     setLoading(false);
-  }, []);
+  }
 
-  useEffect(() => {
-    loadFees();
-  }, [loadFees]);
+  const totalDue = payments.filter((p) => p.status !== "paid").reduce((sum, p) => sum + (p.amount_due - p.amount_paid), 0);
+  const nextDue = payments.filter((p) => p.status === "pending").sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())[0];
 
-  async function handlePayNow(fee: FeeRow) {
-    setPaying(fee.id);
+  async function handlePayNow(payment: FeePayment) {
+    setPayingId(payment.id);
+    const amountPaise = (payment.amount_due - payment.amount_paid) * 100;
+    const options = {
+      description: payment.fee_type,
+      currency: "INR",
+      key: process.env.EXPO_PUBLIC_RAZORPAY_KEY_ID ?? "rzp_test_placeholder",
+      amount: amountPaise,
+      name: "School ERP",
+      prefill: { email: "", contact: "", name: "" },
+      theme: { color: theme.primary },
+    };
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: { session } } = await supabase.auth.getSession();
-
-      const res = await fetch(
-        `${SUPABASE_URL}/functions/v1/create-razorpay-order`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.access_token}`,
-          },
-          body: JSON.stringify({
-            feeStructureId: fee.feeStructureId,
-            studentId: user.id,
-          }),
-        }
-      );
-
-      if (!res.ok) {
-        const err = await res.json();
-        Alert.alert("Error", err.error ?? "Could not create order");
-        setPaying(null);
-        return;
-      }
-
-      const order = (await res.json()) as {
-        orderId: string;
-        amount: number;
-        currency: string;
-        feeType: string;
-      };
-
-      const options = {
-        description: order.feeType,
-        currency: order.currency,
-        key: RAZORPAY_KEY_ID,
-        amount: order.amount,
-        order_id: order.orderId,
-        name: "School Fee Payment",
-        prefill: {
-          email: profile?.email ?? "",
-          contact: profile?.phone ?? "",
-          name: profile?.full_name ?? "",
-        },
-        theme: { color: "#2563EB" },
-      };
-
-      const paymentData = await RazorpayCheckout.open(options);
-      Alert.alert(
-        "Payment Successful",
-        `Payment ID: ${paymentData.razorpay_payment_id}`
-      );
-
-      setTimeout(() => { loadFees(); }, 2000);
-    } catch (error: unknown) {
-      const err = error as { description?: string; code?: number };
-      if (err.code === 2) {
-        Alert.alert("Cancelled", "Payment was cancelled.");
-      } else {
-        Alert.alert("Payment Failed", err.description ?? "Something went wrong");
-      }
+      const data = await RazorpayCheckout.open(options);
+      await supabase.from("fee_payments").update({ status: "paid", amount_paid: payment.amount_due, paid_at: new Date().toISOString(), transaction_id: data.razorpay_payment_id }).eq("id", payment.id);
+      loadFees();
+    } catch (e: any) {
+      if (e?.code !== "PAYMENT_CANCELLED") Alert.alert("Payment failed", e?.description ?? "Try again");
     } finally {
-      setPaying(null);
+      setPayingId(null);
     }
   }
 
-  if (loading) return <ActivityIndicator className="flex-1 mt-20" />;
-
   return (
-    <ScrollView className="flex-1 bg-gray-50 p-5">
-      <Text className="mt-12 mb-5 text-2xl font-bold text-gray-900">Fees</Text>
-      {fees.map((f) => {
-        const remaining = f.amount - f.paid;
-        const isPaying = paying === f.id;
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+      <ScrollView contentContainerStyle={{ padding: 20, gap: 20 }} showsVerticalScrollIndicator={false}>
+        <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>Fees</Text>
 
-        return (
-          <View key={f.id} className="mb-3 rounded-xl bg-white p-4 shadow-sm">
-            <View className="flex-row items-center justify-between">
-              <Text className="font-medium capitalize text-gray-800">
-                {f.feeType}
+        {/* Balance card */}
+        {loading ? <SkeletonCard /> : (
+          <View style={{ backgroundColor: theme.primary, borderRadius: 20, padding: 24, gap: 8 }}>
+            <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.7)", textTransform: "uppercase", letterSpacing: 0.5 }}>Total Outstanding</Text>
+            <Text style={{ fontSize: 36, fontFamily: "Inter_700Bold", color: "#fff" }}>₹{totalDue.toLocaleString("en-IN")}</Text>
+            {nextDue && (
+              <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.8)" }}>
+                Next due: {new Date(nextDue.due_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
               </Text>
-              <Text
-                className={`text-sm font-medium capitalize ${
-                  STATUS_COLORS[f.status] ?? "text-gray-600"
-                }`}
-              >
-                {f.status}
-              </Text>
-            </View>
-            <Text className="mt-1 text-sm text-gray-500">
-              ₹{f.paid} paid of ₹{f.amount}
-              {f.dueDate ? ` · Due: ${f.dueDate}` : ""}
-            </Text>
-            {f.status !== "paid" && remaining > 0 && (
-              <TouchableOpacity
-                onPress={() => handlePayNow(f)}
-                disabled={isPaying}
-                className="mt-3 rounded-lg bg-blue-600 py-2.5 disabled:opacity-50"
-              >
-                <Text className="text-center text-sm font-medium text-white">
-                  {isPaying ? "Processing…" : `Pay ₹${remaining}`}
-                </Text>
+            )}
+            {totalDue > 0 && nextDue && (
+              <TouchableOpacity onPress={() => handlePayNow(nextDue)} style={{ backgroundColor: "#fff", borderRadius: 12, paddingVertical: 12, alignItems: "center", marginTop: 8 }}>
+                <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: theme.primary }}>Pay Now</Text>
               </TouchableOpacity>
             )}
           </View>
-        );
-      })}
-      {fees.length === 0 && (
-        <Text className="text-sm text-gray-400">No fee records.</Text>
-      )}
-    </ScrollView>
+        )}
+
+        {/* Fee breakdown */}
+        <View>
+          <SectionHeader title="Fee Breakdown" />
+          {loading ? (
+            <View style={{ gap: 8 }}><SkeletonCard /><SkeletonCard /></View>
+          ) : payments.filter((p) => p.status !== "paid").map((p) => (
+            <View key={p.id} style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <View>
+                <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>{p.fee_type}</Text>
+                <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: theme.textSecondary, marginTop: 2 }}>Due {new Date(p.due_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</Text>
+              </View>
+              <View style={{ alignItems: "flex-end", gap: 6 }}>
+                <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>₹{(p.amount_due - p.amount_paid).toLocaleString("en-IN")}</Text>
+                <StatusBadge variant={p.status} />
+              </View>
+            </View>
+          ))}
+        </View>
+
+        {/* Payment history */}
+        <View>
+          <SectionHeader title="Payment History" />
+          {loading ? (
+            <View style={{ gap: 8 }}><SkeletonCard /><SkeletonCard /></View>
+          ) : payments.filter((p) => p.status === "paid").length === 0 ? (
+            <Text style={{ textAlign: "center", color: theme.textMuted, fontFamily: "Inter_400Regular", paddingVertical: 20 }}>No payments yet</Text>
+          ) : payments.filter((p) => p.status === "paid").map((p) => (
+            <TouchableOpacity key={p.id} onPress={() => setReceipt(p)} style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }} activeOpacity={0.7}>
+              <View>
+                <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>{p.fee_type}</Text>
+                <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: theme.textSecondary, marginTop: 2 }}>
+                  {p.paid_at ? new Date(p.paid_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+                </Text>
+              </View>
+              <View style={{ alignItems: "flex-end", gap: 6 }}>
+                <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: theme.success }}>₹{p.amount_paid.toLocaleString("en-IN")}</Text>
+                <StatusBadge variant="paid" />
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
+
+      {/* Receipt modal */}
+      <Modal visible={!!receipt} transparent animationType="slide" onRequestClose={() => setReceipt(null)}>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}>
+          <View style={{ backgroundColor: theme.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 16 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>Receipt</Text>
+              <TouchableOpacity onPress={() => setReceipt(null)}>
+                <Ionicons name="close" size={24} color={theme.textMuted} />
+              </TouchableOpacity>
+            </View>
+            {receipt && (
+              <View style={{ gap: 12 }}>
+                {[
+                  { label: "Fee Type", value: receipt.fee_type },
+                  { label: "Amount Paid", value: `₹${receipt.amount_paid.toLocaleString("en-IN")}` },
+                  { label: "Date", value: receipt.paid_at ? new Date(receipt.paid_at).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }) : "—" },
+                  { label: "Transaction ID", value: receipt.transaction_id ?? "—" },
+                  { label: "Status", value: "Paid" },
+                ].map((row) => (
+                  <View key={row.label} style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.border }}>
+                    <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: theme.textSecondary }}>{row.label}</Text>
+                    <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>{row.value}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+            <PrimaryButton label="Close" onPress={() => setReceipt(null)} />
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
   );
 }
