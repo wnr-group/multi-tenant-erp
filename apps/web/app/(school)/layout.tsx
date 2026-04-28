@@ -4,6 +4,8 @@ import { createServerSupabaseClient } from "../../lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
 import { Sidebar } from "@/components/sidebar";
 import { TopBar } from "@/components/top-bar";
+import { SectionSwitcher } from "@/components/section-switcher";
+import type { SectionOption } from "@/components/section-switcher";
 
 const SCHOOL_ROLES = [
   "super_admin",
@@ -14,35 +16,53 @@ const SCHOOL_ROLES = [
 
 const NAV_ITEMS: Record<string, { label: string; href: string }[]> = {
   school_admin: [
-    { label: "Dashboard", href: "/admin/dashboard" },
-    { label: "Teachers", href: "/admin/teachers" },
-    { label: "Students", href: "/admin/students" },
-    { label: "Classes", href: "/admin/classes" },
-    { label: "Subjects", href: "/admin/subjects" },
-    { label: "Timetable", href: "/admin/timetable" },
-    { label: "Academics", href: "/admin/academics" },
-    { label: "Fees", href: "/admin/fees" },
-    { label: "Syllabus", href: "/admin/syllabus" },
-    { label: "Announcements", href: "/admin/announcements" },
-    { label: "Settings", href: "/admin/settings" },
+    { label: "Dashboard",      href: "/admin/dashboard" },
+    { label: "Teachers",       href: "/admin/teachers" },
+    { label: "Students",       href: "/admin/students" },
+    { label: "Classes",        href: "/admin/classes" },
+    { label: "Subjects",       href: "/admin/subjects" },
+    { label: "Timetable",      href: "/admin/timetable" },
+    { label: "Academics",      href: "/admin/academics" },
+    { label: "Fees",           href: "/admin/fees" },
+    { label: "Syllabus",       href: "/admin/syllabus" },
+    { label: "Announcements",  href: "/admin/announcements" },
+    { label: "Discipline",     href: "/admin/discipline" },
+    { label: "Reports",        href: "/admin/reports" },
+    { label: "Settings",       href: "/admin/settings" },
   ],
   teacher: [
-    { label: "Dashboard", href: "/teacher/dashboard" },
+    { label: "Dashboard",  href: "/teacher/dashboard" },
     { label: "Attendance", href: "/teacher/attendance" },
-    { label: "Homework", href: "/teacher/homework" },
-    { label: "Results", href: "/teacher/results" },
-    { label: "Feedback", href: "/teacher/feedback" },
+    { label: "Homework",   href: "/teacher/homework" },
+    { label: "Results",    href: "/teacher/results" },
+    { label: "Discipline", href: "/teacher/discipline" },
+    { label: "Fees",       href: "/teacher/fees" },
+    { label: "Feedback",   href: "/teacher/feedback" },
+  ],
+  teacher_no_feedback: [
+    { label: "Dashboard",  href: "/teacher/dashboard" },
+    { label: "Attendance", href: "/teacher/attendance" },
+    { label: "Homework",   href: "/teacher/homework" },
+    { label: "Results",    href: "/teacher/results" },
+    { label: "Discipline", href: "/teacher/discipline" },
+    { label: "Fees",       href: "/teacher/fees" },
   ],
   principal: [
-    { label: "Dashboard", href: "/principal/dashboard" },
-    { label: "Reports", href: "/principal/reports" },
-    { label: "Discipline", href: "/principal/discipline" },
+    { label: "Dashboard",     href: "/principal/dashboard" },
     { label: "Announcements", href: "/principal/announcements" },
+    { label: "Discipline",    href: "/principal/discipline" },
+    { label: "Reports",       href: "/principal/reports" },
   ],
   super_admin: [
     { label: "Dashboard", href: "/platform-admin/dashboard" },
-    { label: "Schools", href: "/platform-admin/schools" },
+    { label: "Schools",   href: "/platform-admin/schools" },
   ],
+};
+
+const EXIT_URLS: Record<string, string> = {
+  school_admin: "/admin/dashboard",
+  super_admin: "/admin/dashboard",
+  principal: "/principal/dashboard",
 };
 
 export default async function SchoolLayout({
@@ -63,6 +83,7 @@ export default async function SchoolLayout({
       .select("role")
       .eq("user_id", user.id)
       .eq("is_active", true)
+      .limit(1)
       .single(),
     supabase
       .from("profiles")
@@ -79,16 +100,10 @@ export default async function SchoolLayout({
   }
 
   const realRole = roleRow.role as string;
-  const cookieStore = await cookies();
-  const actingAs = cookieStore.get("acting_as")?.value;
-  const VALID_ROLES = ["super_admin", "school_admin", "principal", "teacher", "student", "parent"];
-  const effectiveRole = actingAs && VALID_ROLES.includes(actingAs) ? actingAs : realRole;
   const userName = profile?.full_name || user.email || "User";
 
   let brandColor: string | undefined;
   let schoolName = "School ERP";
-
-  // Resolve school: from profile first, then from domain (for super_admins acting on school domains)
   const schoolId = profile?.school_id ?? (await getSchoolId());
   if (schoolId) {
     const { data: school } = await supabase
@@ -100,7 +115,80 @@ export default async function SchoolLayout({
     schoolName = school?.name ?? "School ERP";
   }
 
-  const navItems = NAV_ITEMS[effectiveRole] ?? [];
+  // Read active section cookie
+  const cookieStore = await cookies();
+  const activeSectionId = cookieStore.get("active_section")?.value ?? null;
+
+  // Query available sections based on role
+  let sections: SectionOption[] = [];
+  if (schoolId) {
+    if (realRole === "teacher") {
+      const [{ data: teacherProfile }, { data: timetableRows }] = await Promise.all([
+        supabase
+          .from("teacher_profiles")
+          .select("class_teacher_of, section:sections!teacher_profiles_class_teacher_of_fkey(id, name, class:classes(name, order))")
+          .eq("profile_id", user.id)
+          .maybeSingle(),
+        supabase
+          .from("timetable")
+          .select("section:sections(id, name, class:classes(name, order))")
+          .eq("teacher_id", user.id),
+      ]);
+
+      const seen = new Set<string>();
+
+      if (teacherProfile?.section) {
+        const sec = teacherProfile.section as unknown as { id: string; name: string; class: { name: string; order: number } | null };
+        if (sec?.id) {
+          seen.add(sec.id);
+          sections.push({ id: sec.id, name: sec.name, className: sec.class?.name ?? "", classOrder: sec.class?.order ?? 0 });
+        }
+      }
+
+      for (const row of timetableRows ?? []) {
+        const sec = row.section as unknown as { id: string; name: string; class: { name: string; order: number } | null };
+        if (sec?.id && !seen.has(sec.id)) {
+          seen.add(sec.id);
+          sections.push({ id: sec.id, name: sec.name, className: sec.class?.name ?? "", classOrder: sec.class?.order ?? 0 });
+        }
+      }
+    } else {
+      const { data: allSections } = await supabase
+        .from("sections")
+        .select("id, name, class:classes(name, order)")
+        .eq("school_id", schoolId);
+
+      for (const sec of allSections ?? []) {
+        const cls = sec.class as unknown as { name: string; order: number } | null;
+        sections.push({ id: sec.id, name: sec.name, className: cls?.name ?? "", classOrder: cls?.order ?? 0 });
+      }
+    }
+  }
+
+  // Determine nav items based on role and active section
+  let navItems: { label: string; href: string }[];
+  let displayRole: string;
+
+  if (activeSectionId && realRole !== "teacher") {
+    navItems = NAV_ITEMS.teacher_no_feedback;
+    displayRole = realRole;
+  } else if (realRole === "teacher") {
+    navItems = NAV_ITEMS.teacher;
+    displayRole = "teacher";
+  } else {
+    navItems = NAV_ITEMS[realRole] ?? [];
+    displayRole = realRole;
+  }
+
+  const exitUrl = EXIT_URLS[realRole];
+  const sectionSwitcherEl = sections.length > 0 || realRole === "teacher" ? (
+    <SectionSwitcher
+      sections={sections}
+      activeSectionId={activeSectionId}
+      userRole={realRole}
+      exitUrl={realRole !== "teacher" ? exitUrl : undefined}
+    />
+  ) : null;
 
   return (
     <div className="flex h-screen overflow-hidden bg-muted">
@@ -109,12 +197,13 @@ export default async function SchoolLayout({
         items={navItems}
         brandColor={brandColor}
         userName={userName}
-        userRole={effectiveRole}
+        userRole={displayRole}
+        sectionSwitcher={sectionSwitcherEl}
       />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar
           userName={userName}
-          userRole={effectiveRole}
+          userRole={displayRole}
           brandColor={brandColor}
         />
         <main className="flex-1 overflow-y-auto p-8">
