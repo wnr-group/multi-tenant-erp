@@ -1,90 +1,101 @@
 import { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  FlatList,
-  ActivityIndicator,
-} from "react-native";
+import { View, Text, ScrollView, TouchableOpacity } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../../lib/supabase";
+import { useTheme } from "../../lib/theme";
+import { Skeleton } from "../../components/Skeleton";
 
-interface AttendanceRow {
-  id: string;
-  date: string;
-  status: string;
-}
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const DAY_LABELS = ["S","M","T","W","T","F","S"];
 
-const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  present: { bg: "bg-green-100", text: "text-green-700", label: "Present" },
-  absent: { bg: "bg-red-100", text: "text-red-700", label: "Absent" },
-  late: { bg: "bg-yellow-100", text: "text-yellow-700", label: "Late" },
-  half_day: { bg: "bg-orange-100", text: "text-orange-700", label: "Half Day" },
-};
+interface AttendanceRecord { date: string; status: "present" | "absent" | "late" }
 
 export default function ParentAttendance() {
-  const [records, setRecords] = useState<AttendanceRow[]>([]);
+  const theme = useTheme();
+  const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const selectedYear = new Date().getFullYear();
 
-  useEffect(() => {
-    async function load() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        setLoading(false);
-        return;
-      }
+  useEffect(() => { loadAttendance(); }, []);
 
-      const { data } = await supabase
-        .from("attendance_records")
-        .select("id, date, status")
-        .eq("student_id", user.id)
-        .order("date", { ascending: false });
+  async function loadAttendance() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase.from("attendance_records").select("date, status").eq("student_id", user.id).order("date");
+    setRecords((data as AttendanceRecord[]) ?? []);
+    setLoading(false);
+  }
 
-      setRecords(data ?? []);
-      setLoading(false);
-    }
+  const monthRecords = records.filter((r) => {
+    const d = new Date(r.date);
+    return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+  });
+  const present = monthRecords.filter((r) => r.status === "present").length;
+  const absent = monthRecords.filter((r) => r.status === "absent").length;
+  const total = monthRecords.length;
+  const pct = total > 0 ? Math.round((present / total) * 100) : 0;
+  const statusMap = Object.fromEntries(monthRecords.map((r) => [r.date, r.status]));
+  const firstDay = new Date(selectedYear, selectedMonth, 1).getDay();
+  const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+  const calendarCells = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
 
-    load();
-  }, []);
-
-  if (loading) {
-    return <ActivityIndicator className="flex-1 mt-20" />;
+  function getCellColor(day: number | null): string {
+    if (!day) return "transparent";
+    const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const status = statusMap[dateStr];
+    if (status === "present") return theme.success;
+    if (status === "absent") return theme.danger;
+    if (status === "late") return theme.warning;
+    return theme.border;
   }
 
   return (
-    <View className="flex-1 bg-gray-50">
-      <Text className="mt-12 mb-4 px-5 text-2xl font-bold text-gray-900">
-        Attendance
-      </Text>
-      <FlatList
-        data={records}
-        keyExtractor={(item) => item.id}
-        contentContainerClassName="px-5 pb-8"
-        ListEmptyComponent={
-          <Text className="mt-8 text-center text-sm text-gray-400">
-            No attendance records found.
-          </Text>
-        }
-        renderItem={({ item }) => {
-          const style = STATUS_STYLES[item.status] ?? {
-            bg: "bg-gray-100",
-            text: "text-gray-600",
-            label: item.status,
-          };
-          return (
-            <View className="mb-2 flex-row items-center justify-between rounded-xl bg-white p-4 shadow-sm">
-              <Text className="text-sm font-medium text-gray-800">
-                {item.date}
-              </Text>
-              <View className={`rounded-full px-3 py-1 ${style.bg}`}>
-                <Text className={`text-xs font-semibold ${style.text}`}>
-                  {style.label}
-                </Text>
-              </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+      <ScrollView contentContainerStyle={{ padding: 20, gap: 20 }} showsVerticalScrollIndicator={false}>
+        <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>Attendance</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            {MONTHS.map((m, i) => (
+              <TouchableOpacity key={m} onPress={() => setSelectedMonth(i)} style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 100, backgroundColor: selectedMonth === i ? theme.primary : theme.surface, borderWidth: 1, borderColor: selectedMonth === i ? theme.primary : theme.border }}>
+                <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: selectedMonth === i ? "#fff" : theme.textSecondary }}>{m}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+        {loading ? <Skeleton height={100} borderRadius={16} /> : (
+          <View style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 20, alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 2 }}>
+            <Text style={{ fontSize: 48, fontFamily: "Inter_700Bold", color: theme.primary }}>{pct}%</Text>
+            <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: theme.textSecondary, marginTop: 4 }}>{present} present · {absent} absent · {total} days</Text>
+          </View>
+        )}
+        {loading ? <Skeleton height={220} borderRadius={16} /> : (
+          <View style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 16 }}>
+            <View style={{ flexDirection: "row", marginBottom: 8 }}>
+              {DAY_LABELS.map((d, i) => <Text key={i} style={{ flex: 1, textAlign: "center", fontSize: 11, fontFamily: "Inter_500Medium", color: theme.textMuted }}>{d}</Text>)}
             </View>
-          );
-        }}
-      />
-    </View>
+            <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+              {calendarCells.map((day, i) => (
+                <View key={i} style={{ width: `${100/7}%`, aspectRatio: 1, padding: 2 }}>
+                  {day ? (
+                    <View style={{ flex: 1, borderRadius: 6, backgroundColor: getCellColor(day), alignItems: "center", justifyContent: "center" }}>
+                      <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: getCellColor(day) === theme.border ? theme.textMuted : "#fff" }}>{day}</Text>
+                    </View>
+                  ) : null}
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+        <View style={{ flexDirection: "row", gap: 16, justifyContent: "center" }}>
+          {[{ color: theme.success, label: "Present" }, { color: theme.danger, label: "Absent" }, { color: theme.warning, label: "Late" }].map((item) => (
+            <View key={item.label} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: item.color }} />
+              <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: theme.textSecondary }}>{item.label}</Text>
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
