@@ -316,3 +316,119 @@ BEGIN
     END LOOP;
   END LOOP;
 END $$;
+
+-- ---------------------------------------------------------------
+-- ATTENDANCE RECORDS (last 7 school days Mon-Fri, ~85% present)
+-- marked_by = schooladmin
+-- ---------------------------------------------------------------
+DO $$
+DECLARE
+  d DATE;
+  school_days INT := 0;
+  sp RECORD;
+  rnd FLOAT;
+BEGIN
+  -- Walk backwards from yesterday, collect up to 7 Mon-Fri days
+  d := CURRENT_DATE - INTERVAL '1 day';
+  WHILE school_days < 7 LOOP
+    IF EXTRACT(DOW FROM d) BETWEEN 1 AND 5 THEN -- Mon=1, Fri=5
+      FOR sp IN
+        SELECT id FROM public.student_profiles
+        WHERE school_id = 'aaaaaaaa-0000-0000-0000-000000000001'
+      LOOP
+        rnd := random();
+        INSERT INTO public.attendance_records (
+          school_id, student_id, section_id, date, status, marked_by
+        )
+        SELECT
+          'aaaaaaaa-0000-0000-0000-000000000001',
+          sp.id,
+          s.section_id,
+          d,
+          CASE WHEN rnd < 0.85 THEN 'present'::public.attendance_status
+               ELSE 'absent'::public.attendance_status END,
+          'aaaaaaaa-0000-0000-0000-000000000011'
+        FROM public.student_profiles s
+        WHERE s.id = sp.id;
+      END LOOP;
+      school_days := school_days + 1;
+    END IF;
+    d := d - INTERVAL '1 day';
+  END LOOP;
+END $$;
+
+-- ---------------------------------------------------------------
+-- ANNOUNCEMENTS (5 records)
+-- ---------------------------------------------------------------
+INSERT INTO public.announcements (school_id, title, content, target_type, created_by, created_at)
+VALUES
+  ('aaaaaaaa-0000-0000-0000-000000000001', 'Annual Sports Day',
+   'Annual Sports Day will be held on April 18th. All students must participate.',
+   'school', 'aaaaaaaa-0000-0000-0000-000000000011', '2026-04-18 09:00:00+00'),
+
+  ('aaaaaaaa-0000-0000-0000-000000000001', 'Mid-Term Exam Schedule Released',
+   'Mid-term examinations will commence from May 5th. Timetable is now available.',
+   'school', 'aaaaaaaa-0000-0000-0000-000000000011', '2026-04-10 09:00:00+00'),
+
+  ('aaaaaaaa-0000-0000-0000-000000000001', 'Summer Vacation Notice',
+   'School will remain closed from May 20th to June 10th for summer vacation.',
+   'school', 'aaaaaaaa-0000-0000-0000-000000000011', '2026-04-05 09:00:00+00'),
+
+  ('aaaaaaaa-0000-0000-0000-000000000001', 'Parent-Teacher Meeting',
+   'PTM scheduled for April 5th from 10am to 1pm. Attendance is mandatory.',
+   'school', 'aaaaaaaa-0000-0000-0000-000000000011', '2026-03-28 09:00:00+00'),
+
+  ('aaaaaaaa-0000-0000-0000-000000000001', 'Science Exhibition',
+   'Inter-school science exhibition on March 25th. Register by March 22nd.',
+   'school', 'aaaaaaaa-0000-0000-0000-000000000011', '2026-03-20 09:00:00+00');
+
+-- ---------------------------------------------------------------
+-- DISCIPLINE RECORDS (~2 per month, Nov 2025–Apr 2026 = 12 records)
+-- ---------------------------------------------------------------
+DO $$
+DECLARE
+  m DATE;
+  student_ids UUID[];
+  i INT;
+  categories public.discipline_category[] := ARRAY['behavioral','academic','behavioral','attendance','behavioral','academic','behavioral','academic','attendance','behavioral','academic','behavioral']::public.discipline_category[];
+  severities  public.discipline_severity[]  := ARRAY['verbal','written','verbal','verbal','written','verbal','written','verbal','verbal','written','verbal','written']::public.discipline_severity[];
+BEGIN
+  SELECT ARRAY(
+    SELECT id FROM public.student_profiles
+    WHERE school_id = 'aaaaaaaa-0000-0000-0000-000000000001'
+    ORDER BY random() LIMIT 12
+  ) INTO student_ids;
+
+  i := 1;
+  FOR m IN
+    SELECT generate_series::DATE FROM generate_series(
+      '2025-11-01'::DATE, '2026-04-01'::DATE, INTERVAL '1 month'
+    )
+  LOOP
+    -- incident 1
+    INSERT INTO public.discipline_records (
+      school_id, student_id, category, severity, description, recorded_by, created_at
+    ) VALUES (
+      'aaaaaaaa-0000-0000-0000-000000000001',
+      student_ids[i],
+      categories[i],
+      severities[i],
+      'Disciplinary incident recorded for ' || to_char(m, 'Mon YYYY'),
+      'aaaaaaaa-0000-0000-0000-000000000011',
+      m + INTERVAL '7 days'
+    );
+    -- incident 2
+    INSERT INTO public.discipline_records (
+      school_id, student_id, category, severity, description, recorded_by, created_at
+    ) VALUES (
+      'aaaaaaaa-0000-0000-0000-000000000001',
+      student_ids[i+1],
+      categories[i+1],
+      severities[i+1],
+      'Second disciplinary incident for ' || to_char(m, 'Mon YYYY'),
+      'aaaaaaaa-0000-0000-0000-000000000011',
+      m + INTERVAL '20 days'
+    );
+    i := i + 2;
+  END LOOP;
+END $$;
