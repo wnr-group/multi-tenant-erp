@@ -44,6 +44,7 @@ interface SidebarProps {
   brandColor?: string; // hex color from school's primary_color
   userName?: string;
   userRole?: string;
+  sectionSwitcher?: React.ReactNode;
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -67,7 +68,7 @@ function darken(hex: string, factor: number): string {
   return `#${dr.toString(16).padStart(2, "0")}${dg.toString(16).padStart(2, "0")}${db.toString(16).padStart(2, "0")}`;
 }
 
-export function Sidebar({ title, items, brandColor, userName, userRole }: SidebarProps) {
+export function Sidebar({ title, items, brandColor, userName, userRole, sectionSwitcher }: SidebarProps) {
   const pathname = usePathname();
 
   // Generate sidebar colors from brand color, or fall back to indigo
@@ -95,6 +96,10 @@ export function Sidebar({ title, items, brandColor, userName, userRole }: Sideba
         </span>
       </div>
       <div className="mx-4 border-t" style={{ borderColor: dividerColor }} />
+      {sectionSwitcher}
+      {sectionSwitcher && (
+        <div className="mx-4 border-t" style={{ borderColor: dividerColor }} />
+      )}
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-3">
         {items.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
