@@ -1,42 +1,30 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../../lib/theme";
 
 export default function ParentLayout() {
+  const theme = useTheme();
   return (
     <Tabs
-      screenOptions={({ route }) => ({
+      screenOptions={{
         headerShown: false,
-        tabBarIcon: ({ color, size }) => {
-          const icons: Record<string, keyof typeof Ionicons.glyphMap> = {
-            dashboard: "home-outline",
-            attendance: "calendar-outline",
-            results: "school-outline",
-            fees: "wallet-outline",
-            homework: "book-outline",
-            announcements: "megaphone-outline",
-            feedback: "chatbubble-outline",
-            discipline: "warning-outline",
-            profile: "person-outline",
-          };
-          return (
-            <Ionicons
-              name={icons[route.name] ?? "ellipse-outline"}
-              size={size}
-              color={color}
-            />
-          );
-        },
-      })}
+        tabBarActiveTintColor: theme.primary,
+        tabBarInactiveTintColor: theme.textMuted,
+        tabBarStyle: { backgroundColor: theme.surface, borderTopColor: theme.border, borderTopWidth: 1, height: 60, paddingBottom: 8 },
+        tabBarLabelStyle: { fontSize: 11, fontFamily: "Inter_500Medium" },
+      }}
     >
-      <Tabs.Screen name="dashboard" options={{ title: "Home" }} />
-      <Tabs.Screen name="attendance" options={{ title: "Attendance" }} />
-      <Tabs.Screen name="results" options={{ title: "Results" }} />
-      <Tabs.Screen name="fees" options={{ title: "Fees" }} />
-      <Tabs.Screen name="homework" options={{ title: "Homework" }} />
-      <Tabs.Screen name="announcements" options={{ title: "News" }} />
-      <Tabs.Screen name="feedback" options={{ title: "Feedback" }} />
-      <Tabs.Screen name="discipline" options={{ title: "Discipline" }} />
-      <Tabs.Screen name="profile" options={{ title: "Profile" }} />
+      <Tabs.Screen name="dashboard" options={{ title: "Home", tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "home" : "home-outline"} size={22} color={color} /> }} />
+      <Tabs.Screen name="attendance" options={{ title: "Attendance", tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "calendar" : "calendar-outline"} size={22} color={color} /> }} />
+      <Tabs.Screen name="academics" options={{ title: "Academics", tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "book" : "book-outline"} size={22} color={color} /> }} />
+      <Tabs.Screen name="fees" options={{ title: "Fees", tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "wallet" : "wallet-outline"} size={22} color={color} /> }} />
+      <Tabs.Screen name="more" options={{ title: "More", tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "grid" : "grid-outline"} size={22} color={color} /> }} />
+      <Tabs.Screen name="results" options={{ href: null }} />
+      <Tabs.Screen name="homework" options={{ href: null }} />
+      <Tabs.Screen name="announcements" options={{ href: null }} />
+      <Tabs.Screen name="feedback" options={{ href: null }} />
+      <Tabs.Screen name="discipline" options={{ href: null }} />
+      <Tabs.Screen name="profile" options={{ href: null }} />
     </Tabs>
   );
 }
