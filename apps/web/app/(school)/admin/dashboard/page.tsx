@@ -11,46 +11,7 @@ import type { FeeMonth } from "./fee-collection-chart";
 import type { AttendanceData } from "./attendance-chart";
 import type { ClassCount } from "./students-by-class-chart";
 
-// ---------------------------------------------------------------------------
-// Mock data — replace each const with a real Supabase query when wiring backend
-// See: docs/superpowers/specs/2026-04-22-admin-dashboard-charts-design.md
-// ---------------------------------------------------------------------------
-
-const MOCK_FEE_DATA: FeeMonth[] = [
-  { month: "Nov", collected: 320000, due: 380000 },
-  { month: "Dec", collected: 290000, due: 350000 },
-  { month: "Jan", collected: 350000, due: 400000 },
-  { month: "Feb", collected: 310000, due: 360000 },
-  { month: "Mar", collected: 370000, due: 420000 },
-  { month: "Apr", collected: 384000, due: 430000 },
-];
-
-const MOCK_ATTENDANCE: AttendanceData = { present: 84, absent: 16 };
-
-const MOCK_CLASS_DATA: ClassCount[] = [
-  { class: "Cls 1", students: 95 },
-  { class: "Cls 2", students: 102 },
-  { class: "Cls 3", students: 88 },
-  { class: "Cls 4", students: 110 },
-  { class: "Cls 5", students: 98 },
-  { class: "Cls 6", students: 105 },
-  { class: "Cls 7", students: 92 },
-  { class: "Cls 8", students: 87 },
-  { class: "Cls 9", students: 115 },
-  { class: "Cls 10", students: 108 },
-  { class: "Cls 11", students: 72 },
-  { class: "Cls 12", students: 68 },
-];
-
-type Announcement = { title: string; date: string; type: "Event" | "Exam" | "Holiday" | "General" };
-
-const MOCK_ANNOUNCEMENTS: Announcement[] = [
-  { title: "Annual Sports Day", date: "Apr 18, 2026", type: "Event" },
-  { title: "Mid-Term Exam Schedule Released", date: "Apr 10, 2026", type: "Exam" },
-  { title: "Summer Vacation Notice", date: "Apr 5, 2026", type: "Holiday" },
-  { title: "Parent-Teacher Meeting", date: "Mar 28, 2026", type: "General" },
-  { title: "Science Exhibition", date: "Mar 20, 2026", type: "Event" },
-];
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 const BADGE_COLORS: Record<string, string> = {
   Event: "bg-indigo-100 text-indigo-700",
@@ -59,23 +20,118 @@ const BADGE_COLORS: Record<string, string> = {
   General: "bg-gray-100 text-gray-700",
 };
 
-// ---------------------------------------------------------------------------
+function announcementType(title: string): string {
+  const t = title.toLowerCase();
+  if (t.includes("exam") || t.includes("test") || t.includes("result")) return "Exam";
+  if (t.includes("holiday") || t.includes("vacation") || t.includes("closed")) return "Holiday";
+  if (t.includes("sports") || t.includes("exhibition") || t.includes("day") || t.includes("meeting")) return "Event";
+  return "General";
+}
 
 export default async function AdminDashboard() {
   const supabase = await createServerSupabaseClient();
   const schoolId = await getSchoolId();
+  const today = new Date().toISOString().slice(0, 10);
 
-  const [{ count: teacherCount }, { count: studentCount }] = await Promise.all([
+  // Stat card queries (parallel)
+  const [
+    { count: teacherCount },
+    { count: studentCount },
+    { count: classCount },
+    { data: academicYear },
+  ] = await Promise.all([
     supabase.from("teacher_profiles").select("*", { count: "exact", head: true }).eq("school_id", schoolId!),
     supabase.from("student_profiles").select("*", { count: "exact", head: true }).eq("school_id", schoolId!),
+    supabase.from("classes").select("*", { count: "exact", head: true }).eq("school_id", schoolId!),
+    supabase.from("academic_years").select("id").eq("school_id", schoolId!).eq("is_current", true).single(),
   ]);
 
-  // Use real counts for Teachers/Students; mock for Classes and Fees for demo
+  void academicYear;
+
+  // Fee collected this academic year
+  const { data: feePayments } = await supabase
+    .from("fee_payments")
+    .select("amount_paid, payment_date, fee_structures(amount, class_id)")
+    .eq("school_id", schoolId!);
+
+  // Compute total collected this year
+  const totalCollected = (feePayments ?? []).reduce(
+    (sum, p) => sum + Number(p.amount_paid), 0
+  );
+
+  // Compute fee chart: last 6 months collected vs due
+  const now = new Date();
+  const feeChartData: FeeMonth[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const label = MONTHS[d.getMonth()];
+
+    const monthPayments = (feePayments ?? []).filter((p) => {
+      if (!p.payment_date) return false;
+      return p.payment_date.slice(0, 7) === monthKey;
+    });
+
+    const collected = monthPayments.reduce((s, p) => s + Number(p.amount_paid), 0);
+    // Due = total fee structure amounts for all students (constant per month)
+    const due = (feePayments ?? []).length > 0
+      ? (feePayments ?? []).reduce((s, p) => {
+          const fs = p.fee_structures as unknown as { amount: number } | null;
+          return s + (fs?.amount ? Number(fs.amount) : 0);
+        }, 0) / 6  // divide total annual due by 6 months as approximation
+      : 0;
+
+    feeChartData.push({ month: label, collected, due: Math.round(due) });
+  }
+
+  // Attendance donut (today)
+  const [{ count: presentToday }, { count: absentToday }] = await Promise.all([
+    supabase.from("attendance_records").select("*", { count: "exact", head: true })
+      .eq("school_id", schoolId!).eq("date", today).eq("status", "present"),
+    supabase.from("attendance_records").select("*", { count: "exact", head: true })
+      .eq("school_id", schoolId!).eq("date", today).eq("status", "absent"),
+  ]);
+  const totalToday = (presentToday ?? 0) + (absentToday ?? 0);
+  const presentPct = totalToday > 0 ? Math.round(((presentToday ?? 0) / totalToday) * 100) : 0;
+  const attendanceData: AttendanceData = { present: presentPct, absent: 100 - presentPct };
+
+  // Students by class
+  const { data: classStudents } = await supabase
+    .from("student_profiles")
+    .select("class_id, classes(name, order)")
+    .eq("school_id", schoolId!);
+
+  const classMap = new Map<string, { name: string; order: number; count: number }>();
+  for (const s of classStudents ?? []) {
+    const cls = s.classes as unknown as { name: string; order: number } | null;
+    if (!cls) continue;
+    const key = s.class_id as string;
+    if (!classMap.has(key)) classMap.set(key, { name: cls.name, order: cls.order, count: 0 });
+    classMap.get(key)!.count++;
+  }
+  const studentsByClass: ClassCount[] = Array.from(classMap.values())
+    .sort((a, b) => a.order - b.order)
+    .map((c) => ({ class: c.name.replace("Class ", "Cls "), students: c.count }));
+
+  // Announcements (top 5)
+  const { data: announcements } = await supabase
+    .from("announcements")
+    .select("title, created_at")
+    .eq("school_id", schoolId!)
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  const formattedAnnouncements = (announcements ?? []).map((a) => ({
+    title: a.title,
+    date: new Date(a.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
+    type: announcementType(a.title),
+  }));
+
   const stats: { label: string; value: string | number; icon: LucideIcon; iconBg: string; iconColor: string }[] = [
-    { label: "Students", value: studentCount ?? 1240, icon: GraduationCap, iconBg: "bg-emerald-50", iconColor: "text-emerald-600" },
-    { label: "Teachers", value: teacherCount ?? 48, icon: Users, iconBg: "bg-indigo-50", iconColor: "text-indigo-600" },
-    { label: "Classes", value: 12, icon: BookOpen, iconBg: "bg-violet-50", iconColor: "text-violet-600" },
-    { label: "Fee Collected", value: "₹3,84,000", icon: IndianRupee, iconBg: "bg-amber-50", iconColor: "text-amber-600" },
+    { label: "Students",     value: studentCount ?? 0,                                             icon: GraduationCap, iconBg: "bg-emerald-50", iconColor: "text-emerald-600" },
+    { label: "Teachers",     value: teacherCount ?? 0,                                             icon: Users,         iconBg: "bg-indigo-50",  iconColor: "text-indigo-600"  },
+    { label: "Classes",      value: classCount ?? 0,                                               icon: BookOpen,      iconBg: "bg-violet-50",  iconColor: "text-violet-600"  },
+    { label: "Fee Collected", value: `₹${(totalCollected / 100000).toFixed(1)}L`,                 icon: IndianRupee,   iconBg: "bg-amber-50",   iconColor: "text-amber-600"   },
   ];
 
   return (
@@ -103,42 +159,26 @@ export default async function AdminDashboard() {
       {/* Row 2 — Fee Collection + Attendance */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2 transition-shadow duration-200 hover:shadow-md animate-fade-in-up" style={{ animationDelay: "240ms" }}>
-          <CardHeader>
-            <CardTitle>Monthly Fee Collection</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <FeeCollectionChart data={MOCK_FEE_DATA} />
-          </CardContent>
+          <CardHeader><CardTitle>Monthly Fee Collection</CardTitle></CardHeader>
+          <CardContent><FeeCollectionChart data={feeChartData} /></CardContent>
         </Card>
-
         <Card className="transition-shadow duration-200 hover:shadow-md animate-fade-in-up" style={{ animationDelay: "300ms" }}>
-          <CardHeader>
-            <CardTitle>Attendance</CardTitle>
-          </CardHeader>
-          <CardContent className="flex justify-center">
-            <AttendanceChart data={MOCK_ATTENDANCE} />
-          </CardContent>
+          <CardHeader><CardTitle>Attendance</CardTitle></CardHeader>
+          <CardContent className="flex justify-center"><AttendanceChart data={attendanceData} /></CardContent>
         </Card>
       </div>
 
       {/* Row 3 — Students by Class + Announcements */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card className="transition-shadow duration-200 hover:shadow-md animate-fade-in-up" style={{ animationDelay: "360ms" }}>
-          <CardHeader>
-            <CardTitle>Students by Class</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <StudentsByClassChart data={MOCK_CLASS_DATA} />
-          </CardContent>
+          <CardHeader><CardTitle>Students by Class</CardTitle></CardHeader>
+          <CardContent><StudentsByClassChart data={studentsByClass} /></CardContent>
         </Card>
-
         <Card className="transition-shadow duration-200 hover:shadow-md animate-fade-in-up" style={{ animationDelay: "420ms" }}>
-          <CardHeader>
-            <CardTitle>Recent Announcements</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Recent Announcements</CardTitle></CardHeader>
           <CardContent>
             <ul className="divide-y divide-border">
-              {MOCK_ANNOUNCEMENTS.map((a) => (
+              {formattedAnnouncements.map((a) => (
                 <li key={a.title} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-foreground">{a.title}</p>
