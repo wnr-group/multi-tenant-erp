@@ -2,7 +2,6 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
 const PUBLIC_PATHS = ["/login", "/auth/callback", "/invite", "/download-app"];
-// Production: admin.balajierp.com | Local dev: core.lvh.me
 const PLATFORM_ADMIN_DOMAINS = ["admin.balajierp.com", "core.lvh.me"];
 
 export async function middleware(request: NextRequest) {
@@ -30,7 +29,6 @@ export async function middleware(request: NextRequest) {
         setAll(
           cookiesToSet: { name: string; value: string; options: CookieOptions }[]
         ) {
-          // Share auth cookies across subdomains (.lvh.me for local, .balajierp.com for prod)
           const host = request.headers.get("host") ?? "";
           const isLvh = host.includes("lvh.me");
           const isBalaji = host.includes("balajierp.com");
@@ -69,13 +67,12 @@ export async function middleware(request: NextRequest) {
       return new NextResponse("School not found or inactive.", { status: 404 });
     }
     schoolId = school.id;
-    // Set on request headers so server components can read via headers()
     request.headers.set("x-school-id", school.id);
     response = NextResponse.next({ request });
     response.headers.set("x-school-id", school.id);
   }
 
-  // Try school-scoped role first (teachers, admins, etc.)
+  // Resolve user's real role
   let role: string | null = null;
   if (schoolId) {
     const { data } = await supabase
@@ -87,8 +84,6 @@ export async function middleware(request: NextRequest) {
       .maybeSingle();
     role = data?.role ?? null;
   }
-
-  // Fallback: platform-level role (super_admin has school_id = NULL)
   if (!role) {
     const { data } = await supabase
       .from("user_roles")
@@ -99,61 +94,47 @@ export async function middleware(request: NextRequest) {
       .maybeSingle();
     role = data?.role ?? null;
   }
-
   if (!role) {
     return NextResponse.redirect(new URL("/login?reason=no_access", request.url));
   }
 
+  // Platform admin routing
   if (isPlatformAdmin) {
     if (role !== "super_admin") {
       return NextResponse.redirect(new URL("/login?reason=no_access", request.url));
     }
     if (!pathname.startsWith("/platform-admin") && !pathname.startsWith("/api")) {
-      return NextResponse.redirect(
-        new URL("/platform-admin/dashboard", request.url)
-      );
+      return NextResponse.redirect(new URL("/platform-admin/dashboard", request.url));
     }
     return response;
   }
 
-  const VALID_ROLES = ["super_admin", "school_admin", "principal", "teacher", "student", "parent"] as const;
-  type AppRole = (typeof VALID_ROLES)[number];
-
-  const rawActingAs = request.cookies.get("acting_as")?.value;
-  const actingAsCookie = rawActingAs && VALID_ROLES.includes(rawActingAs as AppRole)
-    ? rawActingAs as AppRole
-    : undefined;
-  const effectiveRole = actingAsCookie ?? role;
-
-  if (actingAsCookie) {
-    response.headers.set("x-acting-as", actingAsCookie);
-    response.headers.set("x-real-role", role);
+  // Read active section cookie and set header
+  const activeSection = request.cookies.get("active_section")?.value ?? null;
+  if (activeSection) {
+    response.headers.set("x-active-section", activeSection);
   }
 
-  if (role === "super_admin" && !actingAsCookie && !isPlatformAdmin) {
-    // Super admin on a school domain — auto-enter as school_admin
-    const cookieDomain = host.includes("lvh.me") ? ".lvh.me" : host.includes("balajierp.com") ? ".balajierp.com" : undefined;
-    const redirectRes = NextResponse.redirect(new URL("/admin/dashboard", request.url));
-    redirectRes.cookies.set("acting_as", "school_admin", {
-      path: "/",
-      domain: cookieDomain,
-      maxAge: 60 * 60 * 8, // 8 hours
-    });
-    return redirectRes;
-  }
+  // Super admin on school domain → treat as school_admin
+  const effectiveRole = role === "super_admin" ? "school_admin" : role;
 
-  // Skip role-based redirects for API routes and auth routes
+  // Route enforcement
   if (!pathname.startsWith("/api") && !pathname.startsWith("/auth")) {
-    if (effectiveRole === "school_admin" && !pathname.startsWith("/admin")) {
+    if (pathname.startsWith("/teacher")) {
+      const canAccessTeacher =
+        effectiveRole === "teacher" ||
+        ((effectiveRole === "school_admin" || effectiveRole === "principal") && activeSection);
+      if (!canAccessTeacher) {
+        const dest = effectiveRole === "principal" ? "/principal/dashboard" : "/admin/dashboard";
+        return NextResponse.redirect(new URL(dest, request.url));
+      }
+    } else if (effectiveRole === "school_admin" && !pathname.startsWith("/admin")) {
       return NextResponse.redirect(new URL("/admin/dashboard", request.url));
-    }
-    if (effectiveRole === "principal" && !pathname.startsWith("/principal")) {
+    } else if (effectiveRole === "principal" && !pathname.startsWith("/principal") && !pathname.startsWith("/teacher")) {
       return NextResponse.redirect(new URL("/principal/dashboard", request.url));
-    }
-    if (effectiveRole === "teacher" && !pathname.startsWith("/teacher")) {
+    } else if (effectiveRole === "teacher" && !pathname.startsWith("/teacher")) {
       return NextResponse.redirect(new URL("/teacher/dashboard", request.url));
-    }
-    if (effectiveRole === "parent" && !pathname.startsWith("/download-app")) {
+    } else if (effectiveRole === "parent" && !pathname.startsWith("/download-app")) {
       return NextResponse.redirect(new URL("/download-app", request.url));
     }
   }
