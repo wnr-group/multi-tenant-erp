@@ -171,3 +171,62 @@ INSERT INTO public.teacher_profiles (profile_id, school_id, class_teacher_of) VA
   ('aaaaaaaa-0000-0000-0000-000000000015', 'aaaaaaaa-0000-0000-0000-000000000001', 'cccccccc-0000-0000-0000-000000000302'), -- teacher3 → Class 3B
   ('aaaaaaaa-0000-0000-0000-000000000016', 'aaaaaaaa-0000-0000-0000-000000000001', 'cccccccc-0000-0000-0000-000000000501'), -- teacher4 → Class 5A
   ('aaaaaaaa-0000-0000-0000-000000000017', 'aaaaaaaa-0000-0000-0000-000000000001', 'cccccccc-0000-0000-0000-000000000702'); -- teacher5 → Class 7B
+
+-- ---------------------------------------------------------------
+-- STUDENTS (~85 per class = ~1,020 total, data-only, no auth)
+-- generate_series(1,43) → section A,  generate_series(1,42) → section B
+-- student_profiles.profile_id is nullable (migration 16)
+-- ---------------------------------------------------------------
+DO $$
+DECLARE
+  cls RECORD;
+  sec_a UUID;
+  sec_b UUID;
+  class_num INT;
+  i INT;
+BEGIN
+  FOR cls IN
+    SELECT id, name, "order" FROM public.classes
+    WHERE school_id = 'aaaaaaaa-0000-0000-0000-000000000001'
+    ORDER BY "order"
+  LOOP
+    class_num := cls."order";
+    -- Derive section UUIDs from the pattern used in the INSERT above
+    sec_a := (
+      SELECT id FROM public.sections
+      WHERE class_id = cls.id AND name = 'A'
+    );
+    sec_b := (
+      SELECT id FROM public.sections
+      WHERE class_id = cls.id AND name = 'B'
+    );
+
+    -- Section A: 43 students
+    FOR i IN 1..43 LOOP
+      INSERT INTO public.student_profiles (
+        school_id, class_id, section_id,
+        full_name, admission_number
+      ) VALUES (
+        'aaaaaaaa-0000-0000-0000-000000000001',
+        cls.id,
+        sec_a,
+        'Student ' || class_num || 'A-' || i,
+        'ADM-' || LPAD(((class_num - 1) * 85 + i)::TEXT, 4, '0')
+      );
+    END LOOP;
+
+    -- Section B: 42 students
+    FOR i IN 1..42 LOOP
+      INSERT INTO public.student_profiles (
+        school_id, class_id, section_id,
+        full_name, admission_number
+      ) VALUES (
+        'aaaaaaaa-0000-0000-0000-000000000001',
+        cls.id,
+        sec_b,
+        'Student ' || class_num || 'B-' || i,
+        'ADM-' || LPAD(((class_num - 1) * 85 + 43 + i)::TEXT, 4, '0')
+      );
+    END LOOP;
+  END LOOP;
+END $$;
