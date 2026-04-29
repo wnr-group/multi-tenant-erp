@@ -12,11 +12,21 @@ import { NativeSelect } from "@/components/ui/native-select";
 interface ClassOption { id: string; name: string }
 interface SectionOption { id: string; name: string }
 
-export function AddStudentForm({ schoolId, classes, onSuccess }: { schoolId: string; classes: ClassOption[]; onSuccess?: () => void }) {
+export function AddStudentForm({
+  schoolId,
+  classes,
+  onSuccess,
+}: {
+  schoolId: string;
+  classes: ClassOption[];
+  onSuccess?: () => void;
+}) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [rollNumber, setRollNumber] = useState("");
+  const [admissionNumber, setAdmissionNumber] = useState("");
+  const [parentPhone, setParentPhone] = useState("");
   const [classId, setClassId] = useState("");
   const [sectionId, setSectionId] = useState("");
   const [sections, setSections] = useState<SectionOption[]>([]);
@@ -25,16 +35,19 @@ export function AddStudentForm({ schoolId, classes, onSuccess }: { schoolId: str
   useEffect(() => {
     if (!classId) return;
     const supabase = createClient();
-    supabase.from("sections").select("id, name").eq("class_id", classId).then(({ data }) => {
-      setSections(data ?? []);
-      setSectionId("");
-    });
+    supabase
+      .from("sections")
+      .select("id, name")
+      .eq("class_id", classId)
+      .then(({ data }) => {
+        setSections(data ?? []);
+        setSectionId("");
+      });
   }, [classId]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-
     const supabase = createClient();
     const { error } = await supabase.from("student_profiles").insert({
       school_id: schoolId,
@@ -43,15 +56,16 @@ export function AddStudentForm({ schoolId, classes, onSuccess }: { schoolId: str
       class_id: classId || null,
       section_id: sectionId || null,
       roll_number: rollNumber || null,
+      admission_number: admissionNumber || null,
+      parent_phone: parentPhone || null,
     });
-
     if (error) {
       toast.error(error.message);
       setLoading(false);
       return;
     }
-
-    setName(""); setEmail(""); setRollNumber(""); setClassId(""); setSectionId("");
+    setName(""); setEmail(""); setRollNumber(""); setAdmissionNumber("");
+    setParentPhone(""); setClassId(""); setSectionId("");
     setLoading(false);
     toast.success("Student added.");
     router.refresh();
@@ -60,9 +74,20 @@ export function AddStudentForm({ schoolId, classes, onSuccess }: { schoolId: str
 
   return (
     <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
-      <div><Label>Full Name</Label><Input value={name} onChange={(e) => setName(e.target.value)} required /></div>
+      <div><Label>Full Name *</Label><Input value={name} onChange={(e) => setName(e.target.value)} required /></div>
       <div><Label>Email (optional)</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
       <div><Label>Roll Number</Label><Input value={rollNumber} onChange={(e) => setRollNumber(e.target.value)} /></div>
+      <div><Label>Admission Number</Label><Input value={admissionNumber} onChange={(e) => setAdmissionNumber(e.target.value)} /></div>
+      <div className="col-span-2">
+        <Label>Parent Phone *</Label>
+        <Input
+          type="tel"
+          value={parentPhone}
+          onChange={(e) => setParentPhone(e.target.value)}
+          placeholder="+91 98765 43210"
+          required
+        />
+      </div>
       <div>
         <Label>Class</Label>
         <NativeSelect
