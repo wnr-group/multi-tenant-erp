@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Teacher Dashboard - School ERP</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed-variant": "#38485d",
+                        "on-tertiary-container": "#eef0ff",
+                        "on-error": "#ffffff",
+                        "error": "#ba1a1a",
+                        "surface-container-high": "#e7e7f3",
+                        "secondary-fixed-dim": "#b7c8e1",
+                        "secondary-fixed": "#d3e4fe",
+                        "inverse-primary": "#b4c5ff",
+                        "tertiary-fixed-dim": "#bec6e0",
+                        "surface-tint": "#0053db",
+                        "outline": "#737686",
+                        "inverse-surface": "#2e3039",
+                        "primary": "#004ac6",
+                        "error-container": "#ffdad6",
+                        "surface": "#faf8ff",
+                        "primary-container": "#2563eb",
+                        "surface-container-highest": "#e1e2ed",
+                        "on-surface": "#191b23",
+                        "on-tertiary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "on-surface-variant": "#434655",
+                        "surface-container": "#ededf9",
+                        "outline-variant": "#c3c6d7",
+                        "secondary-container": "#d0e1fb",
+                        "on-primary-container": "#eeefff",
+                        "primary-fixed": "#dbe1ff",
+                        "on-secondary-fixed": "#0b1c30",
+                        "tertiary-fixed": "#dae2fd",
+                        "on-secondary-container": "#54647a",
+                        "surface-bright": "#faf8ff",
+                        "background": "#faf8ff",
+                        "surface-container-low": "#f3f3fe",
+                        "on-primary-fixed": "#00174b",
+                        "surface-variant": "#e1e2ed",
+                        "on-secondary": "#ffffff",
+                        "tertiary": "#4d556b",
+                        "on-background": "#191b23",
+                        "on-primary": "#ffffff",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "secondary": "#505f76",
+                        "surface-dim": "#d9d9e5",
+                        "inverse-on-surface": "#f0f0fb",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-fixed-variant": "#3f465c",
+                        "tertiary-container": "#656d84",
+                        "on-tertiary-fixed": "#131b2e"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "lg": "24px",
+                        "md": "16px",
+                        "base": "4px",
+                        "margin-mobile": "20px",
+                        "xl": "32px",
+                        "sm": "8px",
+                        "xs": "4px",
+                        "gutter": "12px"
+                    },
+                    "fontFamily": {
+                        "h2": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "h3": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "h1": ["Inter"]
+                    },
+                    "fontSize": {
+                        "h2": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "body-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "h3": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "label-sm": ["11px", {"lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                        "h1": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background font-body-md text-on-background min-h-screen pb-32">
+<!-- Top AppBar (from Shared Components) -->
+<header class="sticky top-0 z-50 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 shadow-sm flex justify-between items-center w-full px-5 py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary-fixed">
+<img alt="Student profile photo" class="w-full h-full object-cover" data-alt="Professional portrait of a middle-aged male teacher with glasses, soft studio lighting, neutral background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCBjuxGP8TxqEX8vh_MMRDG1GraTX-JBUEFteNM8VDnQgnkBNvFom_sBGwGwJv6Rw9vxIIXuV5ke_3eeLr_F3OSf_0gtcDcPob9-2iXyRe6W_pBzOIIJnDJ3j2Q378rGMuJ3du8GtMHR4UQz1ffTz9DozrB1PIgXaBKJ4GaSAG0UILOBI5JeCYyJ1gEiovAXp25B3fwNapxmdawV3gsAEzV62m8_fF-IEWo9RyYQ92syVxSrwIGtPhy31jqtb2vf9pY2DGvdRFL"/>
+</div>
+<div class="flex flex-col">
+<span class="text-slate-900 dark:text-slate-50 font-inter antialiased font-bold text-lg leading-tight">Hi, Mr. Sharma</span>
+<span class="text-xs text-primary font-medium px-2 py-0.5 bg-secondary-container rounded-full w-fit">Class 8A - Class Teacher</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 rounded-full hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition-all duration-200 text-slate-500">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</div>
+</header>
+<main class="max-w-md mx-auto px-margin-mobile pt-lg">
+<!-- Welcome Greeting -->
+<section class="mb-xl">
+<h1 class="font-h1 text-h1 text-on-surface">Good morning, Mr. Sharma</h1>
+<p class="text-on-surface-variant font-body-md mt-1">Ready for a productive day at Modern Academy?</p>
+</section>
+<!-- Today's Schedule - Horizontal Scroll -->
+<section class="mb-xl">
+<div class="flex justify-between items-end mb-md">
+<h2 class="font-h2 text-h2 text-on-surface">Today's Schedule</h2>
+<button class="text-label-md text-primary font-semibold">View Full</button>
+</div>
+<div class="flex gap-4 overflow-x-auto no-scrollbar pb-2 -mx-5 px-5">
+<!-- Period 1 -->
+<div class="min-w-[160px] bg-white rounded-xl p-md shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-100 flex flex-col gap-2">
+<span class="text-label-sm text-primary uppercase">Period 1</span>
+<h3 class="font-h3 text-h3 leading-tight">Mathematics</h3>
+<div class="flex items-center gap-1.5 mt-2">
+<span class="material-symbols-outlined text-sm text-slate-400">group</span>
+<span class="text-body-sm text-on-surface-variant">Class 8A</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-sm text-slate-400">schedule</span>
+<span class="text-body-sm text-on-surface-variant">08:00 AM</span>
+</div>
+</div>
+<!-- Period 2 -->
+<div class="min-w-[160px] bg-white rounded-xl p-md shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-100 flex flex-col gap-2">
+<span class="text-label-sm text-secondary uppercase">Period 2</span>
+<h3 class="font-h3 text-h3 leading-tight">Physics</h3>
+<div class="flex items-center gap-1.5 mt-2">
+<span class="material-symbols-outlined text-sm text-slate-400">group</span>
+<span class="text-body-sm text-on-surface-variant">Class 9C</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-sm text-slate-400">schedule</span>
+<span class="text-body-sm text-on-surface-variant">09:15 AM</span>
+</div>
+</div>
+<!-- Break -->
+<div class="min-w-[120px] bg-slate-50/50 rounded-xl p-md border border-dashed border-slate-200 flex flex-col justify-center items-center text-center gap-1">
+<span class="material-symbols-outlined text-slate-400">coffee</span>
+<span class="text-label-md text-slate-500">Short Break</span>
+<span class="text-body-sm text-slate-400">10:15 AM</span>
+</div>
+<!-- Period 3 -->
+<div class="min-w-[160px] bg-white rounded-xl p-md shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-100 flex flex-col gap-2">
+<span class="text-label-sm text-primary uppercase">Period 3</span>
+<h3 class="font-h3 text-h3 leading-tight">Mathematics</h3>
+<div class="flex items-center gap-1.5 mt-2">
+<span class="material-symbols-outlined text-sm text-slate-400">group</span>
+<span class="text-body-sm text-on-surface-variant">Class 8B</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-sm text-slate-400">schedule</span>
+<span class="text-body-sm text-on-surface-variant">10:45 AM</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Quick Actions Grid -->
+<section class="mb-xl">
+<h2 class="font-h2 text-h2 text-on-surface mb-md">Quick Actions</h2>
+<div class="grid grid-cols-2 gap-md">
+<button class="bg-white p-md rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] flex items-center gap-3 active:scale-95 transition-all">
+<div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">how_to_reg</span>
+</div>
+<span class="font-label-md text-on-surface">Mark Attendance</span>
+</button>
+<button class="bg-white p-md rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] flex items-center gap-3 active:scale-95 transition-all">
+<div class="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center text-purple-600">
+<span class="material-symbols-outlined">note_add</span>
+</div>
+<span class="font-label-md text-on-surface">Add Homework</span>
+</button>
+<button class="bg-white p-md rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] flex items-center gap-3 active:scale-95 transition-all">
+<div class="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center text-orange-600">
+<span class="material-symbols-outlined">edit_square</span>
+</div>
+<span class="font-label-md text-on-surface">Enter Results</span>
+</button>
+<button class="bg-white p-md rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] flex items-center gap-3 active:scale-95 transition-all">
+<div class="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center text-red-600">
+<span class="material-symbols-outlined">gavel</span>
+</div>
+<span class="font-label-md text-on-surface">Discipline</span>
+</button>
+</div>
+</section>
+<!-- Pending Tasks -->
+<section class="mb-xl">
+<h2 class="font-h2 text-h2 text-on-surface mb-md">Pending Tasks</h2>
+<div class="bg-white rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] overflow-hidden">
+<!-- Task 1 -->
+<div class="flex items-center justify-between p-md border-b border-slate-50 last:border-b-0">
+<div class="flex gap-3">
+<div class="mt-1">
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">error</span>
+</div>
+<div>
+<p class="font-label-md text-on-surface">Unmarked Attendance (8A)</p>
+<p class="text-body-sm text-on-surface-variant">Required before 10:00 AM today</p>
+</div>
+</div>
+<button class="text-primary font-bold text-xs uppercase tracking-wider">Resolve</button>
+</div>
+<!-- Task 2 -->
+<div class="flex items-center justify-between p-md border-b border-slate-50 last:border-b-0">
+<div class="flex gap-3">
+<div class="mt-1">
+<span class="material-symbols-outlined text-orange-500">pending_actions</span>
+</div>
+<div>
+<p class="font-label-md text-on-surface">Ungraded Submissions (2)</p>
+<p class="text-body-sm text-on-surface-variant">Physics Lab Report - Class 9C</p>
+</div>
+</div>
+<button class="text-primary font-bold text-xs uppercase tracking-wider">Review</button>
+</div>
+</div>
+</section>
+<!-- Student Insights (Bento Style) -->
+<section class="mb-xl">
+<h2 class="font-h2 text-h2 text-on-surface mb-md">Class Insights</h2>
+<div class="grid grid-cols-2 grid-rows-2 gap-4 h-48">
+<div class="row-span-2 bg-primary p-md rounded-xl flex flex-col justify-between text-white">
+<span class="material-symbols-outlined text-white/60">trending_up</span>
+<div>
+<span class="text-h1 block">94%</span>
+<span class="text-label-sm text-white/80">AVG ATTENDANCE</span>
+</div>
+</div>
+<div class="bg-secondary-container p-md rounded-xl flex items-center justify-between">
+<div>
+<span class="text-h3 block text-on-secondary-container">12</span>
+<span class="text-label-sm text-on-secondary-container/70">BIRTHDAYS</span>
+</div>
+<span class="material-symbols-outlined text-primary/40">cake</span>
+</div>
+<div class="bg-white border border-slate-100 p-md rounded-xl flex items-center justify-between shadow-sm">
+<div>
+<span class="text-h3 block text-on-surface">03</span>
+<span class="text-label-sm text-on-surface-variant/70">MEETINGS</span>
+</div>
+<span class="material-symbols-outlined text-slate-300">video_call</span>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar (from Shared Components) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-t border-slate-200/50 dark:border-slate-800/50 shadow-[0_-4px_16px_rgba(0,0,0,0.04)] rounded-t-2xl">
+<a class="flex flex-col items-center justify-center text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-xl px-3 py-1 active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="text-[10px] font-medium font-inter">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 hover:text-blue-500 transition-colors active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined">event_available</span>
+<span class="text-[10px] font-medium font-inter">Attendance</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 hover:text-blue-500 transition-colors active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined">school</span>
+<span class="text-[10px] font-medium font-inter">Academics</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 hover:text-blue-500 transition-colors active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="text-[10px] font-medium font-inter">Fees</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 hover:text-blue-500 transition-colors active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-medium font-inter">Profile</span>
+</a>
+</nav>
+</body></html>

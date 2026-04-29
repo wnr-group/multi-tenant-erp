@@ -1,0 +1,157 @@
+import { useEffect, useState } from "react";
+import { View, Text, ScrollView, TouchableOpacity, Alert, TextInput } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { supabase } from "../../lib/supabase";
+import { useTheme } from "../../lib/theme";
+import { ListItem } from "../../components/ListItem";
+import { Avatar } from "../../components/Avatar";
+import { SectionHeader } from "../../components/SectionHeader";
+import { PrimaryButton } from "../../components/PrimaryButton";
+import { SkeletonCard } from "../../components/Skeleton";
+
+type Section = "menu" | "announcements" | "discipline" | "feedback" | "profile";
+
+export default function ParentMore() {
+  const theme = useTheme();
+  const [section, setSection] = useState<Section>("menu");
+  const [profile, setProfile] = useState<{ full_name: string; email: string } | null>(null);
+  const [announcements, setAnnouncements] = useState<{ id: string; title: string; content: string; created_at: string }[]>([]);
+  const [discipline, setDiscipline] = useState<{ id: string; incident_date: string; description: string; action_taken: string }[]>([]);
+  const [feedback, setFeedback] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => { loadProfile(); }, []);
+
+  async function loadProfile() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase.from("profiles").select("full_name").eq("id", user.id).single();
+    setProfile({ full_name: data?.full_name ?? "User", email: user.email ?? "" });
+  }
+
+  async function loadAnnouncements() {
+    setLoading(true);
+    const { data } = await supabase.from("announcements").select("id, title, content, created_at").order("created_at", { ascending: false }).limit(20);
+    setAnnouncements(data ?? []);
+    setLoading(false);
+  }
+
+  async function loadDiscipline() {
+    setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setLoading(false); return; }
+    // Look up parent's student
+    const { data: sp } = await supabase.from("student_profiles").select("profile_id").eq("parent_profile_id", user.id).single();
+    const studentId = sp?.profile_id;
+    if (!studentId) { setDiscipline([]); setLoading(false); return; }
+    const { data } = await supabase.from("discipline_records").select("id, created_at, description, severity").eq("student_id", studentId).order("created_at", { ascending: false });
+    setDiscipline((data ?? []).map((r: any) => ({
+      id: r.id,
+      incident_date: r.created_at,
+      description: r.description,
+      action_taken: r.severity,
+    })));
+    setLoading(false);
+  }
+
+  async function submitFeedback() {
+    if (!feedback.trim()) return;
+    setSubmitting(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from("feedback").insert({ user_id: user?.id, message: feedback.trim() });
+    setFeedback("");
+    setSubmitting(false);
+    Alert.alert("Submitted", "Your feedback has been received.");
+  }
+
+  function navigate(s: Section) {
+    setSection(s);
+    if (s === "announcements") loadAnnouncements();
+    if (s === "discipline") loadDiscipline();
+  }
+
+  if (section !== "menu") {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+        <View style={{ flexDirection: "row", alignItems: "center", padding: 20, gap: 12 }}>
+          <TouchableOpacity onPress={() => setSection("menu")}>
+            <Ionicons name="arrow-back" size={24} color={theme.textPrimary} />
+          </TouchableOpacity>
+          <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: theme.textPrimary, textTransform: "capitalize" }}>{section}</Text>
+        </View>
+        <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }} showsVerticalScrollIndicator={false}>
+          {section === "announcements" && (
+            loading ? [0,1,2].map(i => <SkeletonCard key={i} />) :
+            announcements.map((a) => (
+              <View key={a.id} style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 16, gap: 8 }}>
+                <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>{a.title}</Text>
+                <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: theme.textSecondary }}>{a.content}</Text>
+                <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: theme.textMuted }}>{new Date(a.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</Text>
+              </View>
+            ))
+          )}
+          {section === "discipline" && (
+            loading ? [0,1].map(i => <SkeletonCard key={i} />) :
+            discipline.length === 0 ? (
+              <Text style={{ textAlign: "center", color: theme.textMuted, fontFamily: "Inter_400Regular", paddingVertical: 32 }}>No discipline records</Text>
+            ) : discipline.map((d) => (
+              <View key={d.id} style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 16, gap: 8 }}>
+                <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: theme.textMuted }}>{new Date(d.incident_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</Text>
+                <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: theme.textPrimary }}>{d.description}</Text>
+                <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: theme.warning }}>Action: {d.action_taken}</Text>
+              </View>
+            ))
+          )}
+          {section === "feedback" && (
+            <View style={{ gap: 12 }}>
+              <TextInput
+                style={{ backgroundColor: theme.surface, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: theme.border, fontSize: 14, fontFamily: "Inter_400Regular", color: theme.textPrimary, minHeight: 120, textAlignVertical: "top" }}
+                placeholder="Write your feedback..."
+                placeholderTextColor={theme.textMuted}
+                multiline
+                value={feedback}
+                onChangeText={setFeedback}
+              />
+              <PrimaryButton label="Submit Feedback" onPress={submitFeedback} loading={submitting} />
+            </View>
+          )}
+          {section === "profile" && profile && (
+            <View style={{ gap: 16 }}>
+              <View style={{ backgroundColor: theme.surface, borderRadius: 20, padding: 24, alignItems: "center", gap: 12 }}>
+                <Avatar name={profile.full_name} size={72} />
+                <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>{profile.full_name}</Text>
+                <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: theme.textSecondary }}>{profile.email}</Text>
+              </View>
+              <PrimaryButton label="Sign Out" onPress={async () => { await supabase.auth.signOut(); }} style={{ backgroundColor: theme.danger }} />
+            </View>
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+      <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }} showsVerticalScrollIndicator={false}>
+        <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>More</Text>
+        {profile && (
+          <View style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 16, flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <Avatar name={profile.full_name} size={48} />
+            <View>
+              <Text style={{ fontSize: 16, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>{profile.full_name}</Text>
+              <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: theme.textSecondary }}>{profile.email}</Text>
+            </View>
+          </View>
+        )}
+        <View style={{ gap: 8 }}>
+          <ListItem icon="megaphone-outline" title="Announcements" subtitle="School news & updates" onPress={() => navigate("announcements")} />
+          <ListItem icon="shield-checkmark-outline" title="Discipline Records" subtitle="Incidents & actions" onPress={() => navigate("discipline")} />
+          <ListItem icon="chatbubble-outline" title="Feedback" subtitle="Send feedback to school" onPress={() => navigate("feedback")} />
+          <ListItem icon="person-outline" title="Profile" subtitle="Account settings" onPress={() => navigate("profile")} />
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}

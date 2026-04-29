@@ -1,99 +1,57 @@
 import { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-} from "react-native";
-import { useRouter } from "expo-router";
+import { View, Text, ScrollView } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../../lib/supabase";
+import { useTheme } from "../../lib/theme";
+import { Avatar } from "../../components/Avatar";
+import { ListItem } from "../../components/ListItem";
+import { PrimaryButton } from "../../components/PrimaryButton";
 
-interface Profile {
-  full_name: string;
-  email: string;
-}
+interface Profile { full_name: string; email: string; school_name: string }
 
 export default function TeacherProfile() {
-  const router = useRouter();
+  const theme = useTheme();
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [signingOut, setSigningOut] = useState(false);
 
-  useEffect(() => {
-    async function load() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        setLoading(false);
-        return;
-      }
+  useEffect(() => { loadProfile(); }, []);
 
-      const { data } = await supabase
-        .from("profiles")
-        .select("full_name, email")
-        .eq("id", user.id)
-        .single();
-
-      setProfile(data);
-      setLoading(false);
-    }
-    load();
-  }, []);
-
-  async function handleSignOut() {
-    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign Out",
-        style: "destructive",
-        onPress: async () => {
-          setSigningOut(true);
-          await supabase.auth.signOut();
-          router.replace("/(auth)/login");
-        },
-      },
-    ]);
+  async function loadProfile() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase
+      .from("profiles")
+      .select("full_name, school_id, schools(name)")
+      .eq("id", user.id)
+      .single();
+    setProfile({
+      full_name: data?.full_name ?? "Teacher",
+      email: user.email ?? "",
+      school_name: (data as any)?.schools?.name ?? "School",
+    });
   }
 
-  if (loading) return <ActivityIndicator className="flex-1 mt-20" />;
-
   return (
-    <ScrollView className="flex-1 bg-gray-50 p-5">
-      <Text className="mt-12 mb-5 text-2xl font-bold text-gray-900">Profile</Text>
-
-      <View className="rounded-xl bg-white p-5 shadow-sm mb-4">
-        <View className="items-center mb-4">
-          <View className="w-16 h-16 rounded-full bg-blue-100 items-center justify-center mb-3">
-            <Text className="text-2xl font-bold text-blue-600">
-              {profile?.full_name?.charAt(0)?.toUpperCase() ?? "T"}
-            </Text>
-          </View>
-          <Text className="text-lg font-bold text-gray-900">{profile?.full_name ?? "—"}</Text>
-          <Text className="text-sm text-gray-500 mt-0.5">Teacher</Text>
-        </View>
-
-        <View className="border-t border-gray-100 pt-4">
-          <View className="flex-row justify-between py-2">
-            <Text className="text-sm text-gray-500">Email</Text>
-            <Text className="text-sm text-gray-800 font-medium flex-shrink ml-4 text-right">
-              {profile?.email ?? "—"}
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      <TouchableOpacity
-        onPress={handleSignOut}
-        disabled={signingOut}
-        className="rounded-xl bg-red-500 py-3 disabled:opacity-50"
-      >
-        <Text className="text-center text-white font-semibold">
-          {signingOut ? "Signing out…" : "Sign Out"}
-        </Text>
-      </TouchableOpacity>
-    </ScrollView>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+      <ScrollView contentContainerStyle={{ padding: 20, gap: 20 }} showsVerticalScrollIndicator={false}>
+        <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>Profile</Text>
+        {profile && (
+          <>
+            <View style={{ backgroundColor: theme.surface, borderRadius: 20, padding: 24, alignItems: "center", gap: 12 }}>
+              <Avatar name={profile.full_name} size={80} />
+              <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>{profile.full_name}</Text>
+              <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: theme.textSecondary }}>{profile.email}</Text>
+              <View style={{ backgroundColor: theme.primaryLight, borderRadius: 100, paddingHorizontal: 12, paddingVertical: 4 }}>
+                <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: theme.primary }}>Teacher · {profile.school_name}</Text>
+              </View>
+            </View>
+            <View style={{ gap: 8 }}>
+              <ListItem icon="school-outline" title={profile.school_name} subtitle="Your school" />
+              <ListItem icon="mail-outline" title={profile.email} subtitle="Email address" />
+            </View>
+            <PrimaryButton label="Sign Out" onPress={async () => { await supabase.auth.signOut(); }} style={{ backgroundColor: theme.danger }} />
+          </>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
