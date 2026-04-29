@@ -10,6 +10,7 @@ export interface FeeRow {
   feeType: string;
   amountDue: number;
   amountPaid: number;
+  concessionTotal: number;
   status: string;
 }
 
@@ -48,6 +49,7 @@ export function FeesTable({ rows, schoolId }: Props) {
           feeStructureId={payingFor.feeStructureId}
           amountDue={payingFor.amountDue}
           amountPaid={payingFor.amountPaid}
+          concessionTotal={payingFor.concessionTotal}
           onClose={() => setPayingFor(null)}
         />
       )}
@@ -68,6 +70,9 @@ export function FeesTable({ rows, schoolId }: Props) {
               <th className="px-4 py-3 text-right font-medium text-muted-foreground">
                 Paid (₹)
               </th>
+              <th className="px-4 py-3 text-right font-medium text-muted-foreground">
+                Concession (₹)
+              </th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">
                 Status
               </th>
@@ -80,7 +85,7 @@ export function FeesTable({ rows, schoolId }: Props) {
             {rows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={7}
                   className="px-4 py-8 text-center text-muted-foreground"
                 >
                   No fee records for this section.
@@ -103,6 +108,11 @@ export function FeesTable({ rows, schoolId }: Props) {
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums">
                     {row.amountPaid.toLocaleString("en-IN")}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    {row.concessionTotal > 0
+                      ? row.concessionTotal.toLocaleString("en-IN")
+                      : "—"}
                   </td>
                   <td className="px-4 py-3">
                     <StatusBadge status={row.status} />

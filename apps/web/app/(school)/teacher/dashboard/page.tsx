@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
 import { getActiveSection } from "@/lib/section-context";
@@ -116,7 +118,7 @@ export default async function TeacherDashboard() {
   // Step 1: get student IDs in this section
   const { data: sectionStudents } = await supabase
     .from("student_profiles")
-    .select("id, profiles(full_name)")
+    .select("id, full_name")
     .eq("section_id", sectionId);
 
   const studentIds = (sectionStudents ?? []).map((s) => s.id);
@@ -137,8 +139,7 @@ export default async function TeacherDashboard() {
   // Build student name lookup
   const studentNameMap: Record<string, string> = {};
   for (const s of sectionStudents ?? []) {
-    const p = s.profiles as unknown as { full_name: string } | null;
-    studentNameMap[s.id] = p?.full_name ?? "Unknown Student";
+    studentNameMap[s.id] = s.full_name ?? "Unknown Student";
   }
 
   return (

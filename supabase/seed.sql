@@ -284,29 +284,61 @@ BEGIN
 
       rnd := random();
 
-      IF rnd < 0.90 THEN
-        -- Paid
+      IF rnd < 0.85 THEN
+        -- Paid in full
         INSERT INTO public.fee_payments (
           school_id, student_id, fee_structure_id,
-          amount_paid, payment_date, payment_method, status
+          amount_paid, concession_amount, payment_date, payment_method, status
         ) VALUES (
           'aaaaaaaa-0000-0000-0000-000000000001',
           sp.student_id,
           fs_id,
           fs_amount,
-          m + INTERVAL '4 days', -- 5th of month
+          0,
+          m + INTERVAL '4 days',
           'cash',
           'paid'
+        );
+      ELSIF rnd < 0.90 THEN
+        -- Paid with concession (sibling/merit discount of 20%)
+        INSERT INTO public.fee_payments (
+          school_id, student_id, fee_structure_id,
+          amount_paid, concession_amount, payment_date, payment_method, status
+        ) VALUES (
+          'aaaaaaaa-0000-0000-0000-000000000001',
+          sp.student_id,
+          fs_id,
+          fs_amount * 0.80,
+          fs_amount * 0.20,
+          m + INTERVAL '4 days',
+          'upi',
+          'paid'
+        );
+      ELSIF rnd < 0.95 THEN
+        -- Partial payment (50% paid, no concession yet)
+        INSERT INTO public.fee_payments (
+          school_id, student_id, fee_structure_id,
+          amount_paid, concession_amount, payment_date, payment_method, status
+        ) VALUES (
+          'aaaaaaaa-0000-0000-0000-000000000001',
+          sp.student_id,
+          fs_id,
+          fs_amount * 0.50,
+          0,
+          m + INTERVAL '4 days',
+          'cash',
+          'partial'
         );
       ELSE
         -- Pending
         INSERT INTO public.fee_payments (
           school_id, student_id, fee_structure_id,
-          amount_paid, payment_date, payment_method, status
+          amount_paid, concession_amount, payment_date, payment_method, status
         ) VALUES (
           'aaaaaaaa-0000-0000-0000-000000000001',
           sp.student_id,
           fs_id,
+          0,
           0,
           NULL,
           NULL,

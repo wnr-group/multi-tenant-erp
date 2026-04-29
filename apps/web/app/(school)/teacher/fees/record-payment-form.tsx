@@ -23,6 +23,7 @@ interface Props {
   feeStructureId: string;
   amountDue: number;
   amountPaid: number;
+  concessionTotal: number;
   onClose: () => void;
 }
 
@@ -33,11 +34,13 @@ export function RecordPaymentForm({
   feeStructureId,
   amountDue,
   amountPaid,
+  concessionTotal,
   onClose,
 }: Props) {
   const router = useRouter();
-  const remaining = amountDue - amountPaid;
+  const remaining = amountDue - amountPaid - concessionTotal;
   const [amount, setAmount] = useState(String(remaining > 0 ? remaining : 0));
+  const [concession, setConcession] = useState("0");
   const [method, setMethod] = useState("cash");
   const [receiptNo, setReceiptNo] = useState("");
   const [loading, setLoading] = useState(false);
@@ -45,20 +48,26 @@ export function RecordPaymentForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const parsedAmount = parseFloat(amount);
-    if (!parsedAmount || parsedAmount <= 0) {
-      toast.error("Please enter a valid amount.");
+    const parsedConcession = parseFloat(concession) || 0;
+    if (parsedAmount <= 0 && parsedConcession <= 0) {
+      toast.error("Enter a payment amount or concession.");
+      return;
+    }
+    if (parsedAmount < 0 || parsedConcession < 0) {
+      toast.error("Amounts cannot be negative.");
       return;
     }
     setLoading(true);
     const supabase = createClient();
-    const totalAfterPayment = amountPaid + parsedAmount;
-    const status = totalAfterPayment >= amountDue ? "paid" : "partial";
+    const totalEffective = amountPaid + concessionTotal + parsedAmount + parsedConcession;
+    const status = totalEffective >= amountDue ? "paid" : "partial";
 
     const { error } = await supabase.from("fee_payments").insert({
       school_id: schoolId,
       student_id: studentId,
       fee_structure_id: feeStructureId,
       amount_paid: parsedAmount,
+      concession_amount: parsedConcession,
       payment_date: new Date().toISOString().split("T")[0],
       payment_method: method,
       receipt_no: receiptNo || null,
@@ -72,7 +81,10 @@ export function RecordPaymentForm({
       return;
     }
 
-    toast.success(`Payment of ₹${parsedAmount} recorded for ${studentName}.`);
+    const parts = [];
+    if (parsedAmount > 0) parts.push(`₹${parsedAmount.toLocaleString("en-IN")} payment`);
+    if (parsedConcession > 0) parts.push(`₹${parsedConcession.toLocaleString("en-IN")} concession`);
+    toast.success(`${parts.join(" + ")} recorded for ${studentName}.`);
     onClose();
     router.refresh();
   }
@@ -92,7 +104,9 @@ export function RecordPaymentForm({
         </button>
       </div>
       <p className="mb-4 text-sm text-muted-foreground">
-        Remaining: ₹{remaining.toLocaleString("en-IN")}
+        Due: ₹{amountDue.toLocaleString("en-IN")} · Paid: ₹{amountPaid.toLocaleString("en-IN")}
+        {concessionTotal > 0 && <> · Concession: ₹{concessionTotal.toLocaleString("en-IN")}</>}
+        {" · "}Remaining: ₹{(remaining > 0 ? remaining : 0).toLocaleString("en-IN")}
       </p>
       <form
         onSubmit={handleSubmit}
@@ -107,6 +121,18 @@ export function RecordPaymentForm({
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             required
+          />
+        </div>
+
+        <div>
+          <Label>Concession (₹)</Label>
+          <Input
+            type="number"
+            min={0}
+            step={0.01}
+            value={concession}
+            onChange={(e) => setConcession(e.target.value)}
+            placeholder="0"
           />
         </div>
 

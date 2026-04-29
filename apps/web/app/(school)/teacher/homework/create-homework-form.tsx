@@ -135,6 +135,7 @@ export function CreateHomeworkForm({
           type="date"
           value={dueDate}
           onChange={(e) => setDueDate(e.target.value)}
+          required
         />
       </div>
 
@@ -187,7 +188,7 @@ export function CreateHomeworkForm({
       <div className="col-span-2">
         <Button
           type="submit"
-          disabled={loading || !title || !classId || !sectionId || !subjectId}
+          disabled={loading || !title || !dueDate || !classId || !sectionId || !subjectId}
         >
           {loading ? "Assigning…" : "Assign Homework"}
         </Button>

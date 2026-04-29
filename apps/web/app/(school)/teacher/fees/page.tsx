@@ -50,7 +50,7 @@ export default async function TeacherFeesPage() {
   // Fetch all fee payments for these students
   const { data: payments } = await supabase
     .from("fee_payments")
-    .select("student_id, fee_structure_id, amount_paid")
+    .select("student_id, fee_structure_id, amount_paid, concession_amount")
     .eq("school_id", schoolId)
     .in(
       "student_id",
@@ -59,11 +59,13 @@ export default async function TeacherFeesPage() {
         : ["00000000-0000-0000-0000-000000000000"]
     );
 
-  // Build a lookup: studentId + feeStructureId → totalPaid
+  // Build lookups: studentId + feeStructureId → totalPaid / totalConcession
   const paidMap = new Map<string, number>();
+  const concessionMap = new Map<string, number>();
   for (const p of payments ?? []) {
     const key = `${p.student_id}::${p.fee_structure_id}`;
     paidMap.set(key, (paidMap.get(key) ?? 0) + (p.amount_paid ?? 0));
+    concessionMap.set(key, (concessionMap.get(key) ?? 0) + (p.concession_amount ?? 0));
   }
 
   // Build rows: one per student × fee structure
@@ -73,10 +75,12 @@ export default async function TeacherFeesPage() {
       const key = `${studentId}::${fs.id}`;
       const amountDue = fs.amount as number ?? 0;
       const amountPaid = paidMap.get(key) ?? 0;
+      const concessionTotal = concessionMap.get(key) ?? 0;
+      const effectivePaid = amountPaid + concessionTotal;
       const status =
-        amountPaid >= amountDue
+        effectivePaid >= amountDue
           ? "paid"
-          : amountPaid > 0
+          : amountPaid > 0 || concessionTotal > 0
             ? "partial"
             : "pending";
       rows.push({
@@ -86,6 +90,7 @@ export default async function TeacherFeesPage() {
         feeType: (fs.fee_type as string) ?? "—",
         amountDue,
         amountPaid,
+        concessionTotal,
         status,
       });
     }

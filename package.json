@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "turbo run dev",
-    "dev:proxy": "docker run --rm --name erp-proxy -p 80:80 -v $(pwd)/Caddyfile:/etc/caddy/Caddyfile caddy:2-alpine",
+    "dev:proxy": "docker run --rm --name erp-proxy -p 80:80 -v \"$(pwd)/Caddyfile\":/etc/caddy/Caddyfile caddy:2-alpine",
     "dev:full": "pnpm dev:proxy & pnpm dev",
     "build": "turbo run build",
     "lint": "turbo run lint",
