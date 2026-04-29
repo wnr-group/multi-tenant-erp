@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Alert, TextInput } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, Alert, TextInput, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../../lib/supabase";
@@ -16,6 +16,7 @@ export default function ParentMore() {
   const theme = useTheme();
   const [section, setSection] = useState<Section>("menu");
   const [profile, setProfile] = useState<{ full_name: string; email: string } | null>(null);
+  const [student, setStudent] = useState<{ name: string; className: string; sectionName: string; rollNumber: string; admissionNumber: string; photoUrl: string | null } | null>(null);
   const [announcements, setAnnouncements] = useState<{ id: string; title: string; content: string; created_at: string }[]>([]);
   const [discipline, setDiscipline] = useState<{ id: string; incident_date: string; description: string; action_taken: string }[]>([]);
   const [feedback, setFeedback] = useState("");
@@ -27,8 +28,26 @@ export default function ParentMore() {
   async function loadProfile() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { data } = await supabase.from("profiles").select("full_name").eq("id", user.id).single();
-    setProfile({ full_name: data?.full_name ?? "User", email: user.email ?? "" });
+    const [{ data: prof }, { data: sp }] = await Promise.all([
+      supabase.from("profiles").select("full_name").eq("id", user.id).single(),
+      supabase
+        .from("student_profiles")
+        .select("full_name, roll_number, admission_number, photo_url, sections(name, classes(name))")
+        .eq("parent_profile_id", user.id)
+        .single(),
+    ]);
+    setProfile({ full_name: prof?.full_name ?? "User", email: user.email ?? "" });
+    if (sp) {
+      const s = sp as any;
+      setStudent({
+        name: s.full_name ?? "Student",
+        className: s.sections?.classes?.name ?? "",
+        sectionName: s.sections?.name ?? "",
+        rollNumber: s.roll_number ?? "",
+        admissionNumber: s.admission_number ?? "",
+        photoUrl: s.photo_url ?? null,
+      });
+    }
   }
 
   async function loadAnnouncements() {
@@ -119,11 +138,43 @@ export default function ParentMore() {
           )}
           {section === "profile" && profile && (
             <View style={{ gap: 16 }}>
+              {/* Parent account card */}
               <View style={{ backgroundColor: theme.surface, borderRadius: 20, padding: 24, alignItems: "center", gap: 12 }}>
                 <Avatar name={profile.full_name} size={72} />
                 <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>{profile.full_name}</Text>
                 <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: theme.textSecondary }}>{profile.email}</Text>
               </View>
+
+              {/* Child / student details card */}
+              {student && (
+                <View style={{ backgroundColor: theme.surface, borderRadius: 20, overflow: "hidden" }}>
+                  <View style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.border }}>
+                    <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: theme.textMuted, letterSpacing: 0.5, textTransform: "uppercase" }}>Student</Text>
+                  </View>
+                  <View style={{ padding: 16, flexDirection: "row", alignItems: "center", gap: 14 }}>
+                    {student.photoUrl ? (
+                      <Image source={{ uri: student.photoUrl }} style={{ width: 56, height: 56, borderRadius: 14 }} resizeMode="cover" />
+                    ) : (
+                      <Avatar name={student.name} size={56} />
+                    )}
+                    <View style={{ flex: 1, gap: 3 }}>
+                      <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>{student.name}</Text>
+                      <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: theme.primary }}>
+                        {student.className} {student.sectionName}
+                      </Text>
+                      <View style={{ flexDirection: "row", gap: 12, marginTop: 2 }}>
+                        {student.rollNumber ? (
+                          <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: theme.textMuted }}>Roll #{student.rollNumber}</Text>
+                        ) : null}
+                        {student.admissionNumber ? (
+                          <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: theme.textMuted }}>Adm #{student.admissionNumber}</Text>
+                        ) : null}
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              )}
+
               <PrimaryButton label="Sign Out" onPress={async () => { await supabase.auth.signOut(); }} style={{ backgroundColor: theme.danger }} />
             </View>
           )}

@@ -26,6 +26,7 @@ const NAV_ITEMS: Record<string, { label: string; href: string }[]> = {
     { label: "Fees",           href: "/admin/fees" },
     { label: "Syllabus",       href: "/admin/syllabus" },
     { label: "Announcements",  href: "/admin/announcements" },
+    { label: "Gallery",        href: "/admin/gallery" },
     { label: "Discipline",     href: "/admin/discipline" },
     { label: "Reports",        href: "/admin/reports" },
     { label: "Settings",       href: "/admin/settings" },
