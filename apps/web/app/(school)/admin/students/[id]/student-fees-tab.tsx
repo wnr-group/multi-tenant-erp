@@ -32,24 +32,24 @@ export async function StudentFeesTab({ studentId, studentName }: Props) {
 
   const paidMap = new Map<string, number>();
   const concessionMap = new Map<string, number>();
+  const installmentCountMap = new Map<string, number>();
   for (const p of payments ?? []) {
     paidMap.set(p.fee_structure_id, (paidMap.get(p.fee_structure_id) ?? 0) + (p.amount_paid ?? 0));
     concessionMap.set(p.fee_structure_id, (concessionMap.get(p.fee_structure_id) ?? 0) + (p.concession_amount ?? 0));
+    installmentCountMap.set(p.fee_structure_id, (installmentCountMap.get(p.fee_structure_id) ?? 0) + 1);
   }
 
-  const rows = (feeStructures ?? []).map((fs) => ({
-    feeStructureId: fs.id,
-    feeType: fs.fee_type as string,
-    amountDue: fs.amount as number,
-    amountPaid: paidMap.get(fs.id) ?? 0,
-    concessionTotal: concessionMap.get(fs.id) ?? 0,
-    status: (() => {
-      const effective = (paidMap.get(fs.id) ?? 0) + (concessionMap.get(fs.id) ?? 0);
-      if (effective >= (fs.amount as number)) return "paid";
-      if (effective > 0) return "partial";
-      return "pending";
-    })(),
-  }));
+  const rows = (feeStructures ?? []).map((fs) => {
+    const unitAmount = fs.amount as number;
+    // Total due = per-installment amount × number of billing periods raised for this student
+    const installments = Math.max(1, installmentCountMap.get(fs.id) ?? 0);
+    const amountDue = unitAmount * installments;
+    const amountPaid = paidMap.get(fs.id) ?? 0;
+    const concessionTotal = concessionMap.get(fs.id) ?? 0;
+    const effective = amountPaid + concessionTotal;
+    const status = effective >= amountDue ? "paid" : effective > 0 ? "partial" : "pending";
+    return { feeStructureId: fs.id, feeType: fs.fee_type as string, amountDue, amountPaid, concessionTotal, status };
+  });
 
   return (
     <StudentFeesClient
