@@ -59,13 +59,15 @@ export default async function TeacherFeesPage() {
         : ["00000000-0000-0000-0000-000000000000"]
     );
 
-  // Build lookups: studentId + feeStructureId → totalPaid / totalConcession
+  // Build lookups: studentId + feeStructureId → totalPaid / totalConcession / installment count
   const paidMap = new Map<string, number>();
   const concessionMap = new Map<string, number>();
+  const installmentCountMap = new Map<string, number>();
   for (const p of payments ?? []) {
     const key = `${p.student_id}::${p.fee_structure_id}`;
     paidMap.set(key, (paidMap.get(key) ?? 0) + (p.amount_paid ?? 0));
     concessionMap.set(key, (concessionMap.get(key) ?? 0) + (p.concession_amount ?? 0));
+    installmentCountMap.set(key, (installmentCountMap.get(key) ?? 0) + 1);
   }
 
   // Build rows: one per student × fee structure
@@ -73,7 +75,10 @@ export default async function TeacherFeesPage() {
   for (const [studentId, studentName] of studentMap) {
     for (const fs of feeStructures ?? []) {
       const key = `${studentId}::${fs.id}`;
-      const amountDue = fs.amount as number ?? 0;
+      const unitAmount = (fs.amount as number) ?? 0;
+      // Total due = per-installment amount × number of billing periods raised for this student
+      const installments = Math.max(1, installmentCountMap.get(key) ?? 0);
+      const amountDue = unitAmount * installments;
       const amountPaid = paidMap.get(key) ?? 0;
       const concessionTotal = concessionMap.get(key) ?? 0;
       const effectivePaid = amountPaid + concessionTotal;

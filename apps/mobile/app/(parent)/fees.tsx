@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Modal, Alert } from "react-native";
+import { useEffect, useState, useCallback } from "react";
+import { View, Text, ScrollView, TouchableOpacity, Modal, Alert, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import RazorpayCheckout from "react-native-razorpay";
@@ -11,10 +11,10 @@ import { SectionHeader } from "../../components/SectionHeader";
 import { SkeletonCard } from "../../components/Skeleton";
 
 interface FeePayment {
-  id: string;
+  id: string; // feeStructureId used as stable key
   fee_type: string;
-  amount_due: number;
-  amount_paid: number;
+  amount_due: number; // unit_amount × installment_count
+  amount_paid: number; // sum of all payments
   due_date: string;
   status: "paid" | "pending" | "overdue" | "partial";
   paid_at?: string;
@@ -25,32 +25,77 @@ export default function ParentFees() {
   const theme = useTheme();
   const [payments, setPayments] = useState<FeePayment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [receipt, setReceipt] = useState<FeePayment | null>(null);
   const [payingId, setPayingId] = useState<string | null>(null);
 
   useEffect(() => { loadFees(); }, []);
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadFees();
+    setRefreshing(false);
+  }, []);
+
   async function loadFees() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     // Look up parent's student
-    const { data: sp } = await supabase.from("student_profiles").select("id").eq("parent_profile_id", user.id).single();
+    const { data: sp } = await supabase.from("student_profiles").select("id, class_id").eq("parent_profile_id", user.id).single();
     const studentId = sp?.id;
+    const classId = sp?.class_id;
     if (!studentId) { setLoading(false); return; }
-    const { data } = await supabase.from("fee_payments")
-      .select("id, amount_paid, payment_date, payment_method, receipt_number, status, razorpay_order_id, fee_structures(fee_type, amount, due_date)")
-      .eq("student_id", studentId)
-      .order("created_at", { ascending: false });
-    setPayments((data ?? []).map((r: any) => ({
-      id: r.id,
-      fee_type: r.fee_structures?.fee_type ?? "",
-      amount_due: r.fee_structures?.amount ?? 0,
-      amount_paid: r.amount_paid,
-      due_date: r.fee_structures?.due_date ?? "",
-      status: r.status,
-      paid_at: r.payment_date,
-      transaction_id: r.receipt_number,
-    })));
+
+    // Fetch fee structures for the student's class + all payment rows for the student
+    const [{ data: feeStructures }, { data: paymentRows }] = await Promise.all([
+      supabase.from("fee_structures")
+        .select("id, fee_type, amount, due_date")
+        .eq("class_id", classId ?? "00000000-0000-0000-0000-000000000000"),
+      supabase.from("fee_payments")
+        .select("id, fee_structure_id, amount_paid, concession_amount, payment_date, receipt_number, status")
+        .eq("student_id", studentId)
+        .order("payment_date", { ascending: false }),
+    ]);
+
+    // Aggregate per fee structure
+    const paidMap = new Map<string, number>();
+    const concessionMap = new Map<string, number>();
+    const installmentMap = new Map<string, number>();
+    const lastPaidAt = new Map<string, string>();
+    const lastReceiptNo = new Map<string, string>();
+    for (const p of paymentRows ?? []) {
+      const fsId = p.fee_structure_id;
+      paidMap.set(fsId, (paidMap.get(fsId) ?? 0) + (p.amount_paid ?? 0));
+      concessionMap.set(fsId, (concessionMap.get(fsId) ?? 0) + (p.concession_amount ?? 0));
+      installmentMap.set(fsId, (installmentMap.get(fsId) ?? 0) + 1);
+      if (p.payment_date && !lastPaidAt.has(fsId)) lastPaidAt.set(fsId, p.payment_date);
+      if (p.receipt_number && !lastReceiptNo.has(fsId)) lastReceiptNo.set(fsId, p.receipt_number);
+    }
+
+    const aggregated: FeePayment[] = (feeStructures ?? []).map((fs: any) => {
+      const unitAmount = fs.amount ?? 0;
+      const installments = Math.max(1, installmentMap.get(fs.id) ?? 0);
+      const amountDue = unitAmount * installments;
+      const amountPaid = paidMap.get(fs.id) ?? 0;
+      const concessionTotal = concessionMap.get(fs.id) ?? 0;
+      const effective = amountPaid + concessionTotal;
+      const status: FeePayment["status"] =
+        effective >= amountDue ? "paid"
+        : amountPaid > 0 || concessionTotal > 0 ? "partial"
+        : "pending";
+      return {
+        id: fs.id,
+        fee_type: fs.fee_type ?? "",
+        amount_due: amountDue,
+        amount_paid: amountPaid,
+        due_date: fs.due_date ?? "",
+        status,
+        paid_at: lastPaidAt.get(fs.id),
+        transaction_id: lastReceiptNo.get(fs.id),
+      };
+    });
+
+    setPayments(aggregated);
     setLoading(false);
   }
 
@@ -83,7 +128,7 @@ export default function ParentFees() {
 
   return (
     <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: theme.background }}>
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 20 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ padding: 20, gap: 20 }} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
         <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>Fees</Text>
 
         {/* Balance card */}
@@ -93,7 +138,7 @@ export default function ParentFees() {
             <Text style={{ fontSize: 36, fontFamily: "Inter_700Bold", color: "#fff" }}>₹{totalDue.toLocaleString("en-IN")}</Text>
             {nextDue && (
               <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.8)" }}>
-                Next due: {new Date(nextDue.due_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                Next due: {nextDue.due_date ? new Date(nextDue.due_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"}
               </Text>
             )}
             {totalDue > 0 && nextDue && (
@@ -113,7 +158,7 @@ export default function ParentFees() {
             <View key={p.id} style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
               <View>
                 <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>{p.fee_type}</Text>
-                <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: theme.textSecondary, marginTop: 2 }}>Due {new Date(p.due_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</Text>
+                <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: theme.textSecondary, marginTop: 2 }}>Due {p.due_date ? new Date(p.due_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "—"}</Text>
               </View>
               <View style={{ alignItems: "flex-end", gap: 6 }}>
                 <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>₹{(p.amount_due - p.amount_paid).toLocaleString("en-IN")}</Text>
