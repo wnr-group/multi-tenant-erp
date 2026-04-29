@@ -1,10 +1,12 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../lib/theme";
+import { TeacherContextProvider } from "../../lib/teacherContext";
 
 export default function TeacherLayout() {
   const theme = useTheme();
   return (
+    <TeacherContextProvider>
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -20,5 +22,6 @@ export default function TeacherLayout() {
       <Tabs.Screen name="discipline" options={{ title: "Discipline", tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "shield" : "shield-outline"} size={22} color={color} /> }} />
       <Tabs.Screen name="profile" options={{ title: "Profile", tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "person" : "person-outline"} size={22} color={color} /> }} />
     </Tabs>
+    </TeacherContextProvider>
   );
 }

@@ -4,6 +4,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../../lib/supabase";
 import { useTheme } from "../../lib/theme";
+import { useTeacherContext } from "../../lib/teacherContext";
+import { SectionSwitcher } from "../../components/SectionSwitcher";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { SkeletonCard } from "../../components/Skeleton";
 import { PickerModal, SelectRow, PickerOption } from "../../components/PickerModal";
@@ -46,12 +48,12 @@ const CATEGORY_ICONS: Record<DisciplineCategory, "person-outline" | "book-outlin
 
 export default function TeacherDiscipline() {
   const theme = useTheme();
+  const { activeSection, userId, schoolId, ready } = useTeacherContext();
   const [records, setRecords] = useState<DisciplineRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Form state
   const [form, setForm] = useState({
     studentId: "", studentLabel: "",
     category: "" as DisciplineCategory | "",
@@ -65,23 +67,16 @@ export default function TeacherDiscipline() {
   const [showSeverityPicker, setShowSeverityPicker] = useState(false);
   const [studentOptions, setStudentOptions] = useState<PickerOption[]>([]);
 
-  // Teacher context
-  const [ctx, setCtx] = useState<{ userId: string; schoolId: string; sectionId: string } | null>(null);
-
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => {
+    if (!ready) return;
+    loadAll();
+  }, [activeSection?.id, ready]);
 
   async function loadAll() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    setLoading(true);
+    if (!userId) { setLoading(false); return; }
 
-    const [roleRes, tpRes] = await Promise.all([
-      supabase.from("user_roles").select("school_id").eq("user_id", user.id).eq("is_active", true).single(),
-      supabase.from("teacher_profiles").select("class_teacher_of").eq("profile_id", user.id).single(),
-    ]);
-
-    const schoolId = roleRes.data?.school_id ?? "";
-    const sectionId = tpRes.data?.class_teacher_of ?? "";
-    setCtx({ userId: user.id, schoolId, sectionId });
+    const sectionId = activeSection?.id ?? "";
 
     const [studentsRes, recordsRes] = await Promise.all([
       sectionId
@@ -90,7 +85,7 @@ export default function TeacherDiscipline() {
       supabase
         .from("discipline_records")
         .select("id, created_at, description, severity, category, student_profiles!student_id(full_name)")
-        .eq("recorded_by", user.id)
+        .eq("recorded_by", userId)
         .order("created_at", { ascending: false })
         .limit(30),
     ]);
@@ -112,15 +107,15 @@ export default function TeacherDiscipline() {
     if (!form.category) { Alert.alert("Missing", "Please select a category."); return; }
     if (!form.severity) { Alert.alert("Missing", "Please select the action taken."); return; }
     if (!form.description.trim()) { Alert.alert("Missing", "Please describe the incident."); return; }
-    if (!ctx) return;
+    if (!userId || !schoolId) return;
     setSaving(true);
     const { error } = await supabase.from("discipline_records").insert({
-      school_id: ctx.schoolId,
+      school_id: schoolId,
       student_id: form.studentId,
       category: form.category,
       severity: form.severity,
       description: form.description.trim(),
-      recorded_by: ctx.userId,
+      recorded_by: userId,
     });
     setSaving(false);
     if (error) { Alert.alert("Error", error.message); return; }
@@ -149,6 +144,8 @@ export default function TeacherDiscipline() {
           <Ionicons name="add" size={22} color="#fff" />
         </TouchableOpacity>
       </View>
+
+      <SectionSwitcher />
 
       {/* Records list */}
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, gap: 10, paddingBottom: 32 }} showsVerticalScrollIndicator={false}>

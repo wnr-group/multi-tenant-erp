@@ -4,6 +4,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../../lib/supabase";
 import { useTheme } from "../../lib/theme";
+import { useTeacherContext } from "../../lib/teacherContext";
+import { SectionSwitcher } from "../../components/SectionSwitcher";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { SkeletonCard } from "../../components/Skeleton";
 import { PickerModal, SelectRow, PickerOption } from "../../components/PickerModal";
@@ -33,12 +35,16 @@ function gradeFromMarks(marks: number, max: number): string {
 
 export default function TeacherClasses() {
   const theme = useTheme();
+  const { activeSection, userId, schoolId, ready } = useTeacherContext();
   const [tab, setTab] = useState<Tab>("homework");
 
   const [homework, setHomework] = useState<HomeworkItem[]>([]);
   const [results, setResults] = useState<ResultItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [ctx, setCtx] = useState<TeacherContext | null>(null);
+  // ctx is derived from shared context — kept for backward compat with submit fns
+  const ctx: TeacherContext | null = activeSection
+    ? { userId, schoolId, sectionId: activeSection.id, classId: activeSection.classId, sectionName: activeSection.label }
+    : null;
 
   // Subject options loaded from DB
   const [subjectOptions, setSubjectOptions] = useState<PickerOption[]>([]);
@@ -62,42 +68,25 @@ export default function TeacherClasses() {
   const [showResExamPicker, setShowResExamPicker] = useState(false);
   const [savingRes, setSavingRes] = useState(false);
 
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => {
+    if (!ready) return;
+    loadAll();
+  }, [activeSection?.id, ready]);
 
   async function loadAll() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    setLoading(true);
+    if (!activeSection || !userId || !schoolId) { setLoading(false); return; }
 
-    const [roleRes, tpRes] = await Promise.all([
-      supabase.from("user_roles").select("school_id").eq("user_id", user.id).eq("is_active", true).single(),
-      supabase.from("teacher_profiles").select("class_teacher_of").eq("profile_id", user.id).single(),
-    ]);
-
-    const schoolId = roleRes.data?.school_id ?? "";
-    const sectionId = tpRes.data?.class_teacher_of ?? "";
-
-    let classId = "";
-    let sectionName = "";
-    if (sectionId) {
-      const { data: sec } = await supabase.from("sections").select("class_id, name, classes(name)").eq("id", sectionId).single();
-      classId = sec?.class_id ?? "";
-      sectionName = sec ? `${(sec as any).classes?.name ?? ""} ${sec.name}`.trim() : "";
-    }
-
-    const context: TeacherContext = { userId: user.id, schoolId, sectionId, classId, sectionName };
-    setCtx(context);
+    const sectionId = activeSection.id;
+    const classId = activeSection.classId;
 
     // Load subjects, students, exams, homework, results in parallel
     const [subjectsRes, studentsRes, examsRes, hwRes, resultsRes] = await Promise.all([
-      classId
-        ? supabase.from("subjects").select("id, name").eq("class_id", classId).eq("school_id", schoolId).order("name")
-        : Promise.resolve({ data: [] }),
-      sectionId
-        ? supabase.from("student_profiles").select("id, full_name").eq("section_id", sectionId).order("full_name")
-        : Promise.resolve({ data: [] }),
+      supabase.from("subjects").select("id, name").eq("class_id", classId).eq("school_id", schoolId).order("name"),
+      supabase.from("student_profiles").select("id, full_name").eq("section_id", sectionId).order("full_name"),
       supabase.from("exams").select("id, name").eq("school_id", schoolId).order("start_date", { ascending: false }).limit(10),
-      supabase.from("homework").select("id, title, due_date, subjects(name), sections(name, classes(name))").eq("teacher_id", user.id).order("due_date", { ascending: false }).limit(20),
-      supabase.from("exam_results").select("id, marks_obtained, max_marks, grade, subjects(name), student_profiles!student_id(full_name)").eq("teacher_id", user.id).order("created_at", { ascending: false }).limit(50),
+      supabase.from("homework").select("id, title, due_date, subjects(name), sections(name, classes(name))").eq("teacher_id", userId).eq("section_id", sectionId).order("due_date", { ascending: false }).limit(20),
+      supabase.from("exam_results").select("id, marks_obtained, max_marks, grade, subjects(name), student_profiles!student_id(full_name)").eq("teacher_id", userId).order("created_at", { ascending: false }).limit(50),
     ]);
 
     setSubjectOptions((subjectsRes.data ?? []).map((s: any) => ({ label: s.name, value: s.id })));
@@ -197,6 +186,8 @@ export default function TeacherClasses() {
           <Ionicons name="add" size={22} color="#fff" />
         </TouchableOpacity>
       </View>
+
+      <SectionSwitcher />
 
       {/* Tab switcher */}
       <View style={{ flexDirection: "row", marginHorizontal: 20, marginBottom: 16, backgroundColor: theme.surface, borderRadius: 14, padding: 4, borderWidth: 1, borderColor: theme.border }}>
