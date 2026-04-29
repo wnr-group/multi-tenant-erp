@@ -34,8 +34,8 @@ export default function ParentFees() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     // Look up parent's student
-    const { data: sp } = await supabase.from("student_profiles").select("profile_id").eq("parent_profile_id", user.id).single();
-    const studentId = sp?.profile_id;
+    const { data: sp } = await supabase.from("student_profiles").select("id").eq("parent_profile_id", user.id).single();
+    const studentId = sp?.id;
     if (!studentId) { setLoading(false); return; }
     const { data } = await supabase.from("fee_payments")
       .select("id, amount_paid, payment_date, payment_method, receipt_number, status, razorpay_order_id, fee_structures(fee_type, amount, due_date)")

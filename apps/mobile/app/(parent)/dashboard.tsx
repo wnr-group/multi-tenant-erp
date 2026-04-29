@@ -30,8 +30,8 @@ export default function ParentDashboard() {
     if (!user) return;
 
     // Look up parent's student
-    const { data: sp } = await supabase.from("student_profiles").select("profile_id, section_id, class_id, full_name").eq("parent_profile_id", user.id).single();
-    const studentId = sp?.profile_id;
+    const { data: sp } = await supabase.from("student_profiles").select("id, section_id, class_id, full_name").eq("parent_profile_id", user.id).single();
+    const studentId = sp?.id;
     const studentName = sp?.full_name ?? "Student";
 
     const [attendanceRes, feesRes, homeworkRes, announcementsRes] = await Promise.all([

@@ -547,3 +547,167 @@ BEGIN
     END LOOP;
   END LOOP;
 END $$;
+
+-- ---------------------------------------------------------------
+-- PARENT TEST USER + STUDENT (for mobile app testing)
+-- Login: parent1@demo.com / Admin@1234
+-- Student: Aryan Sharma, Class 8A
+-- ---------------------------------------------------------------
+INSERT INTO auth.users (
+  id, email, encrypted_password, email_confirmed_at,
+  raw_user_meta_data, created_at, updated_at,
+  aud, role, instance_id, confirmation_token, recovery_token,
+  email_change_token_new, email_change
+) VALUES (
+  'aaaaaaaa-0000-0000-0000-000000000030', 'parent1@demo.com',
+  crypt('Admin@1234', gen_salt('bf')), now(),
+  '{"full_name":"Sunita Sharma"}'::jsonb,
+  now(), now(), 'authenticated', 'authenticated',
+  '00000000-0000-0000-0000-000000000000', '', '', '', ''
+);
+
+UPDATE public.profiles
+SET school_id = 'aaaaaaaa-0000-0000-0000-000000000001'
+WHERE id = 'aaaaaaaa-0000-0000-0000-000000000030';
+
+INSERT INTO public.user_roles (user_id, school_id, role, is_active) VALUES
+  ('aaaaaaaa-0000-0000-0000-000000000030', 'aaaaaaaa-0000-0000-0000-000000000001', 'parent', true);
+
+-- Student record linked to parent
+INSERT INTO public.student_profiles (id, school_id, class_id, section_id, full_name, admission_number, parent_profile_id)
+VALUES (
+  'dddddddd-0000-0000-0000-000000000001',
+  'aaaaaaaa-0000-0000-0000-000000000001',
+  'bbbbbbbb-0000-0000-0000-000000000008',  -- Class 8
+  'cccccccc-0000-0000-0000-000000000801',  -- Class 8A
+  'Aryan Sharma',
+  'ADM-TEST-001',
+  'aaaaaaaa-0000-0000-0000-000000000030'
+);
+
+-- Fee payments (Nov 2025–Feb 2026 paid, Mar partial, Apr pending)
+DO $$
+DECLARE
+  fs_id     UUID;
+  fs_amount NUMERIC;
+  m         DATE;
+BEGIN
+  SELECT id, amount INTO fs_id, fs_amount
+  FROM public.fee_structures
+  WHERE class_id  = 'bbbbbbbb-0000-0000-0000-000000000008'
+    AND school_id = 'aaaaaaaa-0000-0000-0000-000000000001'
+  LIMIT 1;
+
+  FOREACH m IN ARRAY ARRAY[
+    '2025-11-01'::DATE, '2025-12-01'::DATE,
+    '2026-01-01'::DATE, '2026-02-01'::DATE
+  ] LOOP
+    INSERT INTO public.fee_payments
+      (school_id, student_id, fee_structure_id, amount_paid, concession_amount, payment_date, payment_method, status)
+    VALUES (
+      'aaaaaaaa-0000-0000-0000-000000000001',
+      'dddddddd-0000-0000-0000-000000000001',
+      fs_id, fs_amount, 0,
+      m + INTERVAL '4 days', 'cash', 'paid'
+    );
+  END LOOP;
+
+  INSERT INTO public.fee_payments
+    (school_id, student_id, fee_structure_id, amount_paid, concession_amount, payment_date, payment_method, status)
+  VALUES
+    ('aaaaaaaa-0000-0000-0000-000000000001', 'dddddddd-0000-0000-0000-000000000001',
+     fs_id, fs_amount * 0.5, 0, '2026-03-05', 'upi', 'partial'),
+    ('aaaaaaaa-0000-0000-0000-000000000001', 'dddddddd-0000-0000-0000-000000000001',
+     fs_id, 0, 0, NULL, NULL, 'pending');
+END $$;
+
+-- Attendance (last 30 school days, ~85% present)
+DO $$
+DECLARE
+  d         DATE;
+  days_done INT := 0;
+  rnd       FLOAT;
+BEGIN
+  d := CURRENT_DATE - INTERVAL '1 day';
+  WHILE days_done < 30 LOOP
+    IF EXTRACT(DOW FROM d) BETWEEN 1 AND 5 THEN
+      rnd := random();
+      INSERT INTO public.attendance_records
+        (school_id, student_id, section_id, date, status, marked_by)
+      VALUES (
+        'aaaaaaaa-0000-0000-0000-000000000001',
+        'dddddddd-0000-0000-0000-000000000001',
+        'cccccccc-0000-0000-0000-000000000801',
+        d,
+        CASE
+          WHEN rnd < 0.82 THEN 'present'::public.attendance_status
+          WHEN rnd < 0.95 THEN 'absent'::public.attendance_status
+          ELSE                  'late'::public.attendance_status
+        END,
+        'aaaaaaaa-0000-0000-0000-000000000013'
+      )
+      ON CONFLICT (student_id, date) DO NOTHING;
+      days_done := days_done + 1;
+    END IF;
+    d := d - INTERVAL '1 day';
+  END LOOP;
+END $$;
+
+-- Exam + results
+INSERT INTO public.exams (id, school_id, academic_year_id, name, start_date, end_date)
+VALUES (
+  'eeeeeeee-0000-0000-0000-000000000001',
+  'aaaaaaaa-0000-0000-0000-000000000001',
+  'aaaaaaaa-0000-0000-0000-000000000002',
+  'Mid-Term 2026', '2026-02-10', '2026-02-20'
+);
+
+INSERT INTO public.exam_results (school_id, exam_id, student_id, subject_id, marks_obtained, max_marks, grade, teacher_id)
+SELECT
+  'aaaaaaaa-0000-0000-0000-000000000001',
+  'eeeeeeee-0000-0000-0000-000000000001',
+  'dddddddd-0000-0000-0000-000000000001',
+  sub.id, m.marks, 100, m.grade,
+  'aaaaaaaa-0000-0000-0000-000000000013'
+FROM (VALUES
+  ('Mathematics',   88::NUMERIC, 'A'),
+  ('English',       76::NUMERIC, 'B'),
+  ('Science',       91::NUMERIC, 'A+'),
+  ('Social Studies',82::NUMERIC, 'A'),
+  ('Hindi',         79::NUMERIC, 'B+')
+) AS m(subj_name, marks, grade)
+JOIN public.subjects sub
+  ON  sub.name      = m.subj_name
+  AND sub.class_id  = 'bbbbbbbb-0000-0000-0000-000000000008'
+  AND sub.school_id = 'aaaaaaaa-0000-0000-0000-000000000001';
+
+-- Homework for Class 8A
+INSERT INTO public.homework (school_id, class_id, section_id, subject_id, teacher_id, title, description, due_date)
+SELECT
+  'aaaaaaaa-0000-0000-0000-000000000001',
+  'bbbbbbbb-0000-0000-0000-000000000008',
+  'cccccccc-0000-0000-0000-000000000801',
+  sub.id,
+  'aaaaaaaa-0000-0000-0000-000000000013',
+  hw.title, hw.body, hw.due
+FROM (VALUES
+  ('Mathematics', 'Chapter 7 Exercises',        'Complete all exercises from Chapter 7.',             CURRENT_DATE + 2),
+  ('Science',     'Lab Report – Acids & Bases',  'Write the lab report for the experiment done today.', CURRENT_DATE + 5),
+  ('English',     'Essay: My Favourite Season',  'Write a 300-word essay.',                           CURRENT_DATE - 3)
+) AS hw(subj, title, body, due)
+JOIN public.subjects sub
+  ON  sub.name      = hw.subj
+  AND sub.class_id  = 'bbbbbbbb-0000-0000-0000-000000000008'
+  AND sub.school_id = 'aaaaaaaa-0000-0000-0000-000000000001';
+
+-- Discipline record
+INSERT INTO public.discipline_records
+  (school_id, student_id, category, severity, description, recorded_by, created_at)
+VALUES (
+  'aaaaaaaa-0000-0000-0000-000000000001',
+  'dddddddd-0000-0000-0000-000000000001',
+  'behavioral', 'verbal',
+  'Disrupting class during mathematics period.',
+  'aaaaaaaa-0000-0000-0000-000000000013',
+  now() - INTERVAL '10 days'
+);

@@ -43,8 +43,8 @@ export default function ParentMore() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
     // Look up parent's student
-    const { data: sp } = await supabase.from("student_profiles").select("profile_id").eq("parent_profile_id", user.id).single();
-    const studentId = sp?.profile_id;
+    const { data: sp } = await supabase.from("student_profiles").select("id").eq("parent_profile_id", user.id).single();
+    const studentId = sp?.id;
     if (!studentId) { setDiscipline([]); setLoading(false); return; }
     const { data } = await supabase.from("discipline_records").select("id, created_at, description, severity").eq("student_id", studentId).order("created_at", { ascending: false });
     setDiscipline((data ?? []).map((r: any) => ({

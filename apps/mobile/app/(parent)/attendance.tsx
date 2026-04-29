@@ -23,8 +23,8 @@ export default function ParentAttendance() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     // Look up parent's student
-    const { data: sp } = await supabase.from("student_profiles").select("profile_id").eq("parent_profile_id", user.id).single();
-    const studentId = sp?.profile_id;
+    const { data: sp } = await supabase.from("student_profiles").select("id").eq("parent_profile_id", user.id).single();
+    const studentId = sp?.id;
     if (!studentId) { setLoading(false); return; }
     const { data } = await supabase.from("attendance_records").select("date, status").eq("student_id", studentId).order("date");
     setRecords((data as AttendanceRecord[]) ?? []);
