@@ -15,11 +15,12 @@ export interface Theme {
   warning: string;
   danger: string;
   info: string;
+  schoolName: string;
 }
 
 const DEFAULT_PRIMARY = "#475569";
 
-function buildTheme(primary: string): Theme {
+function buildTheme(primary: string, schoolName = ""): Theme {
   return {
     primary,
     primaryLight: primary + "26",
@@ -34,6 +35,7 @@ function buildTheme(primary: string): Theme {
     warning: "#F59E0B",
     danger: "#EF4444",
     info: "#3B82F6",
+    schoolName,
   };
 }
 
@@ -52,12 +54,12 @@ export function ThemeProvider({
     if (!schoolId) return;
     supabase
       .from("schools")
-      .select("primary_color")
+      .select("primary_color, name")
       .eq("id", schoolId)
       .single()
       .then(({ data }) => {
-        if (data?.primary_color) {
-          setTheme(buildTheme(data.primary_color));
+        if (data) {
+          setTheme(buildTheme(data.primary_color ?? DEFAULT_PRIMARY, data.name ?? ""));
         }
       });
   }, [schoolId]);

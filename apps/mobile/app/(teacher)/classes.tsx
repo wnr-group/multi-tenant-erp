@@ -176,7 +176,7 @@ export default function TeacherClasses() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+    <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: theme.background }}>
       {/* Header */}
       <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
         <View>

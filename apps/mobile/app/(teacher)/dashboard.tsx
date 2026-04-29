@@ -119,7 +119,7 @@ export default function TeacherDashboard() {
   const ACCENT_COLORS = [theme.primary, "#10B981", "#F59E0B", "#8B5CF6", "#EF4444"];
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+    <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: theme.background }}>
       <ScrollView
         contentContainerStyle={{ paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}

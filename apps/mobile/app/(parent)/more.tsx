@@ -93,7 +93,7 @@ export default function ParentMore() {
 
   if (section !== "menu") {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+      <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: theme.background }}>
         <View style={{ flexDirection: "row", alignItems: "center", padding: 20, gap: 12 }}>
           <TouchableOpacity onPress={() => setSection("menu")}>
             <Ionicons name="arrow-back" size={24} color={theme.textPrimary} />
@@ -184,7 +184,7 @@ export default function ParentMore() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+    <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: theme.background }}>
       <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }} showsVerticalScrollIndicator={false}>
         <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>More</Text>
         {profile && (

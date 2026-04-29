@@ -2,6 +2,7 @@ import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../lib/theme";
 import { TeacherContextProvider } from "../../lib/teacherContext";
+import { AppBar } from "../../components/AppBar";
 
 export default function TeacherLayout() {
   const theme = useTheme();
@@ -9,7 +10,8 @@ export default function TeacherLayout() {
     <TeacherContextProvider>
     <Tabs
       screenOptions={{
-        headerShown: false,
+        headerShown: true,
+        header: () => <AppBar />,
         tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: theme.textMuted,
         tabBarStyle: { backgroundColor: theme.surface, borderTopColor: theme.border, borderTopWidth: 1, height: 60, paddingBottom: 8 },
