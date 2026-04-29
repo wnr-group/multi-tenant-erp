@@ -12,6 +12,17 @@
 2. Browser open at `http://school1.lvh.me:3000`
 3. Have two browser tabs ready (one for admin, one for teacher)
 
+## Key Test Students
+
+The database has 1,000 bulk-generated students named `Student 8A-1`, `Student 8A-2`, etc. There is also one named student with richer data:
+
+| Student | Class | Admission No | Notes |
+|---------|-------|-------------|-------|
+| **Aryan Sharma** | Class 8 – Section A | ADM-TEST-001 | Has parent linked, fee payment history |
+| **Student 8A-1** through **Student 8A-43** | Class 8 – Section A | ADM-0001+ | Generic bulk students |
+
+**To find Aryan Sharma:** go to `/admin/students`, filter to Class 8, then search "Aryan" in the search box. He's the best student to use for Fees tab testing (he has payment history).
+
 ---
 
 ## Section A — Admin: Add Student with Parent Phone
@@ -32,7 +43,7 @@
 
 **Login:** `schooladmin@demo.com` / `Admin@1234`
 
-Navigate to `/admin/students` → find any student → dropdown → "View Profile"
+Navigate to `/admin/students` → filter to Class 8 → search "Aryan" → click "···" dropdown on Aryan Sharma → "View Profile". (Use Aryan Sharma for Fees testing — he has payment history. Any other student works for Sections B–D.)
 
 | # | Step | Expected |
 |---|------|----------|
