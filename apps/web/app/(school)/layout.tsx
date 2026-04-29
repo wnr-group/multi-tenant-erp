@@ -165,13 +165,28 @@ export default async function SchoolLayout({
     }
   }
 
-  // Determine nav items based on role and active section
+  // When a non-teacher has an active section they're viewing teacher context
+  const inTeacherContext = !!activeSectionId && realRole !== "teacher";
+
+  // If in teacher context, look up the class teacher for the active section
+  let sidebarUserName = userName;
+  if (inTeacherContext && activeSectionId && schoolId) {
+    const { data: ct } = await supabase
+      .from("teacher_profiles")
+      .select("profile_id, profile:profiles!teacher_profiles_profile_id_fkey(full_name)")
+      .eq("class_teacher_of", activeSectionId)
+      .maybeSingle();
+    const ctProfile = ct?.profile as { full_name: string } | null;
+    if (ctProfile?.full_name) sidebarUserName = ctProfile.full_name;
+  }
+
+  // Nav items switch to teacher view when a section is active (for non-teacher roles)
   let navItems: { label: string; href: string }[];
   let displayRole: string;
 
-  if (activeSectionId && realRole !== "teacher") {
+  if (inTeacherContext) {
     navItems = NAV_ITEMS.teacher_no_feedback;
-    displayRole = realRole;
+    displayRole = "teacher";
   } else if (realRole === "teacher") {
     navItems = NAV_ITEMS.teacher;
     displayRole = "teacher";
@@ -196,13 +211,13 @@ export default async function SchoolLayout({
         title={schoolName}
         items={navItems}
         brandColor={brandColor}
-        userName={userName}
+        userName={sidebarUserName}
         userRole={displayRole}
         sectionSwitcher={sectionSwitcherEl}
       />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar
-          userName={userName}
+          userName={sidebarUserName}
           userRole={displayRole}
           brandColor={brandColor}
         />
