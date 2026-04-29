@@ -49,6 +49,8 @@ export default function RootLayout() {
       if (session?.user) {
         tryRegisterPush(session.user.id);
         fetchSchoolId(session.user.id);
+      } else {
+        setSchoolId(undefined);
       }
     });
 
@@ -86,7 +88,7 @@ export default function RootLayout() {
     }
   }, [session, initialized, segments]);
 
-  if (!fontsLoaded) return null;
+  if (!fontsLoaded || !initialized) return null;
 
   return (
     <ThemeProvider schoolId={schoolId}>

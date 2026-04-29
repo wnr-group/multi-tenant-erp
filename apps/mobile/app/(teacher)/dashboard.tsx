@@ -5,175 +5,332 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { supabase } from "../../lib/supabase";
 import { useTheme } from "../../lib/theme";
+import { useTeacherContext } from "../../lib/teacherContext";
 import { Skeleton, SkeletonCard } from "../../components/Skeleton";
 
-interface TodayClass {
+interface TodayPeriod {
   id: string;
   period: number;
   subject: string;
-  class_name: string;
+  sectionId: string;
+  className: string;
+  attendanceDone: boolean;
 }
 
-interface Stats {
-  studentsInClass: number;
-  homeworkCount: number;
+interface DashboardData {
+  name: string;
+  totalStudents: number;
+  hwDueSoon: number;
+  pendingAttendanceSections: string[]; // section labels
 }
 
 export default function TeacherDashboard() {
   const theme = useTheme();
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [todayClasses, setTodayClasses] = useState<TodayClass[]>([]);
-  const [stats, setStats] = useState<Stats>({ studentsInClass: 0, homeworkCount: 0 });
+  const { sections, userId, schoolId, ready } = useTeacherContext();
+
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [todayPeriods, setTodayPeriods] = useState<TodayPeriod[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { loadDashboard(); }, []);
+  const today = new Date().toISOString().split("T")[0];
+  const dayName = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" });
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+
+  useEffect(() => {
+    if (!ready || !userId) return;
+    loadDashboard();
+  }, [ready, userId, sections.length]);
 
   async function loadDashboard() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    // DB day: 1=Mon…7=Sun; JS: 0=Sun…6=Sat
+    const jsDay = new Date().getDay();
+    const dbDay = jsDay === 0 ? 7 : jsDay;
 
-    // DB stores 1=Mon…5=Fri (ISO weekday); JS getDay() returns 0=Sun…6=Sat
-    const jsDay = new Date().getDay(); // 0=Sun,1=Mon…6=Sat
-    const dbDay = jsDay === 0 ? 7 : jsDay; // 7=Sun, maps Mon–Sat to 1–6
-
-    const [profileRes, scheduleRes, tpRes] = await Promise.all([
-      supabase.from("profiles").select("full_name").eq("id", user.id).single(),
+    const [profileRes, scheduleRes] = await Promise.all([
+      supabase.from("profiles").select("full_name").eq("id", userId).single(),
       supabase
         .from("timetable")
-        .select("id, period, subjects(name), sections(name, classes(name))")
-        .eq("teacher_id", user.id)
+        .select("id, period, subjects(name), sections(id, name, classes(name))")
+        .eq("teacher_id", userId)
         .eq("day_of_week", dbDay)
         .order("period"),
-      supabase.from("teacher_profiles").select("class_teacher_of").eq("profile_id", user.id).single(),
     ]);
 
-    setName(profileRes.data?.full_name ?? "Teacher");
+    const name = profileRes.data?.full_name ?? "Teacher";
 
-    const classes = (scheduleRes.data ?? []).map((r: any) => ({
+    // For each section in today's schedule, check attendance
+    const todaySectionIds = [...new Set(
+      (scheduleRes.data ?? []).map((r: any) => r.sections?.id).filter(Boolean)
+    )] as string[];
+
+    // Attendance check: count records for each section today
+    const attendanceChecks = todaySectionIds.length > 0
+      ? await supabase
+          .from("attendance_records")
+          .select("section_id")
+          .in("section_id", todaySectionIds)
+          .eq("date", today)
+      : { data: [] };
+
+    const sectionsWithAttendance = new Set(
+      (attendanceChecks.data ?? []).map((r: any) => r.section_id)
+    );
+
+    const periods: TodayPeriod[] = (scheduleRes.data ?? []).map((r: any) => ({
       id: r.id,
       period: r.period,
       subject: r.subjects?.name ?? "—",
-      class_name: r.sections
+      sectionId: r.sections?.id ?? "",
+      className: r.sections
         ? `${r.sections.classes?.name ?? ""} ${r.sections.name ?? ""}`.trim()
         : "—",
+      attendanceDone: sectionsWithAttendance.has(r.sections?.id),
     }));
-    setTodayClasses(classes);
+    setTodayPeriods(periods);
 
-    const sectionId = tpRes.data?.class_teacher_of;
-    if (sectionId) {
-      const [studentsRes, homeworkRes] = await Promise.all([
-        supabase.from("student_profiles").select("id", { count: "exact", head: true }).eq("section_id", sectionId),
-        supabase.from("homework").select("id", { count: "exact", head: true }).eq("teacher_id", user.id).gte("due_date", new Date().toISOString().split("T")[0]),
-      ]);
-      setStats({
-        studentsInClass: studentsRes.count ?? 0,
-        homeworkDue: homeworkRes.count ?? 0,
-      } as any);
-    }
+    // Total students across ALL sections teacher is assigned to
+    const allSectionIds = sections.map((s) => s.id);
+    const totalStudentsRes = allSectionIds.length > 0
+      ? await supabase
+          .from("student_profiles")
+          .select("id", { count: "exact", head: true })
+          .in("section_id", allSectionIds)
+      : { count: 0 };
 
+    // Homework due in next 7 days
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    const hwRes = await supabase
+      .from("homework")
+      .select("id", { count: "exact", head: true })
+      .eq("teacher_id", userId)
+      .gte("due_date", today)
+      .lte("due_date", nextWeek.toISOString().split("T")[0]);
+
+    // Which of today's sections still need attendance
+    const pendingSections = todaySectionIds
+      .filter((id) => !sectionsWithAttendance.has(id))
+      .map((id) => {
+        const sec = sections.find((s) => s.id === id);
+        return sec?.label ?? id;
+      });
+
+    setData({
+      name,
+      totalStudents: totalStudentsRes.count ?? 0,
+      hwDueSoon: hwRes.count ?? 0,
+      pendingAttendanceSections: pendingSections,
+    });
     setLoading(false);
   }
 
-  const dayName = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" });
-
-  const quickActions = [
-    { icon: "checkmark-circle-outline" as const, label: "Attendance", route: "/(teacher)/attendance", color: "#10B981" },
-    { icon: "book-outline" as const, label: "Classes", route: "/(teacher)/classes", color: "#3B82F6" },
-    { icon: "shield-outline" as const, label: "Discipline", route: "/(teacher)/discipline", color: "#F59E0B" },
-    { icon: "person-outline" as const, label: "Profile", route: "/(teacher)/profile", color: "#8B5CF6" },
-  ];
+  // Unique sections in today's schedule (deduplicated for the "pending" banner)
+  const pendingCount = data?.pendingAttendanceSections.length ?? 0;
+  const ACCENT_COLORS = [theme.primary, "#10B981", "#F59E0B", "#8B5CF6", "#EF4444"];
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16 }}>
-          {loading ? <Skeleton height={28} width="55%" /> : (
-            <Text style={{ fontSize: 24, fontFamily: "Inter_700Bold", color: theme.textPrimary, lineHeight: 32 }}>
-              Good morning,{"\n"}{name.split(" ")[0]} 👋
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+
+        {/* ── Header ─────────────────────────────────────────────── */}
+        <View style={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 8 }}>
+          {loading ? (
+            <Skeleton height={32} width="60%" />
+          ) : (
+            <Text style={{ fontSize: 26, fontFamily: "Inter_700Bold", color: theme.textPrimary, lineHeight: 34 }}>
+              {greeting},{"\n"}{data?.name.split(" ")[0]} 👋
             </Text>
           )}
-          <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: theme.textMuted, marginTop: 6 }}>{dayName}</Text>
+          <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: theme.textMuted, marginTop: 6 }}>
+            {dayName}
+          </Text>
         </View>
 
-        {/* Stats strip */}
+        {/* ── Needs-action banner ─────────────────────────────────── */}
+        {!loading && pendingCount > 0 && (
+          <TouchableOpacity
+            onPress={() => router.push("/(teacher)/attendance")}
+            activeOpacity={0.8}
+            style={{
+              marginHorizontal: 20,
+              marginTop: 16,
+              backgroundColor: "#EF444418",
+              borderRadius: 14,
+              padding: 14,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 12,
+              borderWidth: 1,
+              borderColor: "#EF444430",
+            }}
+          >
+            <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "#EF4444", alignItems: "center", justifyContent: "center" }}>
+              <Ionicons name="alert-circle-outline" size={20} color="#fff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#EF4444" }}>
+                {pendingCount} {pendingCount === 1 ? "class needs" : "classes need"} attendance
+              </Text>
+              <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: "#EF4444CC", marginTop: 2 }} numberOfLines={1}>
+                {data!.pendingAttendanceSections.join(" · ")}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#EF4444" />
+          </TouchableOpacity>
+        )}
+
+        {/* ── Cross-section summary ───────────────────────────────── */}
         {!loading && (
-          <View style={{ flexDirection: "row", gap: 12, paddingHorizontal: 20, marginBottom: 24 }}>
-            <View style={{ flex: 1, backgroundColor: theme.primary + "18", borderRadius: 14, padding: 14 }}>
-              <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: theme.primary }}>{(stats as any).studentsInClass ?? 0}</Text>
-              <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: theme.primary + "CC", marginTop: 2 }}>Students</Text>
+          <View style={{ flexDirection: "row", gap: 12, paddingHorizontal: 20, marginTop: 20 }}>
+            <View style={{ flex: 1, backgroundColor: theme.surface, borderRadius: 16, padding: 16, gap: 4 }}>
+              <Text style={{ fontSize: 28, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>
+                {data?.totalStudents ?? 0}
+              </Text>
+              <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: theme.textSecondary }}>
+                Students across
+              </Text>
+              <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: theme.primary }}>
+                {sections.length} {sections.length === 1 ? "section" : "sections"}
+              </Text>
             </View>
-            <View style={{ flex: 1, backgroundColor: "#F59E0B18", borderRadius: 14, padding: 14 }}>
-              <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: "#F59E0B" }}>{todayClasses.length}</Text>
-              <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: "#F59E0BCC", marginTop: 2 }}>Classes Today</Text>
-            </View>
-            <View style={{ flex: 1, backgroundColor: "#10B98118", borderRadius: 14, padding: 14 }}>
-              <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: "#10B981" }}>{(stats as any).homeworkDue ?? 0}</Text>
-              <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: "#10B981CC", marginTop: 2 }}>HW Due</Text>
+            <View style={{ flex: 1, gap: 12 }}>
+              <View style={{ flex: 1, backgroundColor: theme.surface, borderRadius: 16, padding: 14, flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <View style={{ width: 32, height: 32, borderRadius: 9, backgroundColor: "#10B98118", alignItems: "center", justifyContent: "center" }}>
+                  <Ionicons name="calendar-outline" size={16} color="#10B981" />
+                </View>
+                <View>
+                  <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>{todayPeriods.length}</Text>
+                  <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: theme.textSecondary }}>Today</Text>
+                </View>
+              </View>
+              <View style={{ flex: 1, backgroundColor: theme.surface, borderRadius: 16, padding: 14, flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <View style={{ width: 32, height: 32, borderRadius: 9, backgroundColor: "#F59E0B18", alignItems: "center", justifyContent: "center" }}>
+                  <Ionicons name="book-outline" size={16} color="#F59E0B" />
+                </View>
+                <View>
+                  <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>{data?.hwDueSoon ?? 0}</Text>
+                  <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: theme.textSecondary }}>HW this week</Text>
+                </View>
+              </View>
             </View>
           </View>
         )}
+        {loading && (
+          <View style={{ flexDirection: "row", gap: 12, paddingHorizontal: 20, marginTop: 20 }}>
+            <View style={{ flex: 1 }}><SkeletonCard /></View>
+            <View style={{ flex: 1, gap: 12 }}><SkeletonCard /><SkeletonCard /></View>
+          </View>
+        )}
 
-        {/* Today's schedule */}
-        <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
-          <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: theme.textPrimary, marginBottom: 12, letterSpacing: 0.2 }}>
+        {/* ── Today's schedule ────────────────────────────────────── */}
+        <View style={{ paddingHorizontal: 20, marginTop: 28 }}>
+          <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: theme.textPrimary, marginBottom: 14, letterSpacing: 0.1 }}>
             Today's Schedule
           </Text>
+
           {loading ? (
             <View style={{ gap: 8 }}><SkeletonCard /><SkeletonCard /></View>
-          ) : todayClasses.length === 0 ? (
-            <View style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 24, alignItems: "center", gap: 8 }}>
-              <Ionicons name="calendar-outline" size={32} color={theme.textMuted} />
-              <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: theme.textMuted }}>No classes scheduled today</Text>
+          ) : todayPeriods.length === 0 ? (
+            <View style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 28, alignItems: "center", gap: 10 }}>
+              <Ionicons name="cafe-outline" size={36} color={theme.textMuted} />
+              <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: theme.textMuted }}>No classes today</Text>
+              <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: theme.textMuted }}>Enjoy your free day</Text>
             </View>
           ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
-              {todayClasses.map((c, idx) => (
-                <View
-                  key={c.id}
+            <View style={{ gap: 10 }}>
+              {todayPeriods.map((p, idx) => (
+                <TouchableOpacity
+                  key={p.id}
+                  onPress={() => router.push("/(teacher)/attendance")}
+                  activeOpacity={0.75}
                   style={{
                     backgroundColor: theme.surface,
                     borderRadius: 16,
                     padding: 16,
-                    width: 148,
-                    gap: 10,
-                    borderTopWidth: 3,
-                    borderTopColor: [theme.primary, "#10B981", "#F59E0B", "#8B5CF6", "#EF4444"][idx % 5],
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 14,
                   }}
                 >
-                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                    <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: theme.textMuted, letterSpacing: 0.8, textTransform: "uppercase" }}>Period {c.period}</Text>
+                  {/* Period badge */}
+                  <View style={{
+                    width: 46,
+                    height: 46,
+                    borderRadius: 13,
+                    backgroundColor: ACCENT_COLORS[idx % ACCENT_COLORS.length] + "18",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}>
+                    <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: ACCENT_COLORS[idx % ACCENT_COLORS.length], letterSpacing: 0.4 }}>
+                      P{p.period}
+                    </Text>
                   </View>
-                  <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>{c.subject}</Text>
-                  <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: theme.textSecondary }}>{c.class_name}</Text>
-                </View>
+
+                  {/* Subject + class */}
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>
+                      {p.subject}
+                    </Text>
+                    <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: theme.textSecondary, marginTop: 2 }}>
+                      {p.className}
+                    </Text>
+                  </View>
+
+                  {/* Attendance status */}
+                  {p.attendanceDone ? (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "#10B98118", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 }}>
+                      <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+                      <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#10B981" }}>Done</Text>
+                    </View>
+                  ) : (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "#EF444418", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 }}>
+                      <Ionicons name="time-outline" size={14} color="#EF4444" />
+                      <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#EF4444" }}>Pending</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
               ))}
-            </ScrollView>
+            </View>
           )}
         </View>
 
-        {/* Quick actions */}
-        <View style={{ paddingHorizontal: 20 }}>
-          <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: theme.textPrimary, marginBottom: 12, letterSpacing: 0.2 }}>
-            Quick Actions
-          </Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
-            {quickActions.map((action) => (
-              <TouchableOpacity
-                key={action.label}
-                onPress={() => router.push(action.route as any)}
-                style={{ width: "47%", backgroundColor: theme.surface, borderRadius: 16, padding: 18, gap: 12 }}
-                activeOpacity={0.7}
-              >
-                <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: action.color + "18", alignItems: "center", justifyContent: "center" }}>
-                  <Ionicons name={action.icon} size={22} color={action.color} />
+        {/* ── My sections ─────────────────────────────────────────── */}
+        {!loading && sections.length > 0 && (
+          <View style={{ paddingHorizontal: 20, marginTop: 28 }}>
+            <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: theme.textPrimary, marginBottom: 14, letterSpacing: 0.1 }}>
+              My Sections
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}>
+              {sections.map((sec, idx) => (
+                <View
+                  key={sec.id}
+                  style={{
+                    backgroundColor: theme.surface,
+                    borderRadius: 16,
+                    padding: 16,
+                    width: 120,
+                    gap: 8,
+                    borderTopWidth: 3,
+                    borderTopColor: ACCENT_COLORS[idx % ACCENT_COLORS.length],
+                  }}
+                >
+                  <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>
+                    {sec.shortLabel}
+                  </Text>
+                  {sec.isHomeroom && (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                      <Ionicons name="home-outline" size={11} color={theme.textMuted} />
+                      <Text style={{ fontSize: 10, fontFamily: "Inter_500Medium", color: theme.textMuted }}>Homeroom</Text>
+                    </View>
+                  )}
                 </View>
-                <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>{action.label}</Text>
-              </TouchableOpacity>
-            ))}
+              ))}
+            </ScrollView>
           </View>
-        </View>
+        )}
+
       </ScrollView>
     </SafeAreaView>
   );
