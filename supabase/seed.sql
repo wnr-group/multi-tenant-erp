@@ -247,7 +247,7 @@ SELECT
     WHEN c."order" <= 8 THEN 5000
     ELSE 7500
   END,
-  NULL
+  '2026-03-31'
 FROM public.classes c
 WHERE c.school_id = 'aaaaaaaa-0000-0000-0000-000000000001';
 

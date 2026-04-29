@@ -69,10 +69,14 @@ export default function ParentFees() {
     // Aggregate per fee structure
     const paidMap = new Map<string, number>();
     const concessionMap = new Map<string, number>();
+    const lastPaidAt = new Map<string, string>();
+    const lastReceiptNo = new Map<string, string>();
     for (const p of paymentRows ?? []) {
       const fsId = p.fee_structure_id;
       paidMap.set(fsId, (paidMap.get(fsId) ?? 0) + (p.amount_paid ?? 0));
       concessionMap.set(fsId, (concessionMap.get(fsId) ?? 0) + (p.concession_amount ?? 0));
+      if (p.payment_date && !lastPaidAt.has(fsId)) lastPaidAt.set(fsId, p.payment_date);
+      if (p.receipt_number && !lastReceiptNo.has(fsId)) lastReceiptNo.set(fsId, p.receipt_number);
     }
 
     const aggregated: FeePayment[] = (feeStructures ?? []).map((fs: any) => {

@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Alert, TextInput, Image } from "react-native";
+import { useEffect, useState, useCallback } from "react";
+import { View, Text, ScrollView, TouchableOpacity, Alert, TextInput, Image, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase, fixStorageUrl } from "../../lib/supabase";
@@ -21,9 +21,18 @@ export default function ParentMore() {
   const [discipline, setDiscipline] = useState<{ id: string; incident_date: string; description: string; action_taken: string }[]>([]);
   const [feedback, setFeedback] = useState("");
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => { loadProfile(); }, []);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    if (section === "menu" || section === "profile") await loadProfile();
+    if (section === "announcements") await loadAnnouncements();
+    if (section === "discipline") await loadDiscipline();
+    setRefreshing(false);
+  }, [section]);
 
   async function loadProfile() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -100,7 +109,7 @@ export default function ParentMore() {
           </TouchableOpacity>
           <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: theme.textPrimary, textTransform: "capitalize" }}>{section}</Text>
         </View>
-        <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
           {section === "announcements" && (
             loading ? [0,1,2].map(i => <SkeletonCard key={i} />) :
             announcements.map((a) => (
@@ -185,7 +194,7 @@ export default function ParentMore() {
 
   return (
     <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: theme.background }}>
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
         <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>More</Text>
         {profile && (
           <View style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 16, flexDirection: "row", alignItems: "center", gap: 12 }}>
