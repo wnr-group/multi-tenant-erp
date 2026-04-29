@@ -10,8 +10,8 @@ import { supabase } from "../../lib/supabase";
 interface TimetableEntry {
   id: string;
   period_number: number;
-  start_time: string;
-  end_time: string;
+  start_time: string | null;
+  end_time: string | null;
   subject: { name: string } | null;
   section: { name: string } | null;
 }
@@ -50,17 +50,17 @@ export default function TeacherDashboard() {
       const { data: entries } = await supabase
         .from("timetable")
         .select(
-          "id, period_number, start_time, end_time, subjects(name), sections(name)"
+          "id, period, subjects(name), sections(name)"
         )
         .eq("teacher_id", user.id)
         .eq("day_of_week", today)
-        .order("period_number", { ascending: true });
+        .order("period", { ascending: true });
 
       const mapped: TimetableEntry[] = (entries ?? []).map((e: Record<string, unknown>) => ({
         id: e.id as string,
-        period_number: e.period_number as number,
-        start_time: e.start_time as string,
-        end_time: e.end_time as string,
+        period_number: e.period as number,
+        start_time: null,
+        end_time: null,
         subject: (e.subjects as { name: string } | null) ?? null,
         section: (e.sections as { name: string } | null) ?? null,
       }));
@@ -95,9 +95,6 @@ export default function TeacherDashboard() {
             <View className="flex-row items-center justify-between">
               <Text className="font-semibold text-gray-800">
                 Period {entry.period_number}
-              </Text>
-              <Text className="text-xs text-gray-500">
-                {entry.start_time} – {entry.end_time}
               </Text>
             </View>
             <Text className="mt-1 text-sm text-blue-600 font-medium">

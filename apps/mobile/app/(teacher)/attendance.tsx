@@ -39,6 +39,7 @@ export default function TeacherAttendance() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [schoolId, setSchoolId] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadSections() {
@@ -50,6 +51,13 @@ export default function TeacherAttendance() {
         return;
       }
       setUserId(user.id);
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("school_id")
+        .eq("id", user.id)
+        .single();
+      setSchoolId(profile?.school_id ?? null);
 
       // Fetch distinct sections from teacher's timetable
       const { data: entries } = await supabase
@@ -79,12 +87,13 @@ export default function TeacherAttendance() {
 
     const { data: sp } = await supabase
       .from("student_profiles")
-      .select("profile_id, profiles(full_name)")
-      .eq("section_id", section.id);
+      .select("id, full_name")
+      .eq("section_id", section.id)
+      .order("full_name");
 
     const list: Student[] = (sp ?? []).map((row: Record<string, unknown>) => ({
-      id: row.profile_id as string,
-      full_name: ((row.profiles as { full_name: string } | null)?.full_name) ?? "Unknown",
+      id: row.id as string,
+      full_name: (row.full_name as string | null) ?? "Unknown",
       status: "present" as AttendanceStatus,
     }));
 
@@ -104,11 +113,14 @@ export default function TeacherAttendance() {
     setSaving(true);
 
     const today = new Date().toISOString().split("T")[0];
+    const sectionId = selectedSection!.id;
     const records = students.map((s) => ({
       student_id: s.id,
+      section_id: sectionId,
+      school_id: schoolId,
       date: today,
       status: s.status,
-      recorded_by: userId,
+      marked_by: userId,
     }));
 
     const { error } = await supabase

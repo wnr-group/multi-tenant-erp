@@ -39,7 +39,7 @@ export default function TeacherDiscipline() {
 
       const { data } = await supabase
         .from("discipline_records")
-        .select("id, category, severity, description, created_at, profiles(full_name)")
+        .select("id, category, severity, description, created_at, student_profiles(full_name)")
         .eq("recorded_by", user.id)
         .order("created_at", { ascending: false });
 
@@ -49,7 +49,7 @@ export default function TeacherDiscipline() {
         severity: row.severity as string,
         description: row.description as string | null,
         created_at: row.created_at as string,
-        student: (row.profiles as { full_name: string } | null) ?? null,
+        student: (row.student_profiles as { full_name: string } | null) ?? null,
       }));
 
       setRecords(mapped);
