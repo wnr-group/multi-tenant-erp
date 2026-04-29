@@ -35,7 +35,7 @@ export default async function PlatformAdminLayout({
 
   return (
     <div className="flex h-screen">
-      <Sidebar title="WnR Platform" items={NAV} userName={userName} userRole="super_admin" />
+      <Sidebar title="Balaji ERP" items={NAV} userName={userName} userRole="super_admin" />
       <main className="flex-1 overflow-y-auto bg-[#F8F9FC] px-8 py-6">{children}</main>
     </div>
   );

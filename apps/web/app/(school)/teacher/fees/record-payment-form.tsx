@@ -70,7 +70,7 @@ export function RecordPaymentForm({
       concession_amount: parsedConcession,
       payment_date: new Date().toISOString().split("T")[0],
       payment_method: method,
-      receipt_no: receiptNo || null,
+      receipt_number: receiptNo || null,
       status,
     });
 
@@ -116,11 +116,10 @@ export function RecordPaymentForm({
           <Label>Amount (₹)</Label>
           <Input
             type="number"
-            min={1}
+            min={0}
             step={0.01}
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            required
           />
         </div>
 
