@@ -14,7 +14,8 @@ export default async function StudentsPage() {
       .select(
         "id, full_name, email, roll_number, admission_number, class:classes(name), section:sections(name)"
       )
-      .eq("school_id", schoolId),
+      .eq("school_id", schoolId)
+      .limit(5000),
     supabase
       .from("classes")
       .select("id, name")
