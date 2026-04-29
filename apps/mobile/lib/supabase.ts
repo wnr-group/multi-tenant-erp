@@ -17,3 +17,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: false,
   },
 });
+
+// Rewrite storage URLs that were saved with 127.0.0.1 so they work on physical devices.
+// When supabaseUrl points to a LAN IP, 127.0.0.1 in stored URLs must be replaced.
+export function fixStorageUrl(url: string): string {
+  const configured = new URL(supabaseUrl);
+  if (configured.hostname === "127.0.0.1") return url;
+  return url.replace("//127.0.0.1:", `//${configured.hostname}:`);
+}

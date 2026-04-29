@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, Image, FlatList, Dimensions, 
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { supabase } from "../../lib/supabase";
+import { supabase, fixStorageUrl } from "../../lib/supabase";
 import { useTheme } from "../../lib/theme";
 import { StatCard } from "../../components/StatCard";
 import { SectionHeader } from "../../components/SectionHeader";
@@ -94,7 +94,7 @@ export default function ParentDashboard() {
       sectionName: sp.sections?.name ?? "",
       rollNumber: sp.roll_number ?? "",
       admissionNumber: sp.admission_number ?? "",
-      photoUrl: sp.photo_url ?? null,
+      photoUrl: sp.photo_url ? fixStorageUrl(sp.photo_url) : null,
     } : null;
 
     setData({
@@ -104,7 +104,7 @@ export default function ParentDashboard() {
       pendingFees,
       homeworkDue: homeworkRes.data?.length ?? 0,
       announcements: announcementsRes.data ?? [],
-      gallery: galleryRes.data ?? [],
+      gallery: (galleryRes.data ?? []).map((g: any) => ({ ...g, image_url: fixStorageUrl(g.image_url) })),
     });
     setLoading(false);
   }

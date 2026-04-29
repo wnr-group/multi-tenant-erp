@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Alert, TextInput, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { supabase } from "../../lib/supabase";
+import { supabase, fixStorageUrl } from "../../lib/supabase";
 import { useTheme } from "../../lib/theme";
 import { ListItem } from "../../components/ListItem";
 import { Avatar } from "../../components/Avatar";
@@ -45,7 +45,7 @@ export default function ParentMore() {
         sectionName: s.sections?.name ?? "",
         rollNumber: s.roll_number ?? "",
         admissionNumber: s.admission_number ?? "",
-        photoUrl: s.photo_url ?? null,
+        photoUrl: s.photo_url ? fixStorageUrl(s.photo_url) : null,
       });
     }
   }
