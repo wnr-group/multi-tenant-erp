@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
@@ -17,7 +17,7 @@ export function PhotoUpload({ studentId, studentName, photoUrl }: Props) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(photoUrl);
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
 
   const initials = studentName
     .split(" ")
@@ -40,42 +40,47 @@ export function PhotoUpload({ studentId, studentName, photoUrl }: Props) {
     // Optimistic preview
     const localUrl = URL.createObjectURL(file);
     setPreview(localUrl);
+    setIsPending(true);
 
-    startTransition(async () => {
-      const supabase = createClient();
-      const ext = file.name.split(".").pop() ?? "jpg";
-      const path = `${studentId}.${ext}`;
+    const supabase = createClient();
+    const ext = file.name.split(".").pop() ?? "jpg";
+    const path = `${studentId}.${ext}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from("student-photos")
-        .upload(path, file, { upsert: true, contentType: file.type });
+    const { error: uploadError } = await supabase.storage
+      .from("student-photos")
+      .upload(path, file, { upsert: true, contentType: file.type });
 
-      if (uploadError) {
-        toast.error(uploadError.message);
-        setPreview(photoUrl);
-        return;
-      }
+    if (uploadError) {
+      toast.error(uploadError.message);
+      URL.revokeObjectURL(localUrl);
+      setPreview(photoUrl);
+      setIsPending(false);
+      return;
+    }
 
-      const { data: urlData } = supabase.storage
-        .from("student-photos")
-        .getPublicUrl(path);
+    const { data: urlData } = supabase.storage
+      .from("student-photos")
+      .getPublicUrl(path);
 
-      const publicUrl = urlData.publicUrl;
+    const publicUrl = urlData.publicUrl;
 
-      const { error: dbError } = await supabase
-        .from("student_profiles")
-        .update({ photo_url: publicUrl })
-        .eq("id", studentId);
+    const { error: dbError } = await supabase
+      .from("student_profiles")
+      .update({ photo_url: publicUrl })
+      .eq("id", studentId);
 
-      if (dbError) {
-        toast.error(dbError.message);
-        setPreview(photoUrl);
-        return;
-      }
+    if (dbError) {
+      toast.error(dbError.message);
+      URL.revokeObjectURL(localUrl);
+      setPreview(photoUrl);
+      setIsPending(false);
+      return;
+    }
 
-      toast.success("Photo updated.");
-      router.refresh();
-    });
+    toast.success("Photo updated.");
+    URL.revokeObjectURL(localUrl);
+    setIsPending(false);
+    router.refresh();
   }
 
   return (

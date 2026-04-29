@@ -39,37 +39,41 @@ export function AddStudentForm({
       .from("sections")
       .select("id, name")
       .eq("class_id", classId)
-      .then(({ data }) => {
-        setSections(data ?? []);
-        setSectionId("");
+      .then(({ data, error }) => {
+        if (!error) {
+          setSections(data ?? []);
+          setSectionId("");
+        }
       });
   }, [classId]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase.from("student_profiles").insert({
-      school_id: schoolId,
-      full_name: name,
-      email: email || null,
-      class_id: classId || null,
-      section_id: sectionId || null,
-      roll_number: rollNumber || null,
-      admission_number: admissionNumber || null,
-      parent_phone: parentPhone || null,
-    });
-    if (error) {
-      toast.error(error.message);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.from("student_profiles").insert({
+        school_id: schoolId,
+        full_name: name,
+        email: email || null,
+        class_id: classId || null,
+        section_id: sectionId || null,
+        roll_number: rollNumber || null,
+        admission_number: admissionNumber || null,
+        parent_phone: parentPhone || null,
+      });
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      setName(""); setEmail(""); setRollNumber(""); setAdmissionNumber("");
+      setParentPhone(""); setClassId(""); setSectionId("");
+      toast.success("Student added.");
+      router.refresh();
+      onSuccess?.();
+    } finally {
       setLoading(false);
-      return;
     }
-    setName(""); setEmail(""); setRollNumber(""); setAdmissionNumber("");
-    setParentPhone(""); setClassId(""); setSectionId("");
-    setLoading(false);
-    toast.success("Student added.");
-    router.refresh();
-    onSuccess?.();
   }
 
   return (

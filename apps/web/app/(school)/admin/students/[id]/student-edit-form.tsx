@@ -55,29 +55,35 @@ export function StudentEditForm({
       .from("sections")
       .select("id, name")
       .eq("class_id", classId)
-      .then(({ data }) => setSections(data ?? []));
+      .then(({ data }) => {
+        setSections(data ?? []);
+        setSectionId("");
+      });
   }, [classId]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("student_profiles")
-      .update({
-        full_name: name,
-        email: email || null,
-        roll_number: roll || null,
-        admission_number: admission || null,
-        parent_phone: parentPhone || null,
-        class_id: classId || null,
-        section_id: sectionId || null,
-      })
-      .eq("id", studentId);
-    setLoading(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Student profile updated.");
-    router.refresh();
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("student_profiles")
+        .update({
+          full_name: name,
+          email: email || null,
+          roll_number: roll || null,
+          admission_number: admission || null,
+          parent_phone: parentPhone || null,
+          class_id: classId || null,
+          section_id: sectionId || null,
+        })
+        .eq("id", studentId);
+      if (error) { toast.error(error.message); return; }
+      toast.success("Student profile updated.");
+      router.refresh();
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
