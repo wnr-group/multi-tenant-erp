@@ -61,18 +61,44 @@ export function RecordPaymentForm({
     const supabase = createClient();
     const totalEffective = amountPaid + concessionTotal + parsedAmount + parsedConcession;
     const status = totalEffective >= amountDue ? "paid" : "partial";
+    const today = new Date().toISOString().split("T")[0];
 
-    const { error } = await supabase.from("fee_payments").insert({
-      school_id: schoolId,
-      student_id: studentId,
-      fee_structure_id: feeStructureId,
-      amount_paid: parsedAmount,
-      concession_amount: parsedConcession,
-      payment_date: new Date().toISOString().split("T")[0],
-      payment_method: method,
-      receipt_number: receiptNo || null,
-      status,
-    });
+    // Find the oldest pending/partial billing row to update rather than inserting a new row,
+    // which would inflate the installment count and amountDue.
+    const { data: existingRow } = await supabase
+      .from("fee_payments")
+      .select("id, amount_paid, concession_amount")
+      .eq("school_id", schoolId)
+      .eq("student_id", studentId)
+      .eq("fee_structure_id", feeStructureId)
+      .in("status", ["pending", "partial"])
+      .order("payment_date", { ascending: true, nullsFirst: true })
+      .limit(1)
+      .single();
+
+    let error;
+    if (existingRow) {
+      ({ error } = await supabase.from("fee_payments").update({
+        amount_paid: (existingRow.amount_paid ?? 0) + parsedAmount,
+        concession_amount: (existingRow.concession_amount ?? 0) + parsedConcession,
+        payment_date: today,
+        payment_method: method,
+        receipt_number: receiptNo || null,
+        status,
+      }).eq("id", existingRow.id));
+    } else {
+      ({ error } = await supabase.from("fee_payments").insert({
+        school_id: schoolId,
+        student_id: studentId,
+        fee_structure_id: feeStructureId,
+        amount_paid: parsedAmount,
+        concession_amount: parsedConcession,
+        payment_date: today,
+        payment_method: method,
+        receipt_number: receiptNo || null,
+        status,
+      }));
+    }
 
     setLoading(false);
 
