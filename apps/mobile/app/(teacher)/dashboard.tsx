@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity } from "react-native";
+import { useEffect, useState, useCallback } from "react";
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -12,16 +12,14 @@ interface TodayPeriod {
   id: string;
   period: number;
   subject: string;
-  sectionId: string;
   className: string;
-  attendanceDone: boolean;
 }
 
 interface DashboardData {
   name: string;
   totalStudents: number;
   hwDueSoon: number;
-  pendingAttendanceSections: string[]; // section labels
+  homeroomAttendanceDone: boolean;
 }
 
 export default function TeacherDashboard() {
@@ -32,6 +30,7 @@ export default function TeacherDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [todayPeriods, setTodayPeriods] = useState<TodayPeriod[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const today = new Date().toISOString().split("T")[0];
   const dayName = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" });
@@ -43,10 +42,18 @@ export default function TeacherDashboard() {
     loadDashboard();
   }, [ready, userId, sections.length]);
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadDashboard();
+    setRefreshing(false);
+  }, [ready, userId, sections.length]);
+
   async function loadDashboard() {
     // DB day: 1=Mon…7=Sun; JS: 0=Sun…6=Sat
     const jsDay = new Date().getDay();
     const dbDay = jsDay === 0 ? 7 : jsDay;
+
+    const homeroom = sections.find((s) => s.isHomeroom) ?? sections[0] ?? null;
 
     const [profileRes, scheduleRes] = await Promise.all([
       supabase.from("profiles").select("full_name").eq("id", userId).single(),
@@ -60,35 +67,25 @@ export default function TeacherDashboard() {
 
     const name = profileRes.data?.full_name ?? "Teacher";
 
-    // For each section in today's schedule, check attendance
-    const todaySectionIds = [...new Set(
-      (scheduleRes.data ?? []).map((r: any) => r.sections?.id).filter(Boolean)
-    )] as string[];
-
-    // Attendance check: count records for each section today
-    const attendanceChecks = todaySectionIds.length > 0
-      ? await supabase
-          .from("attendance_records")
-          .select("section_id")
-          .in("section_id", todaySectionIds)
-          .eq("date", today)
-      : { data: [] };
-
-    const sectionsWithAttendance = new Set(
-      (attendanceChecks.data ?? []).map((r: any) => r.section_id)
-    );
-
     const periods: TodayPeriod[] = (scheduleRes.data ?? []).map((r: any) => ({
       id: r.id,
       period: r.period,
       subject: r.subjects?.name ?? "—",
-      sectionId: r.sections?.id ?? "",
       className: r.sections
         ? `${r.sections.classes?.name ?? ""} ${r.sections.name ?? ""}`.trim()
         : "—",
-      attendanceDone: sectionsWithAttendance.has(r.sections?.id),
     }));
     setTodayPeriods(periods);
+
+    // Check attendance only for homeroom section
+    const homeroomAttendanceDone = homeroom
+      ? await supabase
+          .from("attendance_records")
+          .select("id", { count: "exact", head: true })
+          .eq("section_id", homeroom.id)
+          .eq("date", today)
+          .then(({ count }) => (count ?? 0) > 0)
+      : true;
 
     // Total students across ALL sections teacher is assigned to
     const allSectionIds = sections.map((s) => s.id);
@@ -109,30 +106,25 @@ export default function TeacherDashboard() {
       .gte("due_date", today)
       .lte("due_date", nextWeek.toISOString().split("T")[0]);
 
-    // Which of today's sections still need attendance
-    const pendingSections = todaySectionIds
-      .filter((id) => !sectionsWithAttendance.has(id))
-      .map((id) => {
-        const sec = sections.find((s) => s.id === id);
-        return sec?.label ?? id;
-      });
-
     setData({
       name,
       totalStudents: totalStudentsRes.count ?? 0,
       hwDueSoon: hwRes.count ?? 0,
-      pendingAttendanceSections: pendingSections,
+      homeroomAttendanceDone,
     });
     setLoading(false);
   }
 
-  // Unique sections in today's schedule (deduplicated for the "pending" banner)
-  const pendingCount = data?.pendingAttendanceSections.length ?? 0;
+  const homeroom = sections.find((s) => s.isHomeroom) ?? sections[0] ?? null;
   const ACCENT_COLORS = [theme.primary, "#10B981", "#F59E0B", "#8B5CF6", "#EF4444"];
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 40 }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
+      >
 
         {/* ── Header ─────────────────────────────────────────────── */}
         <View style={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 8 }}>
@@ -148,8 +140,8 @@ export default function TeacherDashboard() {
           </Text>
         </View>
 
-        {/* ── Needs-action banner ─────────────────────────────────── */}
-        {!loading && pendingCount > 0 && (
+        {/* ── Needs-action banner (homeroom attendance only) ───────── */}
+        {!loading && data && !data.homeroomAttendanceDone && homeroom && (
           <TouchableOpacity
             onPress={() => router.push("/(teacher)/attendance")}
             activeOpacity={0.8}
@@ -171,10 +163,10 @@ export default function TeacherDashboard() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#EF4444" }}>
-                {pendingCount} {pendingCount === 1 ? "class needs" : "classes need"} attendance
+                Attendance not taken yet
               </Text>
-              <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: "#EF4444CC", marginTop: 2 }} numberOfLines={1}>
-                {data!.pendingAttendanceSections.join(" · ")}
+              <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: "#EF4444CC", marginTop: 2 }}>
+                {homeroom.label} · Tap to mark now
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color="#EF4444" />
@@ -241,10 +233,8 @@ export default function TeacherDashboard() {
           ) : (
             <View style={{ gap: 10 }}>
               {todayPeriods.map((p, idx) => (
-                <TouchableOpacity
+                <View
                   key={p.id}
-                  onPress={() => router.push("/(teacher)/attendance")}
-                  activeOpacity={0.75}
                   style={{
                     backgroundColor: theme.surface,
                     borderRadius: 16,
@@ -277,20 +267,7 @@ export default function TeacherDashboard() {
                       {p.className}
                     </Text>
                   </View>
-
-                  {/* Attendance status */}
-                  {p.attendanceDone ? (
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "#10B98118", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 }}>
-                      <Ionicons name="checkmark-circle" size={14} color="#10B981" />
-                      <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#10B981" }}>Done</Text>
-                    </View>
-                  ) : (
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "#EF444418", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 }}>
-                      <Ionicons name="time-outline" size={14} color="#EF4444" />
-                      <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#EF4444" }}>Pending</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
+                </View>
               ))}
             </View>
           )}

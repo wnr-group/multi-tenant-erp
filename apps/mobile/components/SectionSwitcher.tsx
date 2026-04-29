@@ -49,7 +49,7 @@ export function SectionSwitcher() {
                 color: active ? "#fff" : theme.textSecondary,
               }}
             >
-              {sec.label}
+              {sec.shortLabel}
             </Text>
           </TouchableOpacity>
         );

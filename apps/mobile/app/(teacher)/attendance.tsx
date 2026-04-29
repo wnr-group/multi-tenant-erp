@@ -1,11 +1,10 @@
-import { useEffect, useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
+import { useEffect, useState, useCallback } from "react";
+import { View, Text, ScrollView, TouchableOpacity, Alert, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { supabase } from "../../lib/supabase";
 import { useTheme } from "../../lib/theme";
 import { useTeacherContext } from "../../lib/teacherContext";
-import { SectionSwitcher } from "../../components/SectionSwitcher";
 import { Avatar } from "../../components/Avatar";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { StatusBadge } from "../../components/StatusBadge";
@@ -16,36 +15,45 @@ interface Student { id: string; full_name: string; roll_number: string }
 
 export default function TeacherAttendance() {
   const theme = useTheme();
-  const { activeSection, userId, schoolId, ready } = useTeacherContext();
+  const { sections, userId, schoolId, ready } = useTeacherContext();
   const [students, setStudents] = useState<Student[]>([]);
   const [statuses, setStatuses] = useState<Record<string, AttendanceStatus>>({});
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
   const today = new Date().toISOString().split("T")[0];
 
-  // Reload whenever the active section changes
+  // Always use the homeroom section for attendance
+  const homeroomSection = sections.find((s) => s.isHomeroom) ?? sections[0] ?? null;
+
   useEffect(() => {
     if (!ready) return;
     loadStudents();
-  }, [activeSection?.id, ready]);
+  }, [homeroomSection?.id, ready]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadStudents();
+    setRefreshing(false);
+  }, [homeroomSection?.id, ready]);
 
   async function loadStudents() {
     setLoading(true);
     setStudents([]);
     setStatuses({});
 
-    if (!activeSection) { setLoading(false); return; }
+    if (!homeroomSection) { setLoading(false); return; }
 
     const [studentRes, existingRes] = await Promise.all([
       supabase
         .from("student_profiles")
         .select("id, roll_number, full_name, admission_number")
-        .eq("section_id", activeSection.id)
+        .eq("section_id", homeroomSection.id)
         .order("full_name"),
       supabase
         .from("attendance_records")
         .select("student_id, status")
-        .eq("section_id", activeSection.id)
+        .eq("section_id", homeroomSection.id)
         .eq("date", today),
     ]);
 
@@ -82,11 +90,11 @@ export default function TeacherAttendance() {
   }
 
   async function saveAttendance() {
-    if (!activeSection || !userId || !schoolId) return;
+    if (!homeroomSection || !userId || !schoolId) return;
     setSaving(true);
     const records = students.map((s) => ({
       student_id: s.id,
-      section_id: activeSection.id,
+      section_id: homeroomSection.id,
       school_id: schoolId,
       date: today,
       status: statuses[s.id] ?? "present",
@@ -109,12 +117,10 @@ export default function TeacherAttendance() {
             Mark Attendance
           </Text>
           <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: theme.textSecondary, marginTop: 2 }}>
+            {homeroomSection ? `${homeroomSection.label} · ` : ""}
             {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}
           </Text>
         </View>
-
-        {/* Section switcher — only shows when teacher has >1 section */}
-        <SectionSwitcher />
 
         {/* Bulk actions */}
         {!loading && students.length > 0 && (
@@ -135,16 +141,19 @@ export default function TeacherAttendance() {
         )}
 
         {/* Student list */}
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingBottom: 100 }}>
+        <ScrollView
+          contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingBottom: 100 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
+        >
           {loading ? (
             [0,1,2,3,4].map(i => <SkeletonCard key={i} />)
-          ) : !activeSection ? (
+          ) : !homeroomSection ? (
             <View style={{ alignItems: "center", paddingVertical: 56, gap: 8 }}>
-              <Text style={{ fontFamily: "Inter_500Medium", color: theme.textMuted, fontSize: 14 }}>No class assigned</Text>
+              <Text style={{ fontFamily: "Inter_500Medium", color: theme.textMuted, fontSize: 14 }}>No homeroom class assigned</Text>
             </View>
           ) : students.length === 0 ? (
             <View style={{ alignItems: "center", paddingVertical: 56, gap: 8 }}>
-              <Text style={{ fontFamily: "Inter_500Medium", color: theme.textMuted, fontSize: 14 }}>No students in {activeSection.label}</Text>
+              <Text style={{ fontFamily: "Inter_500Medium", color: theme.textMuted, fontSize: 14 }}>No students in {homeroomSection.label}</Text>
             </View>
           ) : students.map((student) => (
             <TouchableOpacity

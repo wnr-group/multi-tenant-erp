@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Modal } from "react-native";
+import { useEffect, useState, useCallback } from "react";
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Modal, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../../lib/supabase";
@@ -41,6 +41,7 @@ export default function TeacherClasses() {
   const [homework, setHomework] = useState<HomeworkItem[]>([]);
   const [results, setResults] = useState<ResultItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   // ctx is derived from shared context — kept for backward compat with submit fns
   const ctx: TeacherContext | null = activeSection
     ? { userId, schoolId, sectionId: activeSection.id, classId: activeSection.classId, sectionName: activeSection.label }
@@ -71,6 +72,12 @@ export default function TeacherClasses() {
   useEffect(() => {
     if (!ready) return;
     loadAll();
+  }, [activeSection?.id, ready]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadAll();
+    setRefreshing(false);
   }, [activeSection?.id, ready]);
 
   async function loadAll() {
@@ -204,7 +211,11 @@ export default function TeacherClasses() {
       </View>
 
       {/* List */}
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, gap: 10, paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 20, gap: 10, paddingBottom: 32 }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
+      >
         {loading ? [0,1,2].map(i => <SkeletonCard key={i} />) :
           tab === "homework" ? (
             homework.length === 0 ? (

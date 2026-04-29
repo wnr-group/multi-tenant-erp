@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, Alert } from "react-native";
+import { useEffect, useState, useCallback } from "react";
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, Alert, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../../lib/supabase";
@@ -51,6 +51,7 @@ export default function TeacherDiscipline() {
   const { activeSection, userId, schoolId, ready } = useTeacherContext();
   const [records, setRecords] = useState<DisciplineRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -70,6 +71,12 @@ export default function TeacherDiscipline() {
   useEffect(() => {
     if (!ready) return;
     loadAll();
+  }, [activeSection?.id, ready]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadAll();
+    setRefreshing(false);
   }, [activeSection?.id, ready]);
 
   async function loadAll() {
@@ -148,7 +155,11 @@ export default function TeacherDiscipline() {
       <SectionSwitcher />
 
       {/* Records list */}
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, gap: 10, paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 20, gap: 10, paddingBottom: 32 }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
+      >
         {loading ? [0,1,2].map(i => <SkeletonCard key={i} />) :
           records.length === 0 ? (
             <View style={{ alignItems: "center", paddingVertical: 56, gap: 10 }}>
