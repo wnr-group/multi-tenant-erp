@@ -80,15 +80,17 @@ export function UploadImageDialog({
         <div className="space-y-4">
           <div
             onClick={() => inputRef.current?.click()}
-            className="cursor-pointer border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center overflow-hidden bg-gray-50 hover:bg-gray-100 transition-colors"
+            className="relative cursor-pointer border-2 border-dashed border-gray-200 rounded-xl overflow-hidden bg-gray-50 hover:bg-gray-100 transition-colors"
             style={{ height: 200 }}
           >
             {preview ? (
-              <Image src={preview} alt="Preview" fill className="object-cover rounded-xl" unoptimized />
+              <Image src={preview} alt="Preview" fill className="object-cover" unoptimized />
             ) : (
-              <div className="text-center text-gray-400 text-sm">
-                <div className="text-3xl mb-2">🖼️</div>
-                Click to select an image
+              <div className="flex h-full items-center justify-center text-center text-gray-400 text-sm">
+                <div>
+                  <div className="text-3xl mb-2">🖼️</div>
+                  Click to select an image
+                </div>
               </div>
             )}
           </div>
