@@ -16,7 +16,7 @@ interface FeePayment {
   amount_due: number;
   amount_paid: number;
   due_date: string;
-  status: "paid" | "pending" | "overdue";
+  status: "paid" | "pending" | "overdue" | "partial";
   paid_at?: string;
   transaction_id?: string;
 }
