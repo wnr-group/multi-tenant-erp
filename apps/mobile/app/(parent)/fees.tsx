@@ -21,12 +21,21 @@ interface FeePayment {
   transaction_id?: string;
 }
 
+interface PaymentHistoryRow {
+  id: string;
+  fee_type: string;
+  amount_paid: number;
+  paid_at: string | null;
+  transaction_id: string | null;
+}
+
 export default function ParentFees() {
   const theme = useTheme();
   const [payments, setPayments] = useState<FeePayment[]>([]);
+  const [history, setHistory] = useState<PaymentHistoryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [receipt, setReceipt] = useState<FeePayment | null>(null);
+  const [receipt, setReceipt] = useState<PaymentHistoryRow | null>(null);
   const [payingId, setPayingId] = useState<string | null>(null);
 
   useEffect(() => { loadFees(); }, []);
@@ -96,6 +105,22 @@ export default function ParentFees() {
     });
 
     setPayments(aggregated);
+
+    // Build history from individual payment rows that have actual money paid
+    const feeTypeMap = new Map<string, string>();
+    for (const fs of feeStructures ?? []) feeTypeMap.set((fs as any).id, (fs as any).fee_type ?? "");
+    setHistory(
+      (paymentRows ?? [])
+        .filter((p: any) => (p.amount_paid ?? 0) > 0)
+        .map((p: any) => ({
+          id: p.id,
+          fee_type: feeTypeMap.get(p.fee_structure_id) ?? "",
+          amount_paid: p.amount_paid ?? 0,
+          paid_at: p.payment_date ?? null,
+          transaction_id: p.receipt_number ?? null,
+        }))
+    );
+
     setLoading(false);
   }
 
@@ -173,9 +198,9 @@ export default function ParentFees() {
           <SectionHeader title="Payment History" />
           {loading ? (
             <View style={{ gap: 8 }}><SkeletonCard /><SkeletonCard /></View>
-          ) : payments.filter((p) => p.status === "paid").length === 0 ? (
+          ) : history.length === 0 ? (
             <Text style={{ textAlign: "center", color: theme.textMuted, fontFamily: "Inter_400Regular", paddingVertical: 20 }}>No payments yet</Text>
-          ) : payments.filter((p) => p.status === "paid").map((p) => (
+          ) : history.map((p) => (
             <TouchableOpacity key={p.id} onPress={() => setReceipt(p)} style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }} activeOpacity={0.7}>
               <View>
                 <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>{p.fee_type}</Text>
