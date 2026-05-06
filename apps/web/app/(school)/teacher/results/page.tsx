@@ -43,14 +43,22 @@ export default async function ResultsPage() {
           { header: "Start", accessor: "start_date" },
           { header: "End", accessor: "end_date" },
           {
-            header: "Action",
+            header: "Actions",
             accessor: (row) => (
-              <Link
-                href={`/teacher/results/${row.id}?sectionId=${sectionId}`}
-                className="text-sm font-medium text-blue-600 hover:underline"
-              >
-                Enter Marks
-              </Link>
+              <div className="flex gap-3">
+                <Link
+                  href={`/teacher/results/${row.id}?sectionId=${sectionId}`}
+                  className="text-sm font-medium text-blue-600 hover:underline"
+                >
+                  Enter Marks
+                </Link>
+                <Link
+                  href={`/teacher/results/${row.id}/rankings?sectionId=${sectionId}`}
+                  className="text-sm font-medium text-indigo-600 hover:underline"
+                >
+                  View Rankings
+                </Link>
+              </div>
             ),
           },
         ]}
