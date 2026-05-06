@@ -711,3 +711,155 @@ VALUES (
   'aaaaaaaa-0000-0000-0000-000000000013',
   now() - INTERVAL '10 days'
 );
+
+-- ---------------------------------------------------------------
+-- ADDITIONAL EXAM RESULTS FOR CLASS 8A STUDENTS (ranking peers)
+-- 10 students from section 8A get results for Mid-Term 2026
+-- ---------------------------------------------------------------
+DO $$
+DECLARE
+  student_ids UUID[];
+  s_idx INT;
+  sub RECORD;
+  base_marks INT;
+BEGIN
+  SELECT ARRAY(
+    SELECT id FROM public.student_profiles
+    WHERE section_id = 'cccccccc-0000-0000-0000-000000000801'
+      AND id != 'dddddddd-0000-0000-0000-000000000001'
+    ORDER BY admission_number
+    LIMIT 10
+  ) INTO student_ids;
+
+  FOR s_idx IN 1..10 LOOP
+    FOR sub IN
+      SELECT id, name FROM public.subjects
+      WHERE class_id = 'bbbbbbbb-0000-0000-0000-000000000008'
+        AND school_id = 'aaaaaaaa-0000-0000-0000-000000000001'
+    LOOP
+      base_marks := 50 + (random() * 45)::INT;
+      INSERT INTO public.exam_results (school_id, exam_id, student_id, subject_id, marks_obtained, max_marks, grade, teacher_id)
+      VALUES (
+        'aaaaaaaa-0000-0000-0000-000000000001',
+        'eeeeeeee-0000-0000-0000-000000000001',
+        student_ids[s_idx],
+        sub.id,
+        base_marks,
+        100,
+        CASE
+          WHEN base_marks >= 90 THEN 'A+'
+          WHEN base_marks >= 80 THEN 'A'
+          WHEN base_marks >= 70 THEN 'B+'
+          WHEN base_marks >= 60 THEN 'B'
+          WHEN base_marks >= 50 THEN 'C'
+          ELSE 'F'
+        END,
+        'aaaaaaaa-0000-0000-0000-000000000013'
+      );
+    END LOOP;
+  END LOOP;
+END $$;
+
+-- ---------------------------------------------------------------
+-- SECOND ACADEMIC YEAR + EXAM (for grouping test)
+-- ---------------------------------------------------------------
+INSERT INTO public.academic_years (id, school_id, name, start_date, end_date, is_current)
+VALUES (
+  'aaaaaaaa-0000-0000-0000-000000000003',
+  'aaaaaaaa-0000-0000-0000-000000000001',
+  '2025-26',
+  '2025-04-01',
+  '2026-03-31',
+  false
+);
+
+INSERT INTO public.exams (id, school_id, academic_year_id, name, start_date, end_date)
+VALUES (
+  'eeeeeeee-0000-0000-0000-000000000002',
+  'aaaaaaaa-0000-0000-0000-000000000001',
+  'aaaaaaaa-0000-0000-0000-000000000003',
+  'Final Exam 2025', '2025-12-10', '2025-12-20'
+);
+
+-- Aryan's results in Final Exam 2025 (previous academic year)
+INSERT INTO public.exam_results (school_id, exam_id, student_id, subject_id, marks_obtained, max_marks, grade, teacher_id)
+SELECT
+  'aaaaaaaa-0000-0000-0000-000000000001',
+  'eeeeeeee-0000-0000-0000-000000000002',
+  'dddddddd-0000-0000-0000-000000000001',
+  sub.id, m.marks, 100, m.grade,
+  'aaaaaaaa-0000-0000-0000-000000000013'
+FROM (VALUES
+  ('Mathematics',   72::NUMERIC, 'B+'),
+  ('English',       68::NUMERIC, 'B'),
+  ('Science',       85::NUMERIC, 'A'),
+  ('Social Studies',74::NUMERIC, 'B+'),
+  ('Hindi',         65::NUMERIC, 'B')
+) AS m(subj_name, marks, grade)
+JOIN public.subjects sub
+  ON  sub.name      = m.subj_name
+  AND sub.class_id  = 'bbbbbbbb-0000-0000-0000-000000000008'
+  AND sub.school_id = 'aaaaaaaa-0000-0000-0000-000000000001';
+
+-- ---------------------------------------------------------------
+-- MORE HOMEWORK FOR CLASS 8A (spread across current month for calendar)
+-- ---------------------------------------------------------------
+INSERT INTO public.homework (school_id, class_id, section_id, subject_id, teacher_id, title, description, due_date)
+SELECT
+  'aaaaaaaa-0000-0000-0000-000000000001',
+  'bbbbbbbb-0000-0000-0000-000000000008',
+  'cccccccc-0000-0000-0000-000000000801',
+  sub.id,
+  'aaaaaaaa-0000-0000-0000-000000000013',
+  hw.title, hw.body, hw.due
+FROM (VALUES
+  ('Mathematics', 'Quadratic Equations Practice',     'Solve problems 1-20 from textbook page 142.',            CURRENT_DATE + 1),
+  ('Mathematics', 'Geometry Worksheet',               'Complete the worksheet on triangles and circles.',        CURRENT_DATE + 4),
+  ('Science',     'Periodic Table Quiz Prep',         'Study groups 1-4 for the quiz.',                         CURRENT_DATE + 3),
+  ('Science',     'Physics Numericals',               'Solve force and motion problems from chapter 5.',         CURRENT_DATE + 7),
+  ('English',     'Book Review Submission',           'Submit review of any novel you read this month.',         CURRENT_DATE + 6),
+  ('English',     'Grammar Exercises',                'Complete tenses worksheet (pages 45-47).',               CURRENT_DATE + 10),
+  ('Social Studies', 'Map Work – Rivers of India',    'Mark all major rivers on the outline map.',              CURRENT_DATE + 8),
+  ('Social Studies', 'History Project Draft',         'First draft of the freedom movement project.',           CURRENT_DATE + 12),
+  ('Hindi',       'Nibandh – Mera Desh',             '500 shabd ka nibandh likhiye.',                          CURRENT_DATE + 9),
+  ('Hindi',       'Kavita Yaad Karna',               'Learn the poem on page 78 for recitation.',              CURRENT_DATE + 11),
+  ('Mathematics', 'Statistics Assignment',            'Calculate mean, median, mode for given data sets.',       CURRENT_DATE + 14),
+  ('Science',     'Biology Drawing – Cell Structure', 'Draw and label a plant and animal cell.',                CURRENT_DATE + 13),
+  ('English',     'Letter Writing Practice',          'Write a formal letter to the principal.',                CURRENT_DATE - 1),
+  ('Hindi',       'Vyakaran Abhyas',                  'Samas aur sandhi ke 10-10 udaharan likhiye.',           CURRENT_DATE - 2)
+) AS hw(subj, title, body, due)
+JOIN public.subjects sub
+  ON  sub.name      = hw.subj
+  AND sub.class_id  = 'bbbbbbbb-0000-0000-0000-000000000008'
+  AND sub.school_id = 'aaaaaaaa-0000-0000-0000-000000000001';
+
+-- ---------------------------------------------------------------
+-- FEEDBACK SAMPLES (testing both types)
+-- ---------------------------------------------------------------
+-- Parent → Teacher (directed to teacher1, class teacher of 8A)
+INSERT INTO public.feedback (school_id, from_user_id, to_role, to_user_id, subject, message, status, created_at)
+VALUES
+  ('aaaaaaaa-0000-0000-0000-000000000001',
+   'aaaaaaaa-0000-0000-0000-000000000030', 'teacher', 'aaaaaaaa-0000-0000-0000-000000000013',
+   'Homework load concern', 'Aryan is finding it difficult to manage the amount of homework. Can we discuss?',
+   'open', now() - INTERVAL '3 days'),
+  ('aaaaaaaa-0000-0000-0000-000000000001',
+   'aaaaaaaa-0000-0000-0000-000000000030', 'teacher', 'aaaaaaaa-0000-0000-0000-000000000013',
+   'Extra classes request', 'Can Aryan attend extra math sessions after school hours?',
+   'open', now() - INTERVAL '1 day');
+
+-- Parent → Principal
+INSERT INTO public.feedback (school_id, from_user_id, to_role, to_user_id, subject, message, status, created_at)
+VALUES
+  ('aaaaaaaa-0000-0000-0000-000000000001',
+   'aaaaaaaa-0000-0000-0000-000000000030', 'principal', NULL,
+   'Transport safety concern', 'The school bus route 3 has been overcrowded lately. Please look into it.',
+   'open', now() - INTERVAL '5 days');
+
+-- Parent → School Admin
+INSERT INTO public.feedback (school_id, from_user_id, to_role, to_user_id, subject, message, status, created_at)
+VALUES
+  ('aaaaaaaa-0000-0000-0000-000000000001',
+   'aaaaaaaa-0000-0000-0000-000000000030', 'school_admin', NULL,
+   'Fee receipt not received', 'I paid the March fees via UPI but haven''t received the receipt yet.',
+   'open', now() - INTERVAL '2 days');
