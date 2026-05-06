@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Calendar } from "react-native-calendars";
 import { supabase } from "../../lib/supabase";
 import { useTheme } from "../../lib/theme";
 import { StatusBadge } from "../../components/StatusBadge";
@@ -27,7 +28,7 @@ interface ExamResult {
   rank: number;
   totalStudents: number;
 }
-interface Homework { id: string; title: string; subject: string; due_date: string; status: string }
+interface Homework { id: string; title: string; subject: string; due_date: string; status: string; description: string }
 
 export default function ParentAcademics() {
   const theme = useTheme();
@@ -37,14 +38,46 @@ export default function ParentAcademics() {
   const [homework, setHomework] = useState<Homework[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split("T")[0]);
+  const [calendarMonth, setCalendarMonth] = useState<{ year: number; month: number }>({
+    year: new Date().getFullYear(),
+    month: new Date().getMonth() + 1,
+  });
+  const [studentSectionId, setStudentSectionId] = useState<string | null>(null);
 
   useEffect(() => { loadData(); }, []);
+
+  useEffect(() => {
+    if (studentSectionId) {
+      loadHomeworkForMonth(studentSectionId, calendarMonth.year, calendarMonth.month);
+    }
+  }, [calendarMonth.year, calendarMonth.month, studentSectionId]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadData();
     setRefreshing(false);
   }, []);
+
+  async function loadHomeworkForMonth(sectionId: string, year: number, month: number) {
+    const firstDay = `${year}-${String(month).padStart(2, "0")}-01`;
+    const lastDay = new Date(year, month, 0).toISOString().split("T")[0];
+    const { data } = await supabase
+      .from("homework")
+      .select("id, title, description, due_date, subjects(name)")
+      .eq("section_id", sectionId)
+      .gte("due_date", firstDay)
+      .lte("due_date", lastDay)
+      .order("due_date", { ascending: true });
+    setHomework((data ?? []).map((h: any) => ({
+      id: h.id,
+      title: h.title,
+      description: h.description ?? "",
+      subject: h.subjects?.name ?? "",
+      due_date: h.due_date,
+      status: new Date(h.due_date) < new Date() ? "overdue" : "pending",
+    })));
+  }
 
   async function loadData() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -57,6 +90,7 @@ export default function ParentAcademics() {
       .single();
     const studentId = sp?.id;
     const sectionId = sp?.section_id;
+    setStudentSectionId(sectionId ?? null);
 
     // Fetch this student's exam results with exam + academic year info
     const resultsRes = studentId
@@ -79,14 +113,7 @@ export default function ParentAcademics() {
           .in("exam_id", myExamIds)
       : { data: [] };
 
-    // Fetch homework for this month
-    const homeworkRes = sectionId
-      ? await supabase
-          .from("homework")
-          .select("id, title, due_date, subjects(name)")
-          .eq("section_id", sectionId)
-          .order("due_date", { ascending: true })
-      : { data: [] };
+    // Homework is loaded via loadHomeworkForMonth after sectionId is stored
 
     // Build per-exam totals for all students (for rank)
     const allResults = (allSectionResultsRes.data ?? []) as any[];
@@ -141,14 +168,36 @@ export default function ParentAcademics() {
     }
     setGroupedResults(grouped);
 
-    setHomework((homeworkRes.data ?? []).map((h: any) => ({
-      id: h.id,
-      title: h.title,
-      subject: h.subjects?.name ?? "",
-      due_date: h.due_date,
-      status: new Date(h.due_date) < new Date() ? "overdue" : "pending",
-    })));
+    if (sectionId) {
+      await loadHomeworkForMonth(sectionId, new Date().getFullYear(), new Date().getMonth() + 1);
+    } else {
+      setHomework([]);
+    }
     setLoading(false);
+  }
+
+  const SUBJECT_COLORS = ["#6366F1", "#10B981", "#F59E0B", "#EF4444", "#3B82F6"];
+  const subjectColorMap: Record<string, string> = {};
+  let colorIndex = 0;
+
+  const markedDates: Record<string, any> = {};
+  for (const hw of homework) {
+    if (!subjectColorMap[hw.subject]) {
+      subjectColorMap[hw.subject] = SUBJECT_COLORS[colorIndex % SUBJECT_COLORS.length];
+      colorIndex++;
+    }
+    if (!markedDates[hw.due_date]) {
+      markedDates[hw.due_date] = { dots: [], selected: hw.due_date === selectedDate };
+    }
+    if (markedDates[hw.due_date].dots.length < 3) {
+      markedDates[hw.due_date].dots.push({ color: subjectColorMap[hw.subject] });
+    }
+  }
+  if (markedDates[selectedDate]) {
+    markedDates[selectedDate].selected = true;
+    markedDates[selectedDate].selectedColor = theme.primary + "30";
+  } else {
+    markedDates[selectedDate] = { selected: true, selectedColor: theme.primary + "30" };
   }
 
   return (
@@ -229,18 +278,64 @@ export default function ParentAcademics() {
             ))}
           </View>
         ) : (
-          <View style={{ gap: 8 }}>
-            {homework.length === 0 ? (
-              <Text style={{ textAlign: "center", color: theme.textMuted, fontFamily: "Inter_400Regular", paddingVertical: 32 }}>No homework assigned</Text>
-            ) : homework.map((h) => (
-              <View key={h.id} style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                <View style={{ flex: 1, marginRight: 12 }}>
-                  <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>{h.title}</Text>
-                  <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: theme.textSecondary, marginTop: 2 }}>{h.subject} · Due {new Date(h.due_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</Text>
+          <View style={{ gap: 0 }}>
+            <Calendar
+              markingType="multi-dot"
+              markedDates={markedDates}
+              onDayPress={(day: { dateString: string }) => setSelectedDate(day.dateString)}
+              onMonthChange={(month: { year: number; month: number }) =>
+                setCalendarMonth({ year: month.year, month: month.month })
+              }
+              theme={{
+                backgroundColor: theme.surface,
+                calendarBackground: theme.surface,
+                textSectionTitleColor: theme.textMuted,
+                selectedDayBackgroundColor: theme.primary,
+                selectedDayTextColor: "#fff",
+                todayTextColor: theme.primary,
+                dayTextColor: theme.textPrimary,
+                textDisabledColor: theme.textMuted,
+                dotColor: theme.primary,
+                arrowColor: theme.primary,
+                monthTextColor: theme.textPrimary,
+                textMonthFontFamily: "Inter_600SemiBold",
+                textDayFontFamily: "Inter_400Regular",
+                textDayHeaderFontFamily: "Inter_500Medium",
+              }}
+              style={{ borderRadius: 16, overflow: "hidden", marginBottom: 16 }}
+            />
+            {(() => {
+              const dayHomework = homework.filter(h => h.due_date === selectedDate);
+              return dayHomework.length === 0 ? (
+                <Text style={{ textAlign: "center", color: theme.textMuted, fontFamily: "Inter_400Regular", paddingVertical: 24 }}>
+                  No homework for {new Date(selectedDate + "T00:00:00").toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}
+                </Text>
+              ) : (
+                <View style={{ gap: 10 }}>
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: theme.textMuted, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 2 }}>
+                    {new Date(selectedDate + "T00:00:00").toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}
+                  </Text>
+                  {dayHomework.map((h) => (
+                    <View key={h.id} style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 16, gap: 8 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                        <View style={{ flex: 1, marginRight: 8 }}>
+                          <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>{h.title}</Text>
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 }}>
+                            <View style={{ backgroundColor: (subjectColorMap[h.subject] ?? theme.primary) + "20", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 }}>
+                              <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: subjectColorMap[h.subject] ?? theme.primary }}>{h.subject}</Text>
+                            </View>
+                          </View>
+                        </View>
+                        <StatusBadge variant={h.status === "submitted" ? "paid" : h.status === "overdue" ? "overdue" : "pending"} />
+                      </View>
+                      {h.description ? (
+                        <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: theme.textSecondary }}>{h.description}</Text>
+                      ) : null}
+                    </View>
+                  ))}
                 </View>
-                <StatusBadge variant={h.status === "submitted" ? "paid" : new Date(h.due_date) < new Date() ? "overdue" : "pending"} />
-              </View>
-            ))}
+              );
+            })()}
           </View>
         )}
       </ScrollView>

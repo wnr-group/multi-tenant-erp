@@ -29,6 +29,7 @@
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-native": "0.83.4",
+    "react-native-calendars": "^1.1314.0",
     "react-native-css-interop": "0.1.22",
     "react-native-razorpay": "^2.3.1",
     "react-native-reanimated": "~3.17.5",
