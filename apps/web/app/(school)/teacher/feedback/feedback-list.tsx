@@ -12,6 +12,7 @@ interface FeedbackItem {
   subject: string;
   message: string;
   from_name: string;
+  from_role: string;
   status: string;
   response: string;
   created_at: string;
@@ -25,6 +26,7 @@ function statusVariant(
 }
 
 export function FeedbackList({ items }: { items: FeedbackItem[] }) {
+  const [filter, setFilter] = useState<"all" | "parents">("all");
   const [openId, setOpenId] = useState<string | null>(null);
   const [responses, setResponses] = useState<Record<string, string>>(() => {
     const map: Record<string, string> = {};
@@ -33,6 +35,7 @@ export function FeedbackList({ items }: { items: FeedbackItem[] }) {
   });
   const [saving, setSaving] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const filtered = filter === "parents" ? items.filter(i => i.from_role === "parent") : items;
 
   async function handleRespond(id: string) {
     setSaving(id);
@@ -59,8 +62,24 @@ export function FeedbackList({ items }: { items: FeedbackItem[] }) {
   }
 
   return (
-    <div className="grid gap-4">
-      {items.map((item) => (
+    <div>
+      <div className="mb-4 flex gap-2">
+        {(["all", "parents"] as const).map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              filter === f
+                ? "bg-indigo-600 text-white"
+                : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+            }`}
+          >
+            {f === "all" ? "All" : "From Parents"}
+          </button>
+        ))}
+      </div>
+      <div className="grid gap-4">
+      {filtered.map((item) => (
         <div key={item.id} className="rounded-lg bg-white p-5 shadow-sm">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
@@ -126,6 +145,7 @@ export function FeedbackList({ items }: { items: FeedbackItem[] }) {
           )}
         </div>
       ))}
+      </div>
     </div>
   );
 }

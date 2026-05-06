@@ -13,19 +13,22 @@ export default async function TeacherFeedbackPage() {
   const { data: feedback } = await supabase
     .from("feedback")
     .select(
-      "id, subject, message, status, created_at, response, from_user:profiles!feedback_from_user_id_fkey(full_name)"
+      "id, subject, message, status, created_at, response, from_user:profiles!feedback_from_user_id_fkey(full_name), from_role_row:user_roles!user_roles_user_id_fkey(role)"
     )
     .eq("school_id", schoolId)
     .eq("to_role", "teacher")
+    .eq("to_user_id", user!.id)
     .order("created_at", { ascending: false });
 
   const items = (feedback ?? []).map((f) => {
     const fromUser = f.from_user as unknown as { full_name: string } | null;
+    const fromRoleRow = (f as any).from_role_row as { role: string } | null;
     return {
       id: f.id,
       subject: f.subject ?? "—",
       message: f.message ?? "—",
       from_name: fromUser?.full_name ?? "—",
+      from_role: fromRoleRow?.role ?? "parent",
       status: f.status ?? "pending",
       response: f.response ?? "",
       created_at: f.created_at
