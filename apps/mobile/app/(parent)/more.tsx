@@ -10,7 +10,7 @@ import { SectionHeader } from "../../components/SectionHeader";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { SkeletonCard } from "../../components/Skeleton";
 
-type Section = "menu" | "announcements" | "discipline" | "feedback" | "profile";
+type Section = "menu" | "announcements" | "discipline" | "feedback-teacher" | "feedback-management" | "profile";
 
 export default function ParentMore() {
   const theme = useTheme();
@@ -19,7 +19,9 @@ export default function ParentMore() {
   const [student, setStudent] = useState<{ name: string; className: string; sectionName: string; rollNumber: string; admissionNumber: string; photoUrl: string | null } | null>(null);
   const [announcements, setAnnouncements] = useState<{ id: string; title: string; content: string; created_at: string }[]>([]);
   const [discipline, setDiscipline] = useState<{ id: string; incident_date: string; description: string; action_taken: string }[]>([]);
-  const [feedback, setFeedback] = useState("");
+  const [teacherFeedback, setTeacherFeedback] = useState({ subject: "", message: "" });
+  const [managementFeedback, setManagementFeedback] = useState({ subject: "", message: "", toRole: "principal" as "principal" | "school_admin" });
+  const [classteacherId, setClassteacherId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -41,7 +43,7 @@ export default function ParentMore() {
       supabase.from("profiles").select("full_name").eq("id", user.id).single(),
       supabase
         .from("student_profiles")
-        .select("full_name, roll_number, admission_number, photo_url, sections(name, classes(name))")
+        .select("full_name, roll_number, admission_number, photo_url, sections(id, name, classes(name))")
         .eq("parent_profile_id", user.id)
         .single(),
     ]);
@@ -56,6 +58,16 @@ export default function ParentMore() {
         admissionNumber: s.admission_number ?? "",
         photoUrl: s.photo_url ? fixStorageUrl(s.photo_url) : null,
       });
+      // Fetch class teacher for feedback routing
+      const sectionId = s.sections?.id ?? null;
+      if (sectionId) {
+        const { data: tp } = await supabase
+          .from("teacher_profiles")
+          .select("profile_id")
+          .eq("class_teacher_of", sectionId)
+          .maybeSingle();
+        setClassteacherId(tp?.profile_id ?? null);
+      }
     }
   }
 
@@ -84,14 +96,48 @@ export default function ParentMore() {
     setLoading(false);
   }
 
-  async function submitFeedback() {
-    if (!feedback.trim()) return;
+  async function submitTeacherFeedback() {
+    if (!teacherFeedback.subject.trim() || !teacherFeedback.message.trim()) {
+      Alert.alert("Required", "Please fill in subject and message."); return;
+    }
     setSubmitting(true);
     const { data: { user } } = await supabase.auth.getUser();
-    await supabase.from("feedback").insert({ user_id: user?.id, message: feedback.trim() });
-    setFeedback("");
+    const { data: prof } = await supabase.from("profiles").select("school_id").eq("id", user!.id).single();
+    await supabase.from("feedback").insert({
+      school_id: prof?.school_id,
+      from_user_id: user?.id,
+      to_role: "teacher",
+      to_user_id: classteacherId,
+      subject: teacherFeedback.subject.trim(),
+      message: teacherFeedback.message.trim(),
+      status: "open",
+    });
+    setTeacherFeedback({ subject: "", message: "" });
     setSubmitting(false);
-    Alert.alert("Submitted", "Your feedback has been received.");
+    setSection("menu");
+    Alert.alert("Sent", "Your message has been sent to the teacher.");
+  }
+
+  async function submitManagementFeedback() {
+    if (!managementFeedback.subject.trim() || !managementFeedback.message.trim()) {
+      Alert.alert("Required", "Please fill in subject and message."); return;
+    }
+    setSubmitting(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: prof } = await supabase.from("profiles").select("school_id").eq("id", user!.id).single();
+    await supabase.from("feedback").insert({
+      school_id: prof?.school_id,
+      from_user_id: user?.id,
+      to_role: managementFeedback.toRole,
+      to_user_id: null,
+      subject: managementFeedback.subject.trim(),
+      message: managementFeedback.message.trim(),
+      status: "open",
+    });
+    setManagementFeedback({ subject: "", message: "", toRole: "principal" });
+    setSubmitting(false);
+    setSection("menu");
+    Alert.alert("Sent", "Your message has been sent to the management.");
   }
 
   function navigate(s: Section) {
@@ -100,6 +146,15 @@ export default function ParentMore() {
     if (s === "discipline") loadDiscipline();
   }
 
+  const sectionTitle: Record<Section, string> = {
+    menu: "More",
+    announcements: "Announcements",
+    discipline: "Discipline Records",
+    "feedback-teacher": "Message Teacher",
+    "feedback-management": "Contact Management",
+    profile: "Profile",
+  };
+
   if (section !== "menu") {
     return (
       <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: theme.background }}>
@@ -107,7 +162,7 @@ export default function ParentMore() {
           <TouchableOpacity onPress={() => setSection("menu")}>
             <Ionicons name="arrow-back" size={24} color={theme.textPrimary} />
           </TouchableOpacity>
-          <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: theme.textPrimary, textTransform: "capitalize" }}>{section}</Text>
+          <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>{sectionTitle[section]}</Text>
         </View>
         <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
           {section === "announcements" && (
@@ -132,17 +187,80 @@ export default function ParentMore() {
               </View>
             ))
           )}
-          {section === "feedback" && (
-            <View style={{ gap: 12 }}>
-              <TextInput
-                style={{ backgroundColor: theme.surface, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: theme.border, fontSize: 14, fontFamily: "Inter_400Regular", color: theme.textPrimary, minHeight: 120, textAlignVertical: "top" }}
-                placeholder="Write your feedback..."
-                placeholderTextColor={theme.textMuted}
-                multiline
-                value={feedback}
-                onChangeText={setFeedback}
-              />
-              <PrimaryButton label="Submit Feedback" onPress={submitFeedback} loading={submitting} />
+          {section === "feedback-teacher" && (
+            <View style={{ gap: 14 }}>
+              <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: theme.textSecondary }}>
+                Your message will be sent to your child's class teacher.
+              </Text>
+              <View>
+                <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: theme.textSecondary, marginBottom: 6 }}>Subject</Text>
+                <TextInput
+                  style={{ backgroundColor: theme.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: theme.border, fontSize: 14, fontFamily: "Inter_400Regular", color: theme.textPrimary }}
+                  placeholder="e.g. Homework concern"
+                  placeholderTextColor={theme.textMuted}
+                  value={teacherFeedback.subject}
+                  onChangeText={(v) => setTeacherFeedback(p => ({ ...p, subject: v }))}
+                />
+              </View>
+              <View>
+                <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: theme.textSecondary, marginBottom: 6 }}>Message</Text>
+                <TextInput
+                  style={{ backgroundColor: theme.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: theme.border, fontSize: 14, fontFamily: "Inter_400Regular", color: theme.textPrimary, minHeight: 120, textAlignVertical: "top" }}
+                  placeholder="Write your message..."
+                  placeholderTextColor={theme.textMuted}
+                  multiline
+                  value={teacherFeedback.message}
+                  onChangeText={(v) => setTeacherFeedback(p => ({ ...p, message: v }))}
+                />
+              </View>
+              <PrimaryButton label="Send to Teacher" onPress={submitTeacherFeedback} loading={submitting} />
+            </View>
+          )}
+          {section === "feedback-management" && (
+            <View style={{ gap: 14 }}>
+              <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: theme.textSecondary }}>
+                Send a formal message to school management.
+              </Text>
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                {(["principal", "school_admin"] as const).map((role) => (
+                  <TouchableOpacity
+                    key={role}
+                    onPress={() => setManagementFeedback(p => ({ ...p, toRole: role }))}
+                    style={{
+                      flex: 1, paddingVertical: 10, borderRadius: 12, borderWidth: 1,
+                      borderColor: managementFeedback.toRole === role ? theme.primary : theme.border,
+                      backgroundColor: managementFeedback.toRole === role ? theme.primary + "15" : theme.surface,
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: managementFeedback.toRole === role ? theme.primary : theme.textSecondary }}>
+                      {role === "principal" ? "Principal" : "Admin"}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View>
+                <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: theme.textSecondary, marginBottom: 6 }}>Subject</Text>
+                <TextInput
+                  style={{ backgroundColor: theme.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: theme.border, fontSize: 14, fontFamily: "Inter_400Regular", color: theme.textPrimary }}
+                  placeholder="e.g. Fee inquiry"
+                  placeholderTextColor={theme.textMuted}
+                  value={managementFeedback.subject}
+                  onChangeText={(v) => setManagementFeedback(p => ({ ...p, subject: v }))}
+                />
+              </View>
+              <View>
+                <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: theme.textSecondary, marginBottom: 6 }}>Message</Text>
+                <TextInput
+                  style={{ backgroundColor: theme.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: theme.border, fontSize: 14, fontFamily: "Inter_400Regular", color: theme.textPrimary, minHeight: 120, textAlignVertical: "top" }}
+                  placeholder="Write your message..."
+                  placeholderTextColor={theme.textMuted}
+                  multiline
+                  value={managementFeedback.message}
+                  onChangeText={(v) => setManagementFeedback(p => ({ ...p, message: v }))}
+                />
+              </View>
+              <PrimaryButton label="Send to Management" onPress={submitManagementFeedback} loading={submitting} />
             </View>
           )}
           {section === "profile" && profile && (
@@ -208,7 +326,8 @@ export default function ParentMore() {
         <View style={{ gap: 8 }}>
           <ListItem icon="megaphone-outline" title="Announcements" subtitle="School news & updates" onPress={() => navigate("announcements")} />
           <ListItem icon="shield-checkmark-outline" title="Discipline Records" subtitle="Incidents & actions" onPress={() => navigate("discipline")} />
-          <ListItem icon="chatbubble-outline" title="Feedback" subtitle="Send feedback to school" onPress={() => navigate("feedback")} />
+          <ListItem icon="chatbubble-ellipses-outline" title="Message Teacher" subtitle="Connect with your child's class teacher" onPress={() => navigate("feedback-teacher")} />
+          <ListItem icon="business-outline" title="Contact Management" subtitle="Reach out to the principal or admin" onPress={() => navigate("feedback-management")} />
           <ListItem icon="person-outline" title="Profile" subtitle="Account settings" onPress={() => navigate("profile")} />
         </View>
       </ScrollView>
