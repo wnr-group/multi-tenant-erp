@@ -28,6 +28,7 @@ const NAV_ITEMS: Record<string, { label: string; href: string }[]> = {
     { label: "Announcements",  href: "/admin/announcements" },
     { label: "Gallery",        href: "/admin/gallery" },
     { label: "Discipline",     href: "/admin/discipline" },
+    { label: "Feedback",       href: "/admin/feedback" },
     { label: "Reports",        href: "/admin/reports" },
     { label: "Settings",       href: "/admin/settings" },
   ],
@@ -54,6 +55,7 @@ const NAV_ITEMS: Record<string, { label: string; href: string }[]> = {
     { label: "Dashboard",     href: "/principal/dashboard" },
     { label: "Announcements", href: "/principal/announcements" },
     { label: "Discipline",    href: "/principal/discipline" },
+    { label: "Feedback",      href: "/principal/feedback" },
     { label: "Reports",       href: "/principal/reports" },
   ],
   super_admin: [
