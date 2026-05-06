@@ -33,6 +33,23 @@ function gradeFromMarks(marks: number, max: number): string {
   return "F";
 }
 
+function computeRanks(items: ResultItem[]): { id: string; student_name: string; totalObtained: number; totalMax: number; grade: string; rank: number }[] {
+  const studentAgg: Record<string, { student_name: string; totalObtained: number; totalMax: number; id: string }> = {};
+  for (const r of items) {
+    if (!studentAgg[r.student_name]) {
+      studentAgg[r.student_name] = { student_name: r.student_name, totalObtained: 0, totalMax: 0, id: r.id };
+    }
+    studentAgg[r.student_name].totalObtained += r.marks_obtained;
+    studentAgg[r.student_name].totalMax += r.max_marks;
+  }
+  const sorted = Object.values(studentAgg).sort((a, b) => b.totalObtained - a.totalObtained);
+  let rank = 1;
+  return sorted.map((s, i) => {
+    if (i > 0 && sorted[i - 1].totalObtained > s.totalObtained) rank = i + 1;
+    return { ...s, rank, grade: gradeFromMarks(s.totalObtained, s.totalMax) };
+  });
+}
+
 export default function TeacherClasses() {
   const theme = useTheme();
   const { activeSection, userId, schoolId, ready } = useTeacherContext();
@@ -254,18 +271,32 @@ export default function TeacherClasses() {
                   <Text style={{ fontFamily: "Inter_600SemiBold", color: "#fff", fontSize: 14 }}>Enter First Result</Text>
                 </TouchableOpacity>
               </View>
-            ) : results.map((r) => (
-              <View key={r.id} style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 16, flexDirection: "row", alignItems: "center", gap: 14 }}>
-                <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: gradeColor(r.grade) + "18", alignItems: "center", justifyContent: "center" }}>
-                  <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: gradeColor(r.grade) }}>{r.grade}</Text>
+            ) : (() => {
+              const ranked = computeRanks(results);
+              const RANK_COLORS: Record<number, string> = { 1: "#F59E0B", 2: "#9CA3AF", 3: "#B45309" };
+              return (
+                <View style={{ gap: 8 }}>
+                  {ranked.map((r) => (
+                    <View key={r.id} style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 16, flexDirection: "row", alignItems: "center", gap: 14 }}>
+                      <View style={{
+                        width: 40, height: 40, borderRadius: 12,
+                        backgroundColor: (RANK_COLORS[r.rank] ?? theme.primary) + "18",
+                        alignItems: "center", justifyContent: "center"
+                      }}>
+                        <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: RANK_COLORS[r.rank] ?? theme.primary }}>
+                          {r.rank <= 3 ? (["🥇","🥈","🥉"])[r.rank - 1] : `#${r.rank}`}
+                        </Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>{r.student_name}</Text>
+                        <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: theme.textSecondary, marginTop: 2 }}>Grade {r.grade}</Text>
+                      </View>
+                      <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: theme.textSecondary }}>{r.totalObtained}/{r.totalMax}</Text>
+                    </View>
+                  ))}
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>{r.student_name}</Text>
-                  <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: theme.textSecondary, marginTop: 2 }}>{r.subject}</Text>
-                </View>
-                <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: theme.textSecondary }}>{r.marks_obtained}/{r.max_marks}</Text>
-              </View>
-            ))
+              );
+            })()
           )
         }
       </ScrollView>
