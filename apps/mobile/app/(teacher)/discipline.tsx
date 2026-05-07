@@ -85,17 +85,20 @@ export default function TeacherDiscipline() {
 
     const sectionId = activeSection?.id ?? "";
 
-    const [studentsRes, recordsRes] = await Promise.all([
-      sectionId
-        ? supabase.from("student_profiles").select("id, full_name").eq("section_id", sectionId).order("full_name")
-        : Promise.resolve({ data: [] }),
-      supabase
-        .from("discipline_records")
-        .select("id, created_at, description, severity, category, student_profiles!student_id(full_name)")
-        .eq("recorded_by", userId)
-        .order("created_at", { ascending: false })
-        .limit(30),
-    ]);
+    const studentsRes = sectionId
+      ? await supabase.from("student_profiles").select("id, full_name").eq("section_id", sectionId).order("full_name")
+      : { data: [] };
+
+    const studentIds = (studentsRes.data ?? []).map((s: any) => s.id);
+    const recordsRes = studentIds.length > 0
+      ? await supabase
+          .from("discipline_records")
+          .select("id, created_at, description, severity, category, student_profiles!student_id(full_name)")
+          .in("student_id", studentIds)
+          .eq("school_id", schoolId)
+          .order("created_at", { ascending: false })
+          .limit(30)
+      : { data: [] };
 
     setStudentOptions((studentsRes.data ?? []).map((s: any) => ({ label: s.full_name ?? "Student", value: s.id })));
     setRecords((recordsRes.data ?? []).map((r: any) => ({
