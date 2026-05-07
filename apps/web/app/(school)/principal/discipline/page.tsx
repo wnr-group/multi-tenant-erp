@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
 import { DataTable } from "@/components/data-table";
 import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
 
 type SeverityVariant = "default" | "secondary" | "destructive" | "outline";
 
@@ -18,7 +19,7 @@ export default async function DisciplinePage() {
   const { data: records } = await supabase
     .from("discipline_records")
     .select(
-      "id, category, severity, description, created_at, student:student_profiles(full_name)"
+      "id, student_id, category, severity, description, created_at, student:student_profiles(full_name)"
     )
     .eq("school_id", schoolId)
     .order("created_at", { ascending: false });
@@ -27,6 +28,7 @@ export default async function DisciplinePage() {
     const sp = r.student as unknown as { full_name: string } | null;
     return {
       id: r.id,
+      student_id: (r as any).student_id ?? "",
       student_name: sp?.full_name ?? "—",
       category: r.category ?? "—",
       severity: r.severity,
@@ -41,7 +43,17 @@ export default async function DisciplinePage() {
       <DataTable
         data={rows}
         columns={[
-          { header: "Student", accessor: "student_name" },
+          {
+            header: "Student",
+            accessor: (row) => (
+              <Link
+                href={`/principal/students/${row.student_id}`}
+                className="font-medium text-indigo-600 hover:underline"
+              >
+                {row.student_name}
+              </Link>
+            ),
+          },
           { header: "Category", accessor: "category" },
           {
             header: "Severity",
