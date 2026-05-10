@@ -34,9 +34,9 @@ export const SCENES = {
   // Sum: 240+120+240+240+240+240+240+240 = 1800 ✓
 } as const;
 
-export const FRAMES_PER_BEAT = 15;
-export const SNARE_PHASE = 30;
-export const KICK_PHASE = 15;
+export const FRAMES_PER_BEAT = 13;
+export const SNARE_PHASE = 13;
+export const KICK_PHASE = 2;
 
 export const isSnare = (masterFrame: number): boolean =>
   masterFrame >= SNARE_PHASE &&

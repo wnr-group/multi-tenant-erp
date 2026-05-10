@@ -1,5 +1,5 @@
-import { AbsoluteFill, Sequence } from "remotion";
-import { SCENES } from "../theme";
+import { AbsoluteFill, Audio, Sequence, interpolate, staticFile } from "remotion";
+import { VIDEO, SCENES } from "../theme";
 import { HookScene } from "./HookScene";
 import { BrandReveal } from "./BrandReveal";
 import { Scene01Students } from "./Scene01Students";
@@ -11,6 +11,16 @@ import { CloseScene } from "./CloseScene";
 
 export const Master: React.FC = () => (
   <AbsoluteFill>
+    <Audio
+      src={staticFile("soundtrack.mp3")}
+      volume={(f) =>
+        interpolate(f, [VIDEO.totalFrames - 18, VIDEO.totalFrames], [0.6, 0], {
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+        })
+      }
+    />
+
     <Sequence from={SCENES.hookStart} durationInFrames={SCENES.hookDur}>
       <HookScene />
     </Sequence>
