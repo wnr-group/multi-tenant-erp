@@ -8,3 +8,4 @@ dist/
 .worktrees/
 test-screenshots/
 .vercel
+apps/demo-video/
