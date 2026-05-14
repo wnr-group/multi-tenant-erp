@@ -26,14 +26,14 @@ export function DataTable<T extends { id: string }>({
   renderActions,
 }: DataTableProps<T>) {
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-card animate-fade-in-up">
+    <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm animate-fade-in-up">
       <Table>
         <TableHeader>
-          <TableRow className="bg-muted/40 hover:bg-muted/40">
+          <TableRow className="bg-muted/50 hover:bg-muted/50">
             {columns.map((col, i) => (
               <TableHead
                 key={i}
-                className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                className="h-10 px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
               >
                 {col.header}
               </TableHead>
@@ -52,17 +52,20 @@ export function DataTable<T extends { id: string }>({
               </TableCell>
             </TableRow>
           ) : (
-            data.map((row) => (
-              <TableRow key={row.id} className="hover:bg-muted/30">
+            data.map((row, rowIndex) => (
+              <TableRow
+                key={row.id}
+                className={`transition-colors hover:bg-muted/30 ${rowIndex % 2 === 0 ? "" : "bg-muted/10"}`}
+              >
                 {columns.map((col, i) => (
-                  <TableCell key={i} className="text-sm">
+                  <TableCell key={i} className="px-4 py-3 text-sm">
                     {typeof col.accessor === "function"
                       ? col.accessor(row)
                       : (row[col.accessor] as React.ReactNode)}
                   </TableCell>
                 ))}
                 {renderActions && (
-                  <TableCell className="text-right">
+                  <TableCell className="px-4 py-3 text-right">
                     {renderActions(row)}
                   </TableCell>
                 )}

@@ -72,7 +72,10 @@ export default async function TeacherDisciplinePage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold text-gray-900">Discipline</h1>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-foreground">Discipline</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Discipline records for your section.</p>
+      </div>
 
       <div className="mb-6 rounded-lg bg-white p-6 shadow-sm">
         <h2 className="mb-4 text-lg font-semibold text-gray-800">

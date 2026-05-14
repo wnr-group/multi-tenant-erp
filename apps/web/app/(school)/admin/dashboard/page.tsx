@@ -142,13 +142,13 @@ export default async function AdminDashboard() {
         {stats.map((s, index) => {
           const Icon = s.icon;
           return (
-            <div key={s.label} className="flex items-center gap-4 rounded-xl border border-border bg-card p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md animate-fade-in-up" style={{ animationDelay: `${index * 60}ms` }}>
-              <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${s.iconBg} ${s.iconColor}`}>
-                <Icon className="h-6 w-6" />
+            <div key={s.label} className="flex items-center gap-4 rounded-xl border border-border bg-card p-4 shadow-sm transition-all duration-200 hover:shadow-md animate-fade-in-up" style={{ animationDelay: `${index * 60}ms` }}>
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${s.iconBg} ${s.iconColor}`}>
+                <Icon className="h-5 w-5" />
               </div>
               <div className="min-w-0">
-                <p className="text-2xl font-bold text-foreground truncate">{s.value}</p>
-                <p className="text-xs font-medium text-muted-foreground">{s.label}</p>
+                <p className="text-xl font-bold text-foreground truncate">{s.value}</p>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{s.label}</p>
               </div>
             </div>
           );
