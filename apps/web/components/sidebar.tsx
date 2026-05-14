@@ -26,6 +26,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Announcements: Megaphone,
   Settings: Settings,
   Reports: BarChart3,
+  "Report Cards": FileText,
   Discipline: Shield,
   Attendance: UserCheck,
   Homework: ClipboardList,

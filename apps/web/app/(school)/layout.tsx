@@ -30,6 +30,7 @@ const NAV_ITEMS: Record<string, { label: string; href: string }[]> = {
     { label: "Discipline",     href: "/admin/discipline" },
     { label: "Feedback",       href: "/admin/feedback" },
     { label: "Reports",        href: "/admin/reports" },
+    { label: "Report Cards",   href: "/admin/report-cards" },
     { label: "Settings",       href: "/admin/settings" },
   ],
   teacher: [
