@@ -27,17 +27,18 @@ export default async function TeacherDisciplinePage() {
   // Fetch students enrolled in the active section
   const { data: students } = await supabase
     .from("student_profiles")
-    .select("id, full_name")
+    .select("id, full_name, roll_number")
     .eq("section_id", sectionId)
     .order("full_name");
 
   // Build student lookup map and dropdown options
-  const studentMap = new Map<string, string>();
+  const studentMap = new Map<string, { name: string; roll: string }>();
   const studentOptions: { value: string; label: string }[] = [];
 
   for (const sp of students ?? []) {
     const name = sp.full_name ?? "—";
-    studentMap.set(sp.id, name);
+    const roll = (sp as any).roll_number ?? "—";
+    studentMap.set(sp.id, { name, roll });
     studentOptions.push({ value: sp.id, label: name });
   }
 
@@ -56,14 +57,18 @@ export default async function TeacherDisciplinePage() {
     )
     .order("created_at", { ascending: false });
 
-  const rows = (records ?? []).map((r) => ({
-    id: r.id,
-    student_name: studentMap.get(r.student_id) ?? "—",
-    category: r.category ?? "—",
-    severity: r.severity as string | null,
-    description: r.description ?? "—",
-    date: r.created_at ? new Date(r.created_at).toLocaleDateString() : "—",
-  }));
+  const rows = (records ?? []).map((r) => {
+    const student = studentMap.get(r.student_id);
+    return {
+      id: r.id,
+      student_name: student?.name ?? "—",
+      roll_number: student?.roll ?? "—",
+      category: r.category ?? "—",
+      severity: r.severity as string | null,
+      description: r.description ?? "—",
+      date: r.created_at ? new Date(r.created_at).toLocaleDateString() : "—",
+    };
+  });
 
   return (
     <div>
@@ -85,6 +90,7 @@ export default async function TeacherDisciplinePage() {
         data={rows}
         columns={[
           { header: "Student", accessor: "student_name" },
+          { header: "Roll No.", accessor: "roll_number" },
           { header: "Category", accessor: "category" },
           {
             header: "Severity",
