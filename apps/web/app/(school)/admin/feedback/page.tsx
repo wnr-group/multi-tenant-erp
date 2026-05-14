@@ -12,7 +12,7 @@ export default async function AdminFeedbackPage() {
       "id, subject, message, status, created_at, response, from_user:profiles!feedback_from_user_id_fkey(full_name)"
     )
     .eq("school_id", schoolId)
-    .eq("to_role", "school_admin")
+    .in("to_role", ["school_admin", "principal"])
     .order("created_at", { ascending: false });
 
   const items = (feedback ?? []).map((f) => {
@@ -31,7 +31,7 @@ export default async function AdminFeedbackPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold text-gray-900">Feedback — Management</h1>
+      <h1 className="mb-6 text-2xl font-bold text-gray-900">Feedback</h1>
       <FeedbackList items={items} />
     </div>
   );

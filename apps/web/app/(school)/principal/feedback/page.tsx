@@ -12,7 +12,7 @@ export default async function PrincipalFeedbackPage() {
       "id, subject, message, status, created_at, response, from_user:profiles!feedback_from_user_id_fkey(full_name)"
     )
     .eq("school_id", schoolId)
-    .eq("to_role", "principal")
+    .in("to_role", ["school_admin", "principal"])
     .order("created_at", { ascending: false });
 
   const items = (feedback ?? []).map((f) => {
