@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
 import { PageHeader } from "@/components/page-header";
 import { AddStudentDialog } from "./add-student-dialog";
+import { BulkActions } from "./bulk-actions";
 import { StudentsTable } from "./students-table";
 
 export default async function StudentsPage() {
@@ -12,7 +13,7 @@ export default async function StudentsPage() {
     supabase
       .from("student_profiles")
       .select(
-        "id, full_name, email, roll_number, admission_number, class:classes(name), section:sections(name)"
+        "id, full_name, email, roll_number, admission_number, parent_phone, class:classes(name), section:sections(name)"
       )
       .eq("school_id", schoolId)
       .limit(5000),
@@ -29,9 +30,12 @@ export default async function StudentsPage() {
     return {
       id: s.id,
       name: s.full_name ?? "",
+      email: s.email ?? "",
       roll: s.roll_number ?? "",
+      admission_number: s.admission_number ?? "",
       class_name: c?.name ?? "",
       section: sec?.name ?? "",
+      parent_phone: s.parent_phone ?? "",
     };
   });
 
@@ -45,7 +49,12 @@ export default async function StudentsPage() {
       <PageHeader
         title="Students"
         description="Manage student enrollment and profiles."
-        action={<AddStudentDialog schoolId={schoolId} classes={classes ?? []} />}
+        action={
+          <div className="flex items-center gap-2">
+            <BulkActions students={rows} />
+            <AddStudentDialog schoolId={schoolId} classes={classes ?? []} />
+          </div>
+        }
         stats={[
           { label: "Total Students", value: rows.length },
           { label: "Classes", value: (classes ?? []).length },
