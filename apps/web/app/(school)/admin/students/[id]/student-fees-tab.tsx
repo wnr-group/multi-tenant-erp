@@ -11,44 +11,62 @@ export async function StudentFeesTab({ studentId, studentName }: Props) {
   const supabase = await createServerSupabaseClient();
   const schoolId = (await getSchoolId())!;
 
-  // Get student's class to find fee structures
-  const { data: sp } = await supabase
-    .from("student_profiles")
-    .select("class_id")
-    .eq("id", studentId)
-    .single();
+  const [lineItemsRes, paymentsRes] = await Promise.all([
+    supabase
+      .from("fee_line_items")
+      .select("id, fee_type, total_amount, due_date, status, created_at, added_by_profile:profiles!added_by(full_name)")
+      .eq("student_id", studentId)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("payments")
+      .select("id, payment_date, total_amount, payment_method, mode, transaction_id, razorpay_payment_id, notes, paid_by_profile:profiles!paid_by_profile_id(full_name), line_item_payments(line_item_id, amount_applied, fee_line_items!line_item_id(fee_type))")
+      .eq("student_id", studentId)
+      .order("payment_date", { ascending: false }),
+  ]);
 
-  const { data: feeStructures } = await supabase
-    .from("fee_structures")
-    .select("id, fee_type, amount")
-    .eq("school_id", schoolId)
-    .eq("class_id", sp?.class_id ?? "00000000-0000-0000-0000-000000000000");
-
-  const { data: payments } = await supabase
-    .from("fee_payments")
-    .select("fee_structure_id, amount_paid, concession_amount")
-    .eq("student_id", studentId)
-    .eq("school_id", schoolId);
-
-  const paidMap = new Map<string, number>();
-  const concessionMap = new Map<string, number>();
-  for (const p of payments ?? []) {
-    paidMap.set(p.fee_structure_id, (paidMap.get(p.fee_structure_id) ?? 0) + (p.amount_paid ?? 0));
-    concessionMap.set(p.fee_structure_id, (concessionMap.get(p.fee_structure_id) ?? 0) + (p.concession_amount ?? 0));
+  // Compute amount paid per line item from line_item_payments
+  const lipByLineItem: Record<string, number> = {};
+  for (const p of paymentsRes.data ?? []) {
+    for (const lip of (p as any).line_item_payments ?? []) {
+      lipByLineItem[lip.line_item_id] = (lipByLineItem[lip.line_item_id] ?? 0) + lip.amount_applied;
+    }
   }
 
-  const rows = (feeStructures ?? []).map((fs) => {
-    const amountDue = fs.amount as number;
-    const amountPaid = paidMap.get(fs.id) ?? 0;
-    const concessionTotal = concessionMap.get(fs.id) ?? 0;
-    const effective = amountPaid + concessionTotal;
-    const status = effective >= amountDue ? "paid" : effective > 0 ? "partial" : "pending";
-    return { feeStructureId: fs.id, feeType: fs.fee_type as string, amountDue, amountPaid, concessionTotal, status };
-  });
+  const lineItems = (lineItemsRes.data ?? []).map((li: any) => ({
+    id: li.id,
+    fee_type: li.fee_type,
+    total_amount: Number(li.total_amount),
+    amount_paid: lipByLineItem[li.id] ?? 0,
+    due_date: li.due_date ?? null,
+    status: li.status,
+    created_at: li.created_at,
+    added_by: (li.added_by_profile as { full_name?: string } | null)?.full_name ?? "—",
+  }));
+
+  const payments = (paymentsRes.data ?? []).map((p: any) => ({
+    id: p.id,
+    payment_date: p.payment_date,
+    total_amount: Number(p.total_amount),
+    payment_method: p.payment_method,
+    mode: p.mode,
+    transaction_id: p.transaction_id ?? null,
+    razorpay_payment_id: p.razorpay_payment_id ?? null,
+    notes: p.notes ?? null,
+    paid_by: (p.paid_by_profile as { full_name?: string } | null)?.full_name ?? "—",
+    line_items_covered: ((p.line_item_payments ?? []) as any[]).map((lip) => ({
+      line_item_id: lip.line_item_id,
+      fee_type: (lip.fee_line_items as { fee_type?: string } | null)?.fee_type ?? "—",
+      amount_applied: lip.amount_applied,
+    })),
+  }));
+
+  // schoolId used for future server actions; suppress unused warning
+  void schoolId;
 
   return (
     <StudentFeesClient
-      rows={rows}
+      lineItems={lineItems}
+      payments={payments}
       schoolId={schoolId}
       studentId={studentId}
       studentName={studentName}
