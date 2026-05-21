@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
@@ -13,7 +14,8 @@ export default async function UninstalledStudentsPage({
 }) {
   const { classId } = await searchParams;
   const supabase = await createServerSupabaseClient();
-  const schoolId = (await getSchoolId())!;
+  const schoolId = await getSchoolId();
+  if (!schoolId) return notFound();
 
   const [studentsRes, classesRes] = await Promise.all([
     supabase

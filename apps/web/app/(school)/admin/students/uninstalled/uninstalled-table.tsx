@@ -15,10 +15,14 @@ interface Student {
 export function UninstalledStudentTable({ students }: { students: Student[] }) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  function copyPhone(id: string, phone: string) {
-    navigator.clipboard.writeText(phone);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 1500);
+  async function copyPhone(id: string, phone: string) {
+    try {
+      await navigator.clipboard.writeText(phone);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 1500);
+    } catch {
+      // clipboard write failed silently — button stays in default state
+    }
   }
 
   if (students.length === 0) {
