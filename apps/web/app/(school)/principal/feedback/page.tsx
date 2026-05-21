@@ -30,6 +30,7 @@ export default async function PrincipalFeedbackPage() {
   const profileMap = Object.fromEntries(
     (profilesRes.data ?? []).map((p) => [p.id, p.full_name])
   );
+  // One student per parent assumed; multi-child not yet supported
   const studentByParent = Object.fromEntries(
     (studentsRes.data ?? []).map((s: any) => [
       s.parent_profile_id,
@@ -59,7 +60,7 @@ export default async function PrincipalFeedbackPage() {
   return (
     <div>
       <h1 className="mb-6 text-2xl font-bold text-gray-900">Feedback</h1>
-      <FeedbackList items={items} />
+      <FeedbackList items={items} profileBasePath="/principal/students" />
     </div>
   );
 }

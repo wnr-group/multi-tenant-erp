@@ -36,7 +36,7 @@ function statusVariant(
   return "secondary";
 }
 
-export function FeedbackList({ items }: { items: FeedbackItem[] }) {
+export function FeedbackList({ items, profileBasePath = "/admin/students" }: { items: FeedbackItem[]; profileBasePath?: string }) {
   const [filter, setFilter] = useState<"all" | "parents">("all");
   const [openId, setOpenId] = useState<string | null>(null);
   const [statuses, setStatuses] = useState<Record<string, string>>(() =>
@@ -130,7 +130,7 @@ export function FeedbackList({ items }: { items: FeedbackItem[] }) {
                         <span className="block text-xs text-gray-500 mb-2">Roll: {item.student.roll_number}</span>
                       )}
                       <Link
-                        href={`/admin/students/${item.student.id}`}
+                        href={`${profileBasePath}/${item.student.id}`}
                         className="pointer-events-auto text-xs font-medium text-indigo-600 hover:underline"
                       >
                         View Profile →

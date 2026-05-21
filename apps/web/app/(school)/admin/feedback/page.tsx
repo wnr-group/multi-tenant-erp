@@ -30,6 +30,7 @@ export default async function AdminFeedbackPage() {
   const profileMap = Object.fromEntries(
     (profilesRes.data ?? []).map((p) => [p.id, p.full_name])
   );
+  // One student per parent assumed; multi-child not yet supported
   const studentByParent = Object.fromEntries(
     (studentsRes.data ?? []).map((s: any) => [
       s.parent_profile_id,
