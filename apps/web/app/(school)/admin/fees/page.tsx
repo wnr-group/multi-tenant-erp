@@ -19,7 +19,7 @@ export default async function FeesPage() {
       .limit(100),
   ]);
 
-  const lineItemRows = (lineItemsRes.data ?? []).map((li: any) => ({
+  const lineItemRows = (lineItemsRes.data ?? []).map((li) => ({
     id: li.id as string,
     student: (li.student as { full_name?: string } | null)?.full_name ?? "—",
     fee_type: li.fee_type as string,
@@ -57,7 +57,7 @@ export default async function FeesPage() {
             header: "Status",
             accessor: (row) => (
               <Badge variant={row.status === "paid" ? "default" : row.status === "partial" ? "secondary" : "destructive"}>
-                {row.status}
+                {row.status || "pending"}
               </Badge>
             ),
           },
