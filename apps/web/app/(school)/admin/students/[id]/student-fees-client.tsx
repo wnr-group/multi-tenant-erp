@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { RecordPaymentForm } from "@/app/(school)/teacher/fees/record-payment-form";
+import { FeesPieChart } from "./student-fees-pie-chart";
 
 interface FeeRow {
   feeStructureId: string;
@@ -62,6 +63,8 @@ export function StudentFeesClient({ rows, schoolId, studentId, studentName }: Pr
           </div>
         ))}
       </div>
+
+      <FeesPieChart totalPaid={totalPaid} outstanding={outstanding} />
 
       {/* Table */}
       <div className="overflow-x-auto rounded-lg border bg-card shadow-sm">
