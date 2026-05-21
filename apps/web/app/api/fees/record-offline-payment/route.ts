@@ -48,12 +48,40 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  const totalAmount = body.allocations.reduce((s, a) => s + a.amount_applied, 0);
+  if (body.allocations.some((a) => typeof a.amount_applied !== "number" || a.amount_applied <= 0 || !isFinite(a.amount_applied))) {
+    return NextResponse.json({ error: "amount_applied must be a positive number" }, { status: 400 });
+  }
 
   const adminClient = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
+
+  // Verify the student belongs to this school
+  const { data: studentCheck } = await adminClient
+    .from("student_profiles")
+    .select("school_id")
+    .eq("id", body.student_id)
+    .single();
+  if (!studentCheck || studentCheck.school_id !== schoolId) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Verify all line items belong to this school
+  const lineItemIds = body.allocations.map((a) => a.line_item_id);
+  const { data: lineItemChecks } = await adminClient
+    .from("fee_line_items")
+    .select("id, school_id")
+    .in("id", lineItemIds);
+  if (
+    !lineItemChecks ||
+    lineItemChecks.length !== lineItemIds.length ||
+    lineItemChecks.some((li) => li.school_id !== schoolId)
+  ) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const totalAmount = body.allocations.reduce((s, a) => s + a.amount_applied, 0);
 
   // Insert payment record
   const { data: payment, error: paymentError } = await adminClient
@@ -108,10 +136,13 @@ export async function POST(request: NextRequest) {
     const totalPaid = (allLip ?? []).reduce((s: number, r: { amount_applied: number }) => s + (r.amount_applied ?? 0), 0);
     const status = totalPaid >= li.total_amount ? "paid" : totalPaid > 0 ? "partial" : "pending";
 
-    await adminClient
+    const { error: statusError } = await adminClient
       .from("fee_line_items")
       .update({ status })
       .eq("id", a.line_item_id);
+    if (statusError) {
+      console.error("Failed to update line item status:", a.line_item_id, statusError.message);
+    }
   }
 
   return NextResponse.json({ payment_id: payment.id });
