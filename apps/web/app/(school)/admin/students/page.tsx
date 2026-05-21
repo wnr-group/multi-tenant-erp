@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
 import { PageHeader } from "@/components/page-header";
@@ -51,6 +52,13 @@ export default async function StudentsPage() {
         description="Manage student enrollment and profiles."
         action={
           <div className="flex items-center gap-2">
+            <Link
+              href="/admin/students/uninstalled"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-1.5 text-sm font-medium text-muted-foreground shadow-sm hover:bg-muted"
+            >
+              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-amber-100 text-[10px] font-bold text-amber-700">!</span>
+              App Not Installed
+            </Link>
             <BulkActions students={rows} />
             <AddStudentDialog schoolId={schoolId} classes={classes ?? []} />
           </div>
