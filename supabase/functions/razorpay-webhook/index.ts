@@ -14,10 +14,25 @@ async function verifySignature(rawBody: string, signature: string, secret: strin
     ["sign"]
   );
   const mac = await crypto.subtle.sign("HMAC", key, encoder.encode(rawBody));
-  const hex = Array.from(new Uint8Array(mac))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-  return hex === signature;
+  const macBytes = new Uint8Array(mac);
+
+  // Decode incoming hex signature to bytes for constant-time comparison
+  if (signature.length !== macBytes.length * 2) return false;
+  const sigBytes = new Uint8Array(macBytes.length);
+  for (let i = 0; i < macBytes.length; i++) {
+    sigBytes[i] = parseInt(signature.substring(i * 2, i * 2 + 2), 16);
+  }
+  // Use Deno's timing-safe comparison
+  try {
+    return Deno.timingSafeEqual(macBytes, sigBytes);
+  } catch {
+    // Fallback: constant-time comparison via reduce
+    let diff = 0;
+    for (let i = 0; i < macBytes.length; i++) {
+      diff |= macBytes[i] ^ sigBytes[i];
+    }
+    return diff === 0;
+  }
 }
 
 Deno.serve(async (req: Request) => {
@@ -128,11 +143,12 @@ Deno.serve(async (req: Request) => {
     const amountToApply = Math.max(0, Number(li.total_amount) - alreadyPaid);
     if (amountToApply <= 0) continue;
 
-    await supabase.from("line_item_payments").insert({
+    const { error: lipInsertError } = await supabase.from("line_item_payments").insert({
       payment_id: paymentRow.id,
       line_item_id: li.id,
       amount_applied: amountToApply,
     });
+    if (lipInsertError) { console.error("lip insert failed:", li.id, lipInsertError.message); continue; }
 
     // Recompute status
     const { data: allLip } = await supabase
@@ -146,7 +162,8 @@ Deno.serve(async (req: Request) => {
     );
     const status = totalPaid >= Number(li.total_amount) ? "paid" : totalPaid > 0 ? "partial" : "pending";
 
-    await supabase.from("fee_line_items").update({ status }).eq("id", li.id);
+    const { error: statusError } = await supabase.from("fee_line_items").update({ status }).eq("id", li.id);
+    if (statusError) console.error("status update failed:", li.id, statusError.message);
   }
 
   return new Response(JSON.stringify({ received: true }), {
