@@ -170,7 +170,8 @@ export default function ParentMore() {
     setUploadingPhoto(true);
     try {
       const uri = result.assets[0].uri;
-      const ext = uri.split(".").pop() ?? "jpg";
+      const rawExt = uri.split(".").pop()?.split("?")[0]?.toLowerCase() ?? "jpg";
+      const ext = rawExt === "jpg" ? "jpeg" : rawExt;
       const fileName = `${student?.admissionNumber ?? Date.now()}.${ext}`;
 
       const { data: { user } } = await supabase.auth.getUser();
@@ -197,10 +198,12 @@ export default function ParentMore() {
         .from("student-photos")
         .getPublicUrl(`${sp.school_id}/${sp.id}/${fileName}`);
 
-      await supabase
+      const { error: updateError } = await supabase
         .from("student_profiles")
         .update({ photo_url: urlData.publicUrl })
         .eq("id", sp.id);
+
+      if (updateError) throw updateError;
 
       await loadProfile();
       Alert.alert("Done", "Photo updated successfully.");
