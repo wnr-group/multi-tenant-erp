@@ -1,0 +1,79 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getSchoolId } from "@/lib/school";
+
+export async function POST(request: NextRequest) {
+  const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { data: roleRow } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", user.id)
+    .eq("is_active", true)
+    .single();
+
+  if (!roleRow || roleRow.role !== "school_admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const schoolId = await getSchoolId();
+  if (!schoolId) return NextResponse.json({ error: "No school context" }, { status: 400 });
+
+  const body = await request.json() as {
+    class_id: string;
+    academic_year_id: string;
+    fee_type: string;
+    total_amount: number;
+    due_date?: string;
+  };
+
+  if (!body.class_id || !body.fee_type || !body.total_amount) {
+    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  }
+
+  const adminClient = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  // Fetch all students in this class
+  const { data: students, error: studentsError } = await adminClient
+    .from("student_profiles")
+    .select("id")
+    .eq("school_id", schoolId)
+    .eq("class_id", body.class_id);
+
+  if (studentsError) {
+    return NextResponse.json({ error: studentsError.message }, { status: 500 });
+  }
+
+  if (!students || students.length === 0) {
+    return NextResponse.json({ created: 0, message: "No students in this class." });
+  }
+
+  const lineItems = students.map((s) => ({
+    school_id: schoolId,
+    student_id: s.id,
+    fee_type: body.fee_type,
+    total_amount: body.total_amount,
+    due_date: body.due_date ?? null,
+    added_by: user.id,
+    class_id: body.class_id,
+    academic_year_id: body.academic_year_id ?? null,
+    status: "pending",
+  }));
+
+  const { data: inserted, error: insertError } = await adminClient
+    .from("fee_line_items")
+    .insert(lineItems)
+    .select("id");
+
+  if (insertError) {
+    return NextResponse.json({ error: insertError.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ created: inserted?.length ?? 0 });
+}
