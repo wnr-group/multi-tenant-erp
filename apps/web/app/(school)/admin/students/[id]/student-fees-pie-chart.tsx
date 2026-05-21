@@ -31,17 +31,18 @@ export function FeesPieChart({ totalPaid, outstanding }: Props) {
             paddingAngle={data.length > 1 ? 3 : 0}
             dataKey="value"
           >
-            {data.map((_, i) => (
-              <Cell key={i} fill={COLORS[i % COLORS.length]} />
+            {data.map((entry) => (
+              <Cell key={entry.name} fill={entry.name === "Paid" ? COLORS[0] : COLORS[1]} />
             ))}
           </Pie>
           <Tooltip
-            formatter={(value) => [`₹${Number(value).toLocaleString("en-IN")}`, ""]}
+            formatter={(value) => `₹${Number(value).toLocaleString("en-IN")}`}
           />
           <Legend
-            formatter={(value, entry: any) =>
-              `${value}: ₹${(entry.payload.value as number).toLocaleString("en-IN")}`
-            }
+            formatter={(value, entry) => {
+              const amount = (entry.payload as { value?: number })?.value ?? 0;
+              return `${value}: ₹${amount.toLocaleString("en-IN")}`;
+            }}
           />
         </PieChart>
       </ResponsiveContainer>
