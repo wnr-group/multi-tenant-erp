@@ -30,28 +30,56 @@ export default async function ExamRankingsPage({
   ]);
 
   // Aggregate per student
-  const studentMap: Record<string, { name: string; totalObtained: number; totalMax: number; subjects: { subject: string; marks: number; max: number; grade: string }[] }> = {};
+  const studentMap: Record<string, {
+    name: string;
+    totalObtained: number;
+    totalMax: number;
+    hasFail: boolean;
+    subjectCount: number;
+    subjects: { subject: string; marks: number; max: number; grade: string }[];
+  }> = {};
+
   for (const r of resultsData ?? []) {
     const rr = r as any;
     const sid = rr.student_id;
     if (!studentMap[sid]) {
-      studentMap[sid] = { name: rr.student_profiles?.full_name ?? "—", totalObtained: 0, totalMax: 0, subjects: [] };
+      studentMap[sid] = { name: rr.student_profiles?.full_name ?? "—", totalObtained: 0, totalMax: 0, hasFail: false, subjectCount: 0, subjects: [] };
     }
     studentMap[sid].totalObtained += rr.marks_obtained ?? 0;
     studentMap[sid].totalMax += rr.max_marks ?? 100;
-    studentMap[sid].subjects.push({ subject: rr.subjects?.name ?? "—", marks: rr.marks_obtained ?? 0, max: rr.max_marks ?? 100, grade: rr.grade ?? "—" });
+    studentMap[sid].subjectCount += 1;
+    if (rr.grade === "F") studentMap[sid].hasFail = true;
+    studentMap[sid].subjects.push({
+      subject: rr.subjects?.name ?? "—",
+      marks: rr.marks_obtained ?? 0,
+      max: rr.max_marks ?? 100,
+      grade: rr.grade ?? "—",
+    });
   }
 
-  const sorted = Object.entries(studentMap)
+  const maxSubjectCount = Math.max(...Object.values(studentMap).map((s) => s.subjectCount), 0);
+
+  // Separate eligible (ranked) from excluded (fail/absent)
+  const eligible = Object.entries(studentMap)
+    .filter(([, s]) => !s.hasFail && s.subjectCount >= maxSubjectCount)
     .sort(([, a], [, b]) => b.totalObtained - a.totalObtained);
 
-  let rank = 1;
-  const ranked = sorted.map(([, s], i) => {
-    if (i > 0 && sorted[i - 1][1].totalObtained > s.totalObtained) rank = i + 1;
-    return { ...s, rank };
-  });
+  const excluded = Object.entries(studentMap)
+    .filter(([, s]) => s.hasFail || s.subjectCount < maxSubjectCount);
 
   const MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
+
+  let rank = 1;
+  const ranked = eligible.map(([, s], i) => {
+    if (i > 0 && eligible[i - 1][1].totalObtained > s.totalObtained) rank = i + 1;
+    return { ...s, rank: `${MEDAL[rank] ?? `#${rank}`}` };
+  });
+
+  const unranked = excluded.map(([, s]) => ({
+    ...s,
+    rank: "—",
+    rankLabel: s.hasFail ? "Fail" : "Absent",
+  }));
 
   return (
     <div>
@@ -73,10 +101,8 @@ export default async function ExamRankingsPage({
           </thead>
           <tbody className="divide-y divide-gray-100">
             {ranked.map((r, i) => (
-              <tr key={i} className={r.rank <= 3 ? "bg-amber-50" : ""}>
-                <td className="px-4 py-3 font-bold text-gray-800">
-                  {MEDAL[r.rank] ?? `#${r.rank}`}
-                </td>
+              <tr key={i} className={r.rank.startsWith("🥇") || r.rank.startsWith("🥈") || r.rank.startsWith("🥉") ? "bg-amber-50" : ""}>
+                <td className="px-4 py-3 font-bold text-gray-800">{r.rank}</td>
                 <td className="px-4 py-3 font-medium text-gray-900">{r.name}</td>
                 <td className="px-4 py-3 text-right font-semibold text-gray-800">
                   {r.totalObtained}/{r.totalMax}
@@ -88,11 +114,30 @@ export default async function ExamRankingsPage({
                 </td>
               </tr>
             ))}
+            {unranked.map((r, i) => (
+              <tr key={`u-${i}`} className="bg-gray-50 opacity-70">
+                <td className="px-4 py-3">
+                  <span className="text-gray-400 font-medium">—</span>
+                  <span className={`ml-2 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                    r.rankLabel === "Fail" ? "bg-red-100 text-red-700" : "bg-gray-200 text-gray-600"
+                  }`}>{r.rankLabel}</span>
+                </td>
+                <td className="px-4 py-3 font-medium text-gray-500">{r.name}</td>
+                <td className="px-4 py-3 text-right text-gray-400">{r.totalObtained}/{r.totalMax}</td>
+                <td className="px-4 py-3 text-gray-400">
+                  {r.subjects.map((s, si) => (
+                    <span key={si} className={`mr-3 ${s.grade === "F" ? "text-red-400" : ""}`}>
+                      {s.subject}: {s.marks}/{s.max} ({s.grade})
+                    </span>
+                  ))}
+                </td>
+              </tr>
+            ))}
+            {ranked.length === 0 && unranked.length === 0 && (
+              <tr><td colSpan={4} className="p-8 text-center text-gray-400">No results entered for this exam yet.</td></tr>
+            )}
           </tbody>
         </table>
-        {ranked.length === 0 && (
-          <p className="p-8 text-center text-gray-400">No results entered for this exam yet.</p>
-        )}
       </div>
     </div>
   );
