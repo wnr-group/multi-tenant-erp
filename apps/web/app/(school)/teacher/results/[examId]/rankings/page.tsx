@@ -57,7 +57,8 @@ export default async function ExamRankingsPage({
     });
   }
 
-  const maxSubjectCount = Math.max(...Object.values(studentMap).map((s) => s.subjectCount), 0);
+  const subjectCounts = Object.values(studentMap).map((s) => s.subjectCount);
+  const maxSubjectCount = subjectCounts.length > 0 ? Math.max(...subjectCounts) : 0;
 
   // Separate eligible (ranked) from excluded (fail/absent)
   const eligible = Object.entries(studentMap)
@@ -69,10 +70,11 @@ export default async function ExamRankingsPage({
 
   const MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 
+  // Competition ranking: tied students share rank, next rank skips (standard in Indian exams)
   let rank = 1;
   const ranked = eligible.map(([, s], i) => {
     if (i > 0 && eligible[i - 1][1].totalObtained > s.totalObtained) rank = i + 1;
-    return { ...s, rank: `${MEDAL[rank] ?? `#${rank}`}` };
+    return { ...s, rankNum: rank, rank: `${MEDAL[rank] ?? `#${rank}`}` };
   });
 
   const unranked = excluded.map(([, s]) => ({
@@ -101,7 +103,7 @@ export default async function ExamRankingsPage({
           </thead>
           <tbody className="divide-y divide-gray-100">
             {ranked.map((r, i) => (
-              <tr key={i} className={r.rank.startsWith("🥇") || r.rank.startsWith("🥈") || r.rank.startsWith("🥉") ? "bg-amber-50" : ""}>
+              <tr key={i} className={r.rankNum <= 3 ? "bg-amber-50" : ""}>
                 <td className="px-4 py-3 font-bold text-gray-800">{r.rank}</td>
                 <td className="px-4 py-3 font-medium text-gray-900">{r.name}</td>
                 <td className="px-4 py-3 text-right font-semibold text-gray-800">
