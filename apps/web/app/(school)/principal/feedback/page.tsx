@@ -8,30 +8,57 @@ export default async function PrincipalFeedbackPage() {
 
   const { data: feedback } = await supabase
     .from("feedback")
-    .select(
-      "id, subject, message, status, created_at, response, from_user:profiles!feedback_from_user_id_fkey(full_name)"
-    )
+    .select("id, subject, message, status, created_at, response, from_user_id")
     .eq("school_id", schoolId)
     .in("to_role", ["school_admin", "principal"])
     .order("created_at", { ascending: false });
 
-  const items = (feedback ?? []).map((f) => {
-    const fromUser = f.from_user as unknown as { full_name: string } | null;
-    return {
-      id: f.id,
-      subject: f.subject ?? "—",
-      message: f.message ?? "—",
-      from_name: fromUser?.full_name ?? "—",
-      from_role: "parent",
-      status: f.status ?? "open",
-      response: f.response ?? "",
-      created_at: f.created_at ? new Date(f.created_at).toLocaleDateString() : "—",
-    };
-  });
+  const fromUserIds = [...new Set((feedback ?? []).map((f) => f.from_user_id))];
+
+  const [profilesRes, studentsRes] = await Promise.all([
+    fromUserIds.length
+      ? supabase.from("profiles").select("id, full_name").in("id", fromUserIds)
+      : Promise.resolve({ data: [] }),
+    fromUserIds.length
+      ? supabase
+          .from("student_profiles")
+          .select("id, full_name, roll_number, photo_url, parent_profile_id, class:classes(name), section:sections(name)")
+          .in("parent_profile_id", fromUserIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  const profileMap = Object.fromEntries(
+    (profilesRes.data ?? []).map((p) => [p.id, p.full_name])
+  );
+  const studentByParent = Object.fromEntries(
+    (studentsRes.data ?? []).map((s: any) => [
+      s.parent_profile_id,
+      {
+        id: s.id,
+        full_name: s.full_name ?? null,
+        class_name: s.class?.name ?? null,
+        section_name: s.section?.name ?? null,
+        roll_number: s.roll_number ?? null,
+        photo_url: s.photo_url ?? null,
+      },
+    ])
+  );
+
+  const items = (feedback ?? []).map((f) => ({
+    id: f.id,
+    subject: f.subject ?? "—",
+    message: f.message ?? "—",
+    from_name: profileMap[f.from_user_id] ?? "—",
+    from_role: "parent",
+    status: f.status ?? "open",
+    response: f.response ?? "",
+    created_at: f.created_at ? new Date(f.created_at).toLocaleDateString() : "—",
+    student: studentByParent[f.from_user_id],
+  }));
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold text-gray-900">Feedback — From Parents</h1>
+      <h1 className="mb-6 text-2xl font-bold text-gray-900">Feedback</h1>
       <FeedbackList items={items} />
     </div>
   );

@@ -1,11 +1,21 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 type FeedbackStatus = "pending" | "responded";
+
+interface StudentSnippet {
+  id: string;
+  full_name: string | null;
+  class_name: string | null;
+  section_name: string | null;
+  roll_number: string | null;
+  photo_url: string | null;
+}
 
 interface FeedbackItem {
   id: string;
@@ -16,6 +26,7 @@ interface FeedbackItem {
   status: string;
   response: string;
   created_at: string;
+  student?: StudentSnippet;
 }
 
 function statusVariant(
@@ -28,6 +39,9 @@ function statusVariant(
 export function FeedbackList({ items }: { items: FeedbackItem[] }) {
   const [filter, setFilter] = useState<"all" | "parents">("all");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [statuses, setStatuses] = useState<Record<string, string>>(() =>
+    Object.fromEntries(items.map((i) => [i.id, i.status]))
+  );
   const [responses, setResponses] = useState<Record<string, string>>(() => {
     const map: Record<string, string> = {};
     for (const item of items) map[item.id] = item.response ?? "";
@@ -50,6 +64,7 @@ export function FeedbackList({ items }: { items: FeedbackItem[] }) {
       setErrors((prev) => ({ ...prev, [id]: error.message }));
       return;
     }
+    setStatuses((prev) => ({ ...prev, [id]: "responded" }));
     setOpenId(null);
   }
 
@@ -85,22 +100,56 @@ export function FeedbackList({ items }: { items: FeedbackItem[] }) {
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="font-semibold text-gray-900">{item.subject}</h3>
-                <Badge variant={statusVariant(item.status)}>
-                  {item.status === "responded" ? "Responded" : "Pending"}
+                <Badge variant={statusVariant(statuses[item.id] ?? item.status)}>
+                  {(statuses[item.id] ?? item.status) === "responded" ? "Responded" : "Pending"}
                 </Badge>
               </div>
               <p className="text-sm text-gray-600">{item.message}</p>
-              <p className="mt-2 text-xs text-gray-400">
-                From: {item.from_name} &nbsp;·&nbsp; {item.created_at}
+              <p className="mt-2 text-xs text-gray-400 flex items-center gap-1">
+                From:&nbsp;
+                {item.student ? (
+                  <span className="relative inline-block group">
+                    <span className="cursor-default underline decoration-dotted decoration-gray-400">
+                      {item.from_name}
+                    </span>
+                    <span className="pointer-events-none absolute bottom-full left-0 z-20 mb-2 w-56 rounded-xl border border-gray-200 bg-white p-3 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                      <span className="flex items-center gap-2 mb-2">
+                        {item.student.photo_url ? (
+                          <img src={item.student.photo_url} alt="" className="h-8 w-8 rounded-full object-cover" />
+                        ) : (
+                          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">
+                            {(item.student.full_name ?? "?")[0].toUpperCase()}
+                          </span>
+                        )}
+                        <span className="font-semibold text-gray-900 text-xs">{item.student.full_name ?? "—"}</span>
+                      </span>
+                      <span className="block text-xs text-gray-500 mb-0.5">
+                        {[item.student.class_name, item.student.section_name ? `Sec ${item.student.section_name}` : null].filter(Boolean).join(" · ")}
+                      </span>
+                      {item.student.roll_number && (
+                        <span className="block text-xs text-gray-500 mb-2">Roll: {item.student.roll_number}</span>
+                      )}
+                      <Link
+                        href={`/admin/students/${item.student.id}`}
+                        className="pointer-events-auto text-xs font-medium text-indigo-600 hover:underline"
+                      >
+                        View Profile →
+                      </Link>
+                    </span>
+                  </span>
+                ) : (
+                  item.from_name
+                )}
+                &nbsp;·&nbsp; {item.created_at}
               </p>
-              {item.response && item.status === "responded" && (
+              {responses[item.id] && (statuses[item.id] ?? item.status) === "responded" && (
                 <div className="mt-3 rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-900">
                   <span className="font-medium">Your response: </span>
-                  {item.response}
+                  {responses[item.id]}
                 </div>
               )}
             </div>
-            {item.status !== "responded" && (
+            {(statuses[item.id] ?? item.status) !== "responded" && (
               <Button
                 type="button"
                 onClick={() =>
