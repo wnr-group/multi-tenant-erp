@@ -3,12 +3,57 @@ import { View, Text, ScrollView, TouchableOpacity, Modal, Alert, RefreshControl 
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import RazorpayCheckout from "react-native-razorpay";
+import Svg, { Circle, G, Text as SvgText } from "react-native-svg";
 import { supabase } from "../../lib/supabase";
 import { useTheme } from "../../lib/theme";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { StatusBadge } from "../../components/StatusBadge";
 import { SectionHeader } from "../../components/SectionHeader";
 import { SkeletonCard } from "../../components/Skeleton";
+
+function DonutChart({ paid, total }: { paid: number; total: number }) {
+  const size = 120;
+  const strokeWidth = 14;
+  const r = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * r;
+  const paidPct = total > 0 ? Math.max(0, Math.min(1, paid / total)) : 0;
+  const paidDash = paidPct * circumference;
+
+  return (
+    <View style={{ alignItems: "center", marginVertical: 8 }}>
+      <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <G rotation="-90" origin={`${size / 2},${size / 2}`}>
+          <Circle
+            cx={size / 2} cy={size / 2} r={r}
+            fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth={strokeWidth}
+          />
+          {paidDash > 0 && (
+            <Circle
+              cx={size / 2} cy={size / 2} r={r}
+              fill="none" stroke="#fff" strokeWidth={strokeWidth}
+              strokeDasharray={`${paidDash} ${circumference}`}
+              strokeLinecap="round"
+            />
+          )}
+        </G>
+        <SvgText
+          x={size / 2} y={size / 2 - 6}
+          textAnchor="middle" fill="#fff"
+          fontSize="14" fontWeight="700"
+        >
+          {total > 0 ? `${Math.round(paidPct * 100)}%` : "0%"}
+        </SvgText>
+        <SvgText
+          x={size / 2} y={size / 2 + 12}
+          textAnchor="middle" fill="rgba(255,255,255,0.7)"
+          fontSize="10"
+        >
+          paid
+        </SvgText>
+      </Svg>
+    </View>
+  );
+}
 
 interface FeePayment {
   id: string; // feeStructureId used as stable key
@@ -121,6 +166,8 @@ export default function ParentFees() {
   }
 
   const totalDue = payments.filter((p) => p.status !== "paid").reduce((sum, p) => sum + (p.amount_due - p.amount_paid), 0);
+  const totalFeeAmount = payments.reduce((sum, p) => sum + p.amount_due, 0);
+  const totalPaid = payments.reduce((sum, p) => sum + p.amount_paid, 0);
   const nextDue = payments.filter((p) => p.status === "pending").sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())[0];
 
   async function handlePayNow(payment: FeePayment) {
@@ -156,6 +203,7 @@ export default function ParentFees() {
         {loading ? <SkeletonCard /> : (
           <View style={{ backgroundColor: theme.primary, borderRadius: 20, padding: 24, gap: 8 }}>
             <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.7)", textTransform: "uppercase", letterSpacing: 0.5 }}>Total Outstanding</Text>
+            <DonutChart paid={totalPaid} total={totalFeeAmount} />
             <Text style={{ fontSize: 36, fontFamily: "Inter_700Bold", color: "#fff" }}>₹{totalDue.toLocaleString("en-IN")}</Text>
             {nextDue && (
               <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.8)" }}>
