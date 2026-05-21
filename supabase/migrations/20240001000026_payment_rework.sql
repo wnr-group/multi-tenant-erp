@@ -68,14 +68,18 @@ CREATE POLICY "fli_read" ON public.fee_line_items FOR SELECT
 
 CREATE POLICY "fli_write" ON public.fee_line_items FOR INSERT
   WITH CHECK (
-    public.get_my_role() IN ('school_admin', 'super_admin')
-    AND school_id = public.get_my_school_id()
+    public.get_my_role() = 'super_admin'
+    OR (public.get_my_role() = 'school_admin' AND school_id = public.get_my_school_id())
   );
 
 CREATE POLICY "fli_update" ON public.fee_line_items FOR UPDATE
   USING (
-    public.get_my_role() IN ('school_admin', 'super_admin')
-    AND school_id = public.get_my_school_id()
+    public.get_my_role() = 'super_admin'
+    OR (public.get_my_role() = 'school_admin' AND school_id = public.get_my_school_id())
+  )
+  WITH CHECK (
+    public.get_my_role() = 'super_admin'
+    OR (public.get_my_role() = 'school_admin' AND school_id = public.get_my_school_id())
   );
 
 -- payments: admins/principal can read; parents can read their student's; admins can write
@@ -92,8 +96,8 @@ CREATE POLICY "payments_read" ON public.payments FOR SELECT
 
 CREATE POLICY "payments_write" ON public.payments FOR INSERT
   WITH CHECK (
-    public.get_my_role() IN ('school_admin', 'super_admin')
-    AND school_id = public.get_my_school_id()
+    public.get_my_role() = 'super_admin'
+    OR (public.get_my_role() = 'school_admin' AND school_id = public.get_my_school_id())
   );
 
 -- line_item_payments: same visibility as payments
@@ -116,8 +120,12 @@ CREATE POLICY "lip_write" ON public.line_item_payments FOR INSERT
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM public.payments p
+      JOIN public.fee_line_items fli ON fli.id = line_item_payments.line_item_id
       WHERE p.id = line_item_payments.payment_id
-      AND public.get_my_role() IN ('school_admin', 'super_admin')
-      AND p.school_id = public.get_my_school_id()
+      AND p.school_id = fli.school_id
+      AND (
+        public.get_my_role() = 'super_admin'
+        OR (public.get_my_role() = 'school_admin' AND p.school_id = public.get_my_school_id())
+      )
     )
   );
