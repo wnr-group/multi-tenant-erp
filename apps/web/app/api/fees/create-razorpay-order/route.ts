@@ -62,15 +62,21 @@ export async function POST(request: NextRequest) {
     key_secret: process.env.RAZORPAY_KEY_SECRET!,
   });
 
-  const order = await razorpay.orders.create({
-    amount: Math.round(body.amount_paise),
-    currency: "INR",
-    receipt: body.receipt ?? `rcpt_${Date.now()}`,
-    notes: {
-      student_id: body.student_id,
-      line_item_ids: body.line_item_ids.join(","),
-    },
-  });
+  let order;
+  try {
+    order = await razorpay.orders.create({
+      amount: Math.round(body.amount_paise),
+      currency: "INR",
+      receipt: body.receipt ?? `rcpt_${Date.now()}`,
+      notes: {
+        student_id: body.student_id,
+        line_item_ids: body.line_item_ids.join(","),
+      },
+    });
+  } catch (err) {
+    console.error("Razorpay order creation failed:", err);
+    return NextResponse.json({ error: "Failed to create payment order" }, { status: 500 });
+  }
 
   return NextResponse.json({
     order_id: order.id,
