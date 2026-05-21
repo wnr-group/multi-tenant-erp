@@ -32,7 +32,7 @@ function DonutChart({ paid, total }: { paid: number; total: number }) {
               cx={size / 2} cy={size / 2} r={r}
               fill="none" stroke="#fff" strokeWidth={strokeWidth}
               strokeDasharray={`${paidDash} ${circumference}`}
-              strokeLinecap="round"
+              strokeLinecap={paidPct >= 1 ? "butt" : "round"}
             />
           )}
         </G>
