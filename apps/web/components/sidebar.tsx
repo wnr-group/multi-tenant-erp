@@ -7,7 +7,7 @@ import {
   LayoutDashboard, School, GraduationCap, Users, BookOpen,
   Calendar, ClipboardList, DollarSign, Megaphone, Settings,
   Clock, FileText, MessageSquare, UserCheck,
-  Building2, BarChart3, Shield, Upload, LogOut,
+  Building2, BarChart3, Shield, Upload, LogOut, Image,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import type { LucideIcon } from "lucide-react";
@@ -32,6 +32,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Homework: ClipboardList,
   Results: FileText,
   Feedback: MessageSquare,
+  Gallery: Image,
 };
 
 interface NavItem {
