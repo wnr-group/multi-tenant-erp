@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
 
   const { data: roleRow } = await supabase
     .from("user_roles")
-    .select("role")
+    .select("role, school_id")
     .eq("user_id", user.id)
     .eq("is_active", true)
     .single();
@@ -19,19 +19,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  // getSchoolId() resolves from middleware x-school-id header (domain-based) or host header.
+  // The host header can be influenced by the client, so we cross-check against the school_id
+  // bound to the authenticated user in user_roles to prevent cross-tenant data access.
   const schoolId = await getSchoolId();
   if (!schoolId) return NextResponse.json({ error: "No school context" }, { status: 400 });
 
-  const body = await request.json() as {
-    class_id: string;
-    academic_year_id: string;
-    fee_type: string;
-    total_amount: number;
-    due_date?: string;
-  };
+  if (roleRow.school_id !== schoolId) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
-  if (!body.class_id || !body.fee_type || !body.total_amount) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  let body: { class_id: string; academic_year_id: string; fee_type: string; total_amount: number; due_date?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  if (!body.class_id || !body.fee_type || typeof body.total_amount !== "number" || body.total_amount <= 0 || !isFinite(body.total_amount)) {
+    return NextResponse.json({ error: "Missing or invalid required fields" }, { status: 400 });
   }
 
   const adminClient = createClient(
