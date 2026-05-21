@@ -55,29 +55,31 @@ function DonutChart({ paid, total }: { paid: number; total: number }) {
   );
 }
 
-interface FeePayment {
-  id: string; // feeStructureId used as stable key
+interface FeeLineItem {
+  id: string;
   fee_type: string;
-  amount_due: number; // unit_amount × installment_count
-  amount_paid: number; // sum of all payments
+  total_amount: number;
+  amount_paid: number;
+  outstanding: number;
   due_date: string;
-  status: "paid" | "pending" | "overdue" | "partial";
-  paid_at?: string;
-  transaction_id?: string;
+  status: "paid" | "pending" | "partial";
 }
 
 interface PaymentHistoryRow {
   id: string;
-  fee_type: string;
-  amount_paid: number;
+  total_amount: number;
   paid_at: string | null;
+  payment_method: string;
+  mode: string;
   transaction_id: string | null;
+  line_items_covered: { fee_type: string; amount_applied: number }[];
 }
 
 export default function ParentFees() {
   const theme = useTheme();
-  const [payments, setPayments] = useState<FeePayment[]>([]);
+  const [lineItems, setLineItems] = useState<FeeLineItem[]>([]);
   const [history, setHistory] = useState<PaymentHistoryRow[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [receipt, setReceipt] = useState<PaymentHistoryRow | null>(null);
@@ -93,100 +95,131 @@ export default function ParentFees() {
 
   async function loadFees() {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    // Look up parent's student
-    const { data: sp } = await supabase.from("student_profiles").select("id, class_id").eq("parent_profile_id", user.id).single();
-    const studentId = sp?.id;
-    const classId = sp?.class_id;
-    if (!studentId) { setLoading(false); return; }
+    if (!user) { setLoading(false); return; }
 
-    // Fetch fee structures for the student's class + all payment rows for the student
-    const [{ data: feeStructures }, { data: paymentRows }] = await Promise.all([
-      supabase.from("fee_structures")
-        .select("id, fee_type, amount, due_date")
-        .eq("class_id", classId ?? "00000000-0000-0000-0000-000000000000"),
-      supabase.from("fee_payments")
-        .select("id, fee_structure_id, amount_paid, concession_amount, payment_date, receipt_number, status")
-        .eq("student_id", studentId)
+    const { data: sp } = await supabase
+      .from("student_profiles")
+      .select("id, school_id")
+      .eq("parent_profile_id", user.id)
+      .single();
+
+    if (!sp) { setLoading(false); return; }
+
+    const [{ data: lineItemsData }, { data: paymentsData }] = await Promise.all([
+      supabase
+        .from("fee_line_items")
+        .select("id, fee_type, total_amount, due_date, status")
+        .eq("student_id", sp.id)
+        .order("due_date", { ascending: true, nullsFirst: false }),
+      supabase
+        .from("payments")
+        .select("id, payment_date, total_amount, payment_method, mode, transaction_id, razorpay_payment_id, line_item_payments(amount_applied, line_item_id, fee_line_items!line_item_id(fee_type))")
+        .eq("student_id", sp.id)
         .order("payment_date", { ascending: false }),
     ]);
 
-    // Aggregate per fee structure
-    const paidMap = new Map<string, number>();
-    const concessionMap = new Map<string, number>();
-    const lastPaidAt = new Map<string, string>();
-    const lastReceiptNo = new Map<string, string>();
-    for (const p of paymentRows ?? []) {
-      const fsId = p.fee_structure_id;
-      paidMap.set(fsId, (paidMap.get(fsId) ?? 0) + (p.amount_paid ?? 0));
-      concessionMap.set(fsId, (concessionMap.get(fsId) ?? 0) + (p.concession_amount ?? 0));
-      if (p.payment_date && !lastPaidAt.has(fsId)) lastPaidAt.set(fsId, p.payment_date);
-      if (p.receipt_number && !lastReceiptNo.has(fsId)) lastReceiptNo.set(fsId, p.receipt_number);
+    const paidMap: Record<string, number> = {};
+    for (const p of paymentsData ?? []) {
+      for (const lip of (p as any).line_item_payments ?? []) {
+        const liId: string = lip.line_item_id ?? "";
+        paidMap[liId] = (paidMap[liId] ?? 0) + (lip.amount_applied ?? 0);
+      }
     }
 
-    const aggregated: FeePayment[] = (feeStructures ?? []).map((fs: any) => {
-      const amountDue = fs.amount ?? 0;
-      const amountPaid = paidMap.get(fs.id) ?? 0;
-      const concessionTotal = concessionMap.get(fs.id) ?? 0;
-      const effective = amountPaid + concessionTotal;
-      const status: FeePayment["status"] =
-        effective >= amountDue ? "paid"
-        : amountPaid > 0 || concessionTotal > 0 ? "partial"
-        : "pending";
+    const items: FeeLineItem[] = (lineItemsData ?? []).map((li: any) => {
+      const paid = paidMap[li.id] ?? 0;
+      const outstanding = Math.max(0, li.total_amount - paid);
       return {
-        id: fs.id,
-        fee_type: fs.fee_type ?? "",
-        amount_due: amountDue,
-        amount_paid: amountPaid,
-        due_date: fs.due_date ?? "",
-        status,
-        paid_at: lastPaidAt.get(fs.id),
-        transaction_id: lastReceiptNo.get(fs.id),
+        id: li.id,
+        fee_type: li.fee_type ?? "",
+        total_amount: li.total_amount ?? 0,
+        amount_paid: paid,
+        outstanding,
+        due_date: li.due_date ?? "",
+        status: li.status ?? "pending",
       };
     });
 
-    setPayments(aggregated);
-
-    // Build history from individual payment rows that have actual money paid
-    const feeTypeMap = new Map<string, string>();
-    for (const fs of feeStructures ?? []) feeTypeMap.set((fs as any).id, (fs as any).fee_type ?? "");
+    setLineItems(items);
     setHistory(
-      (paymentRows ?? [])
-        .filter((p: any) => (p.amount_paid ?? 0) > 0)
-        .map((p: any) => ({
-          id: p.id,
-          fee_type: feeTypeMap.get(p.fee_structure_id) ?? "",
-          amount_paid: p.amount_paid ?? 0,
-          paid_at: p.payment_date ?? null,
-          transaction_id: p.receipt_number ?? null,
-        }))
+      (paymentsData ?? []).map((p: any) => ({
+        id: p.id,
+        total_amount: p.total_amount ?? 0,
+        paid_at: p.payment_date ?? null,
+        payment_method: p.payment_method ?? "",
+        mode: p.mode ?? "",
+        transaction_id: p.transaction_id ?? p.razorpay_payment_id ?? null,
+        line_items_covered: ((p.line_item_payments ?? []) as any[]).map((lip: any) => ({
+          fee_type: (lip.fee_line_items as { fee_type?: string } | null)?.fee_type ?? "—",
+          amount_applied: lip.amount_applied ?? 0,
+        })),
+      }))
     );
-
     setLoading(false);
   }
 
-  const totalDue = payments.filter((p) => p.status !== "paid").reduce((sum, p) => sum + (p.amount_due - p.amount_paid), 0);
-  const totalFeeAmount = payments.reduce((sum, p) => sum + p.amount_due, 0);
-  const totalPaid = payments.reduce((sum, p) => sum + p.amount_paid, 0);
-  const nextDue = payments.filter((p) => p.status === "pending").sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())[0];
+  const totalFeeAmount = lineItems.reduce((s, li) => s + li.total_amount, 0);
+  const totalPaid = lineItems.reduce((s, li) => s + li.amount_paid, 0);
+  const totalDue = lineItems.reduce((s, li) => s + li.outstanding, 0);
+  const nextDue = lineItems.filter((li) => li.status !== "paid").sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())[0];
 
-  async function handlePayNow(payment: FeePayment) {
-    setPayingId(payment.id);
-    const amountPaise = (payment.amount_due - payment.amount_paid) * 100;
-    const options = {
-      description: payment.fee_type,
-      currency: "INR",
-      key: process.env.EXPO_PUBLIC_RAZORPAY_KEY_ID ?? "rzp_test_placeholder",
-      amount: amountPaise,
-      name: "School ERP",
-      order_id: "",
-      prefill: { email: "", contact: "", name: "" },
-      theme: { color: theme.primary },
-    };
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function handlePaySelected() {
+    const selected = lineItems.filter((li) => selectedIds.has(li.id) && li.status !== "paid");
+    if (selected.length === 0) return;
+
+    const totalOutstanding = selected.reduce((s, li) => s + li.outstanding, 0);
+    const amountPaise = Math.round(totalOutstanding * 100);
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: sp } = await supabase
+      .from("student_profiles")
+      .select("id")
+      .eq("parent_profile_id", user.id)
+      .single();
+    if (!sp) return;
+
+    setPayingId("selected");
     try {
-      const data = await RazorpayCheckout.open(options as any);
-      await supabase.from("fee_payments").update({ status: "paid", amount_paid: payment.amount_due, payment_date: new Date().toISOString(), receipt_number: data.razorpay_payment_id }).eq("id", payment.id);
-      loadFees();
+      const apiBase = process.env.EXPO_PUBLIC_WEB_API_URL ?? "";
+      const orderRes = await fetch(`${apiBase}/api/fees/create-razorpay-order`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount_paise: amountPaise,
+          student_id: sp.id,
+          line_item_ids: selected.map((li) => li.id),
+        }),
+      });
+      const orderData = await orderRes.json();
+      if (!orderRes.ok) throw new Error(orderData.error ?? "Order creation failed");
+
+      const options = {
+        description: selected.map((li) => li.fee_type).join(", "),
+        currency: "INR",
+        key: process.env.EXPO_PUBLIC_RAZORPAY_KEY_ID ?? "",
+        amount: amountPaise,
+        name: "School Fees",
+        order_id: orderData.order_id,
+        prefill: { email: user.email ?? "", contact: "", name: "" },
+        theme: { color: "#4F46E5" },
+      };
+
+      await RazorpayCheckout.open(options as any);
+      // Webhook handles DB write; refresh after short delay
+      await new Promise((r) => setTimeout(r, 2000));
+      setSelectedIds(new Set());
+      await loadFees();
     } catch (e: any) {
       if (e?.code !== "PAYMENT_CANCELLED") Alert.alert("Payment failed", e?.description ?? "Try again");
     } finally {
@@ -210,9 +243,12 @@ export default function ParentFees() {
                 Next due: {nextDue.due_date ? new Date(nextDue.due_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"}
               </Text>
             )}
-            {totalDue > 0 && nextDue && (
-              <TouchableOpacity onPress={() => handlePayNow(nextDue)} style={{ backgroundColor: "#fff", borderRadius: 12, paddingVertical: 12, alignItems: "center", marginTop: 8 }}>
-                <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: theme.primary }}>Pay Now</Text>
+            {totalDue > 0 && (
+              <TouchableOpacity onPress={() => {
+                const pendingIds = lineItems.filter((li) => li.status !== "paid").map((li) => li.id);
+                setSelectedIds(new Set(pendingIds));
+              }} style={{ backgroundColor: "#fff", borderRadius: 12, paddingVertical: 12, alignItems: "center", marginTop: 8 }}>
+                <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: theme.primary }}>Select All & Pay</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -223,18 +259,65 @@ export default function ParentFees() {
           <SectionHeader title="Fee Breakdown" />
           {loading ? (
             <View style={{ gap: 8 }}><SkeletonCard /><SkeletonCard /></View>
-          ) : payments.filter((p) => p.status !== "paid").map((p) => (
-            <View key={p.id} style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-              <View>
-                <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>{p.fee_type}</Text>
-                <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: theme.textSecondary, marginTop: 2 }}>Due {p.due_date ? new Date(p.due_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "—"}</Text>
+          ) : lineItems.filter((li) => li.status !== "paid").length === 0 ? (
+            <Text style={{ textAlign: "center", color: theme.textMuted, fontFamily: "Inter_400Regular", paddingVertical: 20 }}>All fees paid!</Text>
+          ) : lineItems.filter((li) => li.status !== "paid").map((li) => (
+            <TouchableOpacity
+              key={li.id}
+              onPress={() => toggleSelect(li.id)}
+              activeOpacity={0.7}
+              style={{
+                backgroundColor: selectedIds.has(li.id) ? `${theme.primary}18` : theme.surface,
+                borderRadius: 16,
+                padding: 16,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 8,
+                borderWidth: 1.5,
+                borderColor: selectedIds.has(li.id) ? theme.primary : "transparent",
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <View style={{
+                  width: 20, height: 20, borderRadius: 4, borderWidth: 1.5,
+                  borderColor: selectedIds.has(li.id) ? theme.primary : theme.border,
+                  backgroundColor: selectedIds.has(li.id) ? theme.primary : "transparent",
+                  alignItems: "center", justifyContent: "center",
+                }}>
+                  {selectedIds.has(li.id) && <Ionicons name="checkmark" size={13} color="#fff" />}
+                </View>
+                <View>
+                  <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>{li.fee_type}</Text>
+                  <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: theme.textSecondary, marginTop: 2 }}>
+                    Due {li.due_date ? new Date(li.due_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "—"}
+                  </Text>
+                </View>
               </View>
-              <View style={{ alignItems: "flex-end", gap: 6 }}>
-                <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>₹{(p.amount_due - p.amount_paid).toLocaleString("en-IN")}</Text>
-                <StatusBadge variant={p.status} />
+              <View style={{ alignItems: "flex-end", gap: 4 }}>
+                <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>₹{li.outstanding.toLocaleString("en-IN")}</Text>
               </View>
-            </View>
+            </TouchableOpacity>
           ))}
+
+          {selectedIds.size > 0 && (
+            <TouchableOpacity
+              onPress={handlePaySelected}
+              disabled={payingId === "selected"}
+              style={{
+                backgroundColor: theme.primary,
+                borderRadius: 16,
+                paddingVertical: 16,
+                alignItems: "center",
+                marginTop: 8,
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={{ fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#fff" }}>
+                {payingId === "selected" ? "Processing…" : `Pay ₹${lineItems.filter((li) => selectedIds.has(li.id)).reduce((s, li) => s + li.outstanding, 0).toLocaleString("en-IN")}`}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Payment history */}
@@ -247,13 +330,15 @@ export default function ParentFees() {
           ) : history.map((p) => (
             <TouchableOpacity key={p.id} onPress={() => setReceipt(p)} style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }} activeOpacity={0.7}>
               <View>
-                <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>{p.fee_type}</Text>
+                <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>
+                  {p.line_items_covered.length > 0 ? p.line_items_covered.map((lic) => lic.fee_type).join(", ") : "Payment"}
+                </Text>
                 <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: theme.textSecondary, marginTop: 2 }}>
                   {p.paid_at ? new Date(p.paid_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"}
                 </Text>
               </View>
               <View style={{ alignItems: "flex-end", gap: 6 }}>
-                <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: theme.success }}>₹{p.amount_paid.toLocaleString("en-IN")}</Text>
+                <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: theme.success }}>₹{p.total_amount.toLocaleString("en-IN")}</Text>
                 <StatusBadge variant="paid" />
               </View>
             </TouchableOpacity>
@@ -274,8 +359,7 @@ export default function ParentFees() {
             {receipt && (
               <View style={{ gap: 12 }}>
                 {[
-                  { label: "Fee Type", value: receipt.fee_type },
-                  { label: "Amount Paid", value: `₹${receipt.amount_paid.toLocaleString("en-IN")}` },
+                  { label: "Amount Paid", value: `₹${receipt.total_amount.toLocaleString("en-IN")}` },
                   { label: "Date", value: receipt.paid_at ? new Date(receipt.paid_at).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }) : "—" },
                   { label: "Transaction ID", value: receipt.transaction_id ?? "—" },
                   { label: "Status", value: "Paid" },
@@ -285,6 +369,17 @@ export default function ParentFees() {
                     <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>{row.value}</Text>
                   </View>
                 ))}
+                {receipt.line_items_covered?.length > 0 && (
+                  <View style={{ paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.border }}>
+                    <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: theme.textSecondary, marginBottom: 4 }}>Applied to</Text>
+                    {receipt.line_items_covered.map((lic: any, i: number) => (
+                      <View key={i} style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                        <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: theme.textSecondary }}>{lic.fee_type}</Text>
+                        <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>₹{lic.amount_applied.toLocaleString("en-IN")}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
               </View>
             )}
             <PrimaryButton label="Close" onPress={() => setReceipt(null)} />
