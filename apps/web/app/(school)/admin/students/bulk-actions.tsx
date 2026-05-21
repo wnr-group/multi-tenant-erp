@@ -106,7 +106,12 @@ export function BulkActions({ students }: BulkActionsProps) {
       });
       router.refresh();
     } catch {
-      setResult({ created: 0, updated: 0, errors: 1, errorRows: [{ row: 0, error: "Network or server error" }] });
+      setResult({
+        created: 0,
+        updated: 0,
+        errors: 1,
+        errorRows: [{ row: -1, error: "Network or server error. Please try again." }],
+      });
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -180,9 +185,9 @@ export function BulkActions({ students }: BulkActionsProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    {result.errorRows.map((e) => (
-                      <tr key={e.row} className="border-b border-red-100 last:border-0">
-                        <td className="px-2 py-1 tabular-nums text-red-800">{e.row}</td>
+                    {result.errorRows.map((e, idx) => (
+                      <tr key={idx} className="border-b border-red-100 last:border-0">
+                        <td className="px-2 py-1 tabular-nums text-red-800">{e.row === -1 ? "—" : e.row}</td>
                         <td className="px-2 py-1 text-red-700">{e.error}</td>
                       </tr>
                     ))}
