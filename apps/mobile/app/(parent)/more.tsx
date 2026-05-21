@@ -390,10 +390,10 @@ export default function ParentMore() {
         )}
         <View style={{ gap: 8 }}>
           <ListItem icon="megaphone-outline" title="Announcements" subtitle="School news & updates" onPress={() => navigate("announcements")} />
-          <ListItem icon="shield-checkmark-outline" title="Discipline Records" subtitle="Incidents & actions" onPress={() => navigate("discipline")} />
-          <ListItem icon="chatbubble-ellipses-outline" title="Message Teacher" subtitle="Connect with your child's class teacher" onPress={() => navigate("feedback-teacher")} />
-          <ListItem icon="business-outline" title="Contact Management" subtitle="Reach out to the principal or admin" onPress={() => navigate("feedback-management")} />
-          <ListItem icon="person-outline" title="Profile" subtitle="Account settings" onPress={() => navigate("profile")} />
+          <ListItem icon="warning-outline" title="Discipline Records" subtitle="Incidents & actions" onPress={() => navigate("discipline")} />
+          <ListItem icon="chatbubble-outline" title="Message Teacher" subtitle="Connect with your child's class teacher" onPress={() => navigate("feedback-teacher")} />
+          <ListItem icon="mail-outline" title="Contact Management" subtitle="Reach out to the principal or admin" onPress={() => navigate("feedback-management")} />
+          <ListItem icon="person-circle-outline" title="Profile" subtitle="Account settings" onPress={() => navigate("profile")} />
         </View>
       </ScrollView>
     </SafeAreaView>
