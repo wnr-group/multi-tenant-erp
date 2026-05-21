@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Alert, TextInput, Image, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { supabase, fixStorageUrl } from "../../lib/supabase";
 import { useTheme } from "../../lib/theme";
 import { ListItem } from "../../components/ListItem";
@@ -20,11 +21,12 @@ export default function ParentMore() {
   const [announcements, setAnnouncements] = useState<{ id: string; title: string; content: string; created_at: string }[]>([]);
   const [discipline, setDiscipline] = useState<{ id: string; incident_date: string; description: string; action_taken: string }[]>([]);
   const [teacherFeedback, setTeacherFeedback] = useState({ subject: "", message: "" });
-  const [managementFeedback, setManagementFeedback] = useState({ subject: "", message: "", toRole: "principal" as "principal" | "school_admin" });
+  const [managementFeedback, setManagementFeedback] = useState({ subject: "", message: "" });
   const [classteacherId, setClassteacherId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   useEffect(() => { loadProfile(); }, []);
 
@@ -125,19 +127,88 @@ export default function ParentMore() {
     setSubmitting(true);
     const { data: { user } } = await supabase.auth.getUser();
     const { data: prof } = await supabase.from("profiles").select("school_id").eq("id", user!.id).single();
-    await supabase.from("feedback").insert({
-      school_id: prof?.school_id,
-      from_user_id: user?.id,
-      to_role: managementFeedback.toRole,
-      to_user_id: null,
-      subject: managementFeedback.subject.trim(),
-      message: managementFeedback.message.trim(),
-      status: "open",
-    });
-    setManagementFeedback({ subject: "", message: "", toRole: "principal" });
+    await supabase.from("feedback").insert([
+      {
+        school_id: prof?.school_id,
+        from_user_id: user?.id,
+        to_role: "principal",
+        to_user_id: null,
+        subject: managementFeedback.subject.trim(),
+        message: managementFeedback.message.trim(),
+        status: "open",
+      },
+      {
+        school_id: prof?.school_id,
+        from_user_id: user?.id,
+        to_role: "school_admin",
+        to_user_id: null,
+        subject: managementFeedback.subject.trim(),
+        message: managementFeedback.message.trim(),
+        status: "open",
+      },
+    ]);
+    setManagementFeedback({ subject: "", message: "" });
     setSubmitting(false);
     setSection("menu");
     Alert.alert("Sent", "Your message has been sent to the management.");
+  }
+
+  async function handlePhotoUpload() {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert("Permission required", "Please allow photo library access in Settings.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (result.canceled) return;
+
+    setUploadingPhoto(true);
+    try {
+      const uri = result.assets[0].uri;
+      const ext = uri.split(".").pop() ?? "jpg";
+      const fileName = `${student?.admissionNumber ?? Date.now()}.${ext}`;
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: sp } = await supabase
+        .from("student_profiles")
+        .select("id, school_id")
+        .eq("parent_profile_id", user.id)
+        .single();
+      if (!sp) return;
+
+      const arrayBuffer = await fetch(uri).then((r) => r.arrayBuffer());
+      const { error: uploadError } = await supabase.storage
+        .from("student-photos")
+        .upload(`${sp.school_id}/${sp.id}/${fileName}`, arrayBuffer, {
+          contentType: `image/${ext}`,
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from("student-photos")
+        .getPublicUrl(`${sp.school_id}/${sp.id}/${fileName}`);
+
+      await supabase
+        .from("student_profiles")
+        .update({ photo_url: urlData.publicUrl })
+        .eq("id", sp.id);
+
+      await loadProfile();
+      Alert.alert("Done", "Photo updated successfully.");
+    } catch (e: any) {
+      Alert.alert("Upload failed", e?.message ?? "Please try again.");
+    } finally {
+      setUploadingPhoto(false);
+    }
   }
 
   function navigate(s: Section) {
@@ -221,24 +292,6 @@ export default function ParentMore() {
               <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: theme.textSecondary }}>
                 Send a formal message to school management.
               </Text>
-              <View style={{ flexDirection: "row", gap: 10 }}>
-                {(["principal", "school_admin"] as const).map((role) => (
-                  <TouchableOpacity
-                    key={role}
-                    onPress={() => setManagementFeedback(p => ({ ...p, toRole: role }))}
-                    style={{
-                      flex: 1, paddingVertical: 10, borderRadius: 12, borderWidth: 1,
-                      borderColor: managementFeedback.toRole === role ? theme.primary : theme.border,
-                      backgroundColor: managementFeedback.toRole === role ? theme.primary + "15" : theme.surface,
-                      alignItems: "center",
-                    }}
-                  >
-                    <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: managementFeedback.toRole === role ? theme.primary : theme.textSecondary }}>
-                      {role === "principal" ? "Principal" : "Admin"}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
               <View>
                 <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: theme.textSecondary, marginBottom: 6 }}>Subject</Text>
                 <TextInput
@@ -279,11 +332,20 @@ export default function ParentMore() {
                     <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: theme.textMuted, letterSpacing: 0.5, textTransform: "uppercase" }}>Student</Text>
                   </View>
                   <View style={{ padding: 16, flexDirection: "row", alignItems: "center", gap: 14 }}>
-                    {student.photoUrl ? (
-                      <Image source={{ uri: student.photoUrl }} style={{ width: 56, height: 56, borderRadius: 14 }} resizeMode="cover" />
-                    ) : (
-                      <Avatar name={student.name} size={56} />
-                    )}
+                    <TouchableOpacity onPress={handlePhotoUpload} disabled={uploadingPhoto} activeOpacity={0.8} style={{ position: "relative" }}>
+                      {student.photoUrl ? (
+                        <Image source={{ uri: student.photoUrl }} style={{ width: 56, height: 56, borderRadius: 14 }} resizeMode="cover" />
+                      ) : (
+                        <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: theme.primaryLight, alignItems: "center", justifyContent: "center" }}>
+                          <Text style={{ fontSize: 21, fontFamily: "Inter_600SemiBold", color: theme.primary }}>
+                            {student.name.split(" ").slice(0, 2).map((w: string) => w[0]?.toUpperCase() ?? "").join("")}
+                          </Text>
+                        </View>
+                      )}
+                      <View style={{ position: "absolute", bottom: -2, right: -2, backgroundColor: theme.surface, borderRadius: 10, padding: 3, borderWidth: 1, borderColor: theme.border }}>
+                        <Ionicons name={uploadingPhoto ? "hourglass-outline" : "camera-outline"} size={12} color={theme.textSecondary} />
+                      </View>
+                    </TouchableOpacity>
                     <View style={{ flex: 1, gap: 3 }}>
                       <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>{student.name}</Text>
                       <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: theme.primary }}>
