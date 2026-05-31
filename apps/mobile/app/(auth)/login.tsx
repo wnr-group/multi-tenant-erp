@@ -57,7 +57,9 @@ export default function LoginScreen() {
 
   async function handleResend() {
     if (resendCooldown > 0) return;
+    setLoading(true);
     const { error } = await supabase.auth.signInWithOtp({ phone: `+91${phone.replace(/\D/g, "")}` });
+    setLoading(false);
     if (error) Alert.alert("Error", error.message);
     else setResendCooldown(30);
   }
@@ -102,7 +104,7 @@ export default function LoginScreen() {
                   OTP sent to{" "}
                   <Text style={{ fontFamily: "Inter_500Medium", color: theme.textPrimary }}>+91 {phone}</Text>
                 </Text>
-                <TouchableOpacity onPress={() => { setStep("phone"); setOtp(""); }}>
+                <TouchableOpacity onPress={() => { setStep("phone"); setOtp(""); setLoading(false); }}>
                   <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: theme.primary, marginTop: 2 }}>Change number</Text>
                 </TouchableOpacity>
               </View>

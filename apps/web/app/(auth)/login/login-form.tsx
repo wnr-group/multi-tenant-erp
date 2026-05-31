@@ -89,10 +89,12 @@ export function LoginForm({
   async function handleResend() {
     if (resendCooldown > 0) return;
     setError(null);
+    setLoading(true);
     const supabase = createClient();
     const { error: authError } = await supabase.auth.signInWithOtp({
       phone: `+91${phone}`,
     });
+    setLoading(false);
     if (authError) {
       setError(authError.message);
       return;
@@ -160,7 +162,7 @@ export function LoginForm({
               OTP sent to <span className="font-medium text-foreground">+91 {phone}</span>.{" "}
               <button
                 type="button"
-                onClick={() => { setStep("phone"); setOtp(""); setError(null); }}
+                onClick={() => { setStep("phone"); setOtp(""); setError(null); setLoading(false); }}
                 className="text-indigo-600 underline"
               >
                 Change
