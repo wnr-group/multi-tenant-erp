@@ -30,7 +30,7 @@ BEGIN
     NEW.id,
     COALESCE(NEW.email, ''),
     COALESCE(NEW.raw_user_meta_data->>'full_name', ''),
-    NEW.phone
+    COALESCE(NEW.phone, '')
   );
   RETURN NEW;
 END;

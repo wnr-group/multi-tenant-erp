@@ -22,11 +22,13 @@ export async function POST(
   }
 
   const { id: schoolId } = await params;
-  const { phone, fullName, role } = (await request.json()) as {
-    phone: string;
-    fullName: string;
-    role: string;
-  };
+  let body: { phone: string; fullName: string; role: string };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
+  const { phone, fullName, role } = body;
 
   const allowedRoles = ["school_admin", "principal", "teacher", "parent"];
   if (!allowedRoles.includes(role)) {

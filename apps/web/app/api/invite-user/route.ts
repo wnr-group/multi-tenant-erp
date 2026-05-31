@@ -18,13 +18,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { phone, fullName, schoolId, role, extraInserts } = await request.json() as {
+  let body: {
     phone: string;
     fullName: string;
     schoolId: string;
     role: string;
     extraInserts?: { table: string; data: Record<string, unknown> }[];
   };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
+  const { phone, fullName, schoolId, role, extraInserts } = body;
 
   // school_admin must belong to the target school
   if (roleRow.role === "school_admin") {

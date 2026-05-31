@@ -58,7 +58,17 @@ export async function POST(
     .eq("id", schoolId)
     .single();
 
-  const { role, rows } = (await request.json()) as ImportBody;
+  if (!school) {
+    return NextResponse.json({ error: "School not found" }, { status: 404 });
+  }
+
+  let body: ImportBody;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
+  const { role, rows } = body;
 
   // Validate role against allowlist
   const allowedRoles = ["school_admin", "principal", "teacher", "parent", "student"];
@@ -67,8 +77,8 @@ export async function POST(
   }
 
   // 4. Pre-fetch classes and sections for student imports
-  let classMap = new Map<string, string>();
-  let sectionMap = new Map<string, string>();
+  const classMap = new Map<string, string>();
+  const sectionMap = new Map<string, string>();
 
   if (role === "student") {
     const { data: classes } = await adminClient
