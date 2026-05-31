@@ -32,61 +32,65 @@ VALUES (
 -- ---------------------------------------------------------------
 -- AUTH USERS  (local Supabase only — never run against prod)
 -- handle_new_user trigger auto-creates profiles rows
+-- Login: enter phone below + OTP 123456 (test_otp mapping in config.toml)
 -- ---------------------------------------------------------------
 INSERT INTO auth.users (
-  id, email, encrypted_password, email_confirmed_at,
+  id, phone, phone_confirmed_at,
   raw_user_meta_data, created_at, updated_at,
   aud, role, instance_id, confirmation_token, recovery_token,
   email_change_token_new, email_change
 )
 VALUES
-  ('aaaaaaaa-0000-0000-0000-000000000010', 'admin@wnr.com',
-   crypt('Admin@1234', gen_salt('bf')), now(),
+  ('aaaaaaaa-0000-0000-0000-000000000010', '+919000000001', now(),
    '{"full_name":"Dinesh (Super Admin)"}'::jsonb,
    now(), now(), 'authenticated', 'authenticated',
    '00000000-0000-0000-0000-000000000000', '', '', '', ''),
 
-  ('aaaaaaaa-0000-0000-0000-000000000011', 'schooladmin@demo.com',
-   crypt('Admin@1234', gen_salt('bf')), now(),
+  ('aaaaaaaa-0000-0000-0000-000000000011', '+919000000002', now(),
    '{"full_name":"Arjun Sharma"}'::jsonb,
    now(), now(), 'authenticated', 'authenticated',
    '00000000-0000-0000-0000-000000000000', '', '', '', ''),
 
-  ('aaaaaaaa-0000-0000-0000-000000000012', 'principal@demo.com',
-   crypt('Admin@1234', gen_salt('bf')), now(),
+  ('aaaaaaaa-0000-0000-0000-000000000012', '+919000000003', now(),
    '{"full_name":"Dr. Meena Iyer"}'::jsonb,
    now(), now(), 'authenticated', 'authenticated',
    '00000000-0000-0000-0000-000000000000', '', '', '', ''),
 
-  ('aaaaaaaa-0000-0000-0000-000000000013', 'teacher1@demo.com',
-   crypt('Admin@1234', gen_salt('bf')), now(),
+  ('aaaaaaaa-0000-0000-0000-000000000013', '+919000000004', now(),
    '{"full_name":"Ravi Kumar"}'::jsonb,
    now(), now(), 'authenticated', 'authenticated',
    '00000000-0000-0000-0000-000000000000', '', '', '', ''),
 
-  ('aaaaaaaa-0000-0000-0000-000000000014', 'teacher2@demo.com',
-   crypt('Admin@1234', gen_salt('bf')), now(),
+  ('aaaaaaaa-0000-0000-0000-000000000014', '+919000000005', now(),
    '{"full_name":"Priya Nair"}'::jsonb,
    now(), now(), 'authenticated', 'authenticated',
    '00000000-0000-0000-0000-000000000000', '', '', '', ''),
 
-  ('aaaaaaaa-0000-0000-0000-000000000015', 'teacher3@demo.com',
-   crypt('Admin@1234', gen_salt('bf')), now(),
+  ('aaaaaaaa-0000-0000-0000-000000000015', '+919000000006', now(),
    '{"full_name":"Suresh Babu"}'::jsonb,
    now(), now(), 'authenticated', 'authenticated',
    '00000000-0000-0000-0000-000000000000', '', '', '', ''),
 
-  ('aaaaaaaa-0000-0000-0000-000000000016', 'teacher4@demo.com',
-   crypt('Admin@1234', gen_salt('bf')), now(),
+  ('aaaaaaaa-0000-0000-0000-000000000016', '+919000000007', now(),
    '{"full_name":"Kavitha Reddy"}'::jsonb,
    now(), now(), 'authenticated', 'authenticated',
    '00000000-0000-0000-0000-000000000000', '', '', '', ''),
 
-  ('aaaaaaaa-0000-0000-0000-000000000017', 'teacher5@demo.com',
-   crypt('Admin@1234', gen_salt('bf')), now(),
+  ('aaaaaaaa-0000-0000-0000-000000000017', '+919000000008', now(),
    '{"full_name":"Anand Pillai"}'::jsonb,
    now(), now(), 'authenticated', 'authenticated',
    '00000000-0000-0000-0000-000000000000', '', '', '', '');
+
+-- Sync phone into profiles (trigger doesn't copy phone from auth.users in older envs;
+-- these are no-ops if the updated trigger already set phone correctly)
+UPDATE public.profiles SET phone = '+919000000001' WHERE id = 'aaaaaaaa-0000-0000-0000-000000000010';
+UPDATE public.profiles SET phone = '+919000000002' WHERE id = 'aaaaaaaa-0000-0000-0000-000000000011';
+UPDATE public.profiles SET phone = '+919000000003' WHERE id = 'aaaaaaaa-0000-0000-0000-000000000012';
+UPDATE public.profiles SET phone = '+919000000004' WHERE id = 'aaaaaaaa-0000-0000-0000-000000000013';
+UPDATE public.profiles SET phone = '+919000000005' WHERE id = 'aaaaaaaa-0000-0000-0000-000000000014';
+UPDATE public.profiles SET phone = '+919000000006' WHERE id = 'aaaaaaaa-0000-0000-0000-000000000015';
+UPDATE public.profiles SET phone = '+919000000007' WHERE id = 'aaaaaaaa-0000-0000-0000-000000000016';
+UPDATE public.profiles SET phone = '+919000000008' WHERE id = 'aaaaaaaa-0000-0000-0000-000000000017';
 
 -- Update profiles with school_id for school-scoped users
 UPDATE public.profiles SET school_id = 'aaaaaaaa-0000-0000-0000-000000000001'
@@ -550,17 +554,16 @@ END $$;
 
 -- ---------------------------------------------------------------
 -- PARENT TEST USER + STUDENT (for mobile app testing)
--- Login: parent1@demo.com / Admin@1234
+-- Login: +919000000009 + OTP 123456
 -- Student: Aryan Sharma, Class 8A
 -- ---------------------------------------------------------------
 INSERT INTO auth.users (
-  id, email, encrypted_password, email_confirmed_at,
+  id, phone, phone_confirmed_at,
   raw_user_meta_data, created_at, updated_at,
   aud, role, instance_id, confirmation_token, recovery_token,
   email_change_token_new, email_change
 ) VALUES (
-  'aaaaaaaa-0000-0000-0000-000000000030', 'parent1@demo.com',
-  crypt('Admin@1234', gen_salt('bf')), now(),
+  'aaaaaaaa-0000-0000-0000-000000000030', '+919000000009', now(),
   '{"full_name":"Sunita Sharma"}'::jsonb,
   now(), now(), 'authenticated', 'authenticated',
   '00000000-0000-0000-0000-000000000000', '', '', '', ''
@@ -569,6 +572,9 @@ INSERT INTO auth.users (
 UPDATE public.profiles
 SET school_id = 'aaaaaaaa-0000-0000-0000-000000000001'
 WHERE id = 'aaaaaaaa-0000-0000-0000-000000000030';
+
+-- Sync phone into profiles for parent user
+UPDATE public.profiles SET phone = '+919000000009' WHERE id = 'aaaaaaaa-0000-0000-0000-000000000030';
 
 INSERT INTO public.user_roles (user_id, school_id, role, is_active) VALUES
   ('aaaaaaaa-0000-0000-0000-000000000030', 'aaaaaaaa-0000-0000-0000-000000000001', 'parent', true);

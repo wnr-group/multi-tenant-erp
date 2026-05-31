@@ -234,19 +234,30 @@ content_path = "./supabase/templates/invite.html"
 # content_path = "./templates/password_changed_notification.html"
 
 [auth.sms]
-enable_signup = false
+enable_signup = true
 enable_confirmations = true
 template = "Your code is {{ .Code }}"
 max_frequency = "5s"
-provider = "http"
 
-[auth.sms.http]
-url = "http://host.docker.internal:54321/functions/v1/send-sms"
+# Dummy Twilio config — required to satisfy "no SMS provider" check locally.
+# test_otp numbers bypass actual SMS sending so no real credentials are needed.
+[auth.sms.twilio]
+enabled = true
+account_sid = "local_dev_placeholder"
+message_service_sid = "local_dev_placeholder"
+auth_token = "local_dev_placeholder"
 
 # Use pre-defined map of phone number to OTP for testing.
 [auth.sms.test_otp]
-# Add your test phone (without +) mapped to a fixed OTP for local dev
-# 919999999999 = "123456"
+919000000001 = "123456"
+919000000002 = "123456"
+919000000003 = "123456"
+919000000004 = "123456"
+919000000005 = "123456"
+919000000006 = "123456"
+919000000007 = "123456"
+919000000008 = "123456"
+919000000009 = "123456"
 
 # Configure logged in session timeouts.
 # [auth.sessions]
