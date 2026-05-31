@@ -4,11 +4,10 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 interface ImportRow {
   full_name: string;
-  email: string;
+  phone: string;
   roll_number?: string;
   class_name?: string;
   section_name?: string;
-  student_email?: string;
 }
 
 interface ImportBody {
@@ -53,24 +52,15 @@ export async function POST(
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  // 4. Look up school domain/name for invite redirect
   const { data: school } = await adminClient
     .from("schools")
-    .select("domain, name")
+    .select("name")
     .eq("id", schoolId)
     .single();
 
-  const host = request.headers.get("host") ?? "";
-  const port = host.includes(":") ? `:${host.split(":")[1]}` : "";
-  const protocol =
-    host.includes("localhost") || host.includes("lvh.me") ? "http" : "https";
-  const redirectTo = school?.domain
-    ? `${protocol}://${school.domain}${port}/invite`
-    : undefined;
-
   const { role, rows } = (await request.json()) as ImportBody;
 
-  // 5. Pre-fetch classes and sections for student imports
+  // 4. Pre-fetch classes and sections for student imports
   let classMap = new Map<string, string>();
   let sectionMap = new Map<string, string>();
 
@@ -98,7 +88,7 @@ export async function POST(
     }
   }
 
-  // 6. Process each row sequentially
+  // 5. Process each row sequentially
   const results: RowResult[] = [];
 
   for (let i = 0; i < rows.length; i++) {
@@ -118,44 +108,54 @@ export async function POST(
           .insert({
             school_id: schoolId,
             full_name: row.full_name,
-            email: row.email || null,
             class_id: classId ?? null,
             section_id: sectionId ?? null,
             roll_number: row.roll_number ?? null,
           });
         if (studentError) throw new Error(studentError.message);
       } else {
-        // Teachers and parents get auth accounts via invite
-        const { data: inviteData, error: inviteError } =
-          await adminClient.auth.admin.inviteUserByEmail(row.email, {
-            data: {
-              full_name: row.full_name,
-              invited_role: role,
-              school_name: school?.name ?? "School",
-            },
-            redirectTo,
-          });
-
-        if (inviteError || !inviteData?.user) {
-          throw new Error(inviteError?.message ?? "Failed to invite user");
+        // Teachers and parents get auth accounts via phone
+        if (!/^\+91\d{10}$/.test(row.phone)) {
+          throw new Error(`Invalid phone number: ${row.phone}. Must be +91 followed by 10 digits.`);
         }
 
-        const userId = inviteData.user.id;
+        const { data: userData, error: createError } = await adminClient.auth.admin.createUser({
+          phone: row.phone,
+          phone_confirm: true,
+          user_metadata: { full_name: row.full_name },
+        });
+
+        if (createError || !userData?.user) {
+          throw new Error(createError?.message ?? "Failed to create user");
+        }
+
+        const userId = userData.user.id;
 
         const { error: roleError } = await adminClient
           .from("user_roles")
           .insert({ user_id: userId, school_id: schoolId, role });
-        if (roleError) throw new Error(`user_roles: ${roleError.message}`);
+        if (roleError) {
+          await adminClient.auth.admin.deleteUser(userId);
+          throw new Error(`user_roles: ${roleError.message}`);
+        }
 
-        await adminClient
+        const { error: profileError } = await adminClient
           .from("profiles")
-          .update({ school_id: schoolId, full_name: row.full_name })
+          .update({ school_id: schoolId, full_name: row.full_name, phone: row.phone })
           .eq("id", userId);
+        if (profileError) {
+          await adminClient.auth.admin.deleteUser(userId);
+          throw new Error(`profiles: ${profileError.message}`);
+        }
 
         if (role === "teacher") {
-          await adminClient
+          const { error: teacherError } = await adminClient
             .from("teacher_profiles")
             .insert({ profile_id: userId, school_id: schoolId });
+          if (teacherError) {
+            await adminClient.auth.admin.deleteUser(userId);
+            throw new Error(`teacher_profiles: ${teacherError.message}`);
+          }
         }
       }
 
@@ -169,6 +169,6 @@ export async function POST(
     }
   }
 
-  // 7. Return results
+  // 6. Return results
   return NextResponse.json({ results });
 }
