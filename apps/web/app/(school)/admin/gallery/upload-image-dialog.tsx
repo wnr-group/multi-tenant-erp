@@ -70,9 +70,7 @@ export function UploadImageDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>+ Upload Image</Button>
-      </DialogTrigger>
+      <DialogTrigger render={<Button />}>+ Upload Image</DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Upload Gallery Image</DialogTitle>

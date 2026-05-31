@@ -182,7 +182,7 @@ export default async function SchoolLayout({
       .select("profile_id, profile:profiles!teacher_profiles_profile_id_fkey(full_name)")
       .eq("class_teacher_of", activeSectionId)
       .maybeSingle();
-    const ctProfile = ct?.profile as { full_name: string } | null;
+    const ctProfile = ct?.profile as unknown as { full_name: string } | null;
     if (ctProfile?.full_name) sidebarUserName = ctProfile.full_name;
   }
 
