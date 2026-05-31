@@ -29,40 +29,42 @@ export interface InviteUserDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function InviteUserDialog({
-  schoolId,
-  open,
-  onOpenChange,
-}: InviteUserDialogProps) {
+export function InviteUserDialog({ schoolId, open, onOpenChange }: InviteUserDialogProps) {
   const router = useRouter();
   const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [role, setRole] = useState<Role>("teacher");
   const [loading, setLoading] = useState(false);
 
   function clearForm() {
     setFullName("");
-    setEmail("");
+    setPhone("");
     setRole("teacher");
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    if (!/^\d{10}$/.test(phone)) {
+      toast.error("Enter a valid 10-digit mobile number.");
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await fetch(`/api/schools/${schoolId}/users`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, fullName, role }),
+        body: JSON.stringify({ phone: `+91${phone}`, fullName, role }),
       });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        toast.error((data as { message?: string })?.message ?? "Failed to invite user.");
+        toast.error((data as { error?: string })?.error ?? "Failed to add user.");
         return;
       }
 
-      toast.success("User invited successfully.");
+      toast.success("User added successfully.");
       clearForm();
       onOpenChange(false);
       router.refresh();
@@ -77,7 +79,7 @@ export function InviteUserDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Invite User</DialogTitle>
+          <DialogTitle>Add User</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 pt-2">
           <div className="flex flex-col gap-1.5">
@@ -92,15 +94,22 @@ export function InviteUserDialog({
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="invite-email">Email</Label>
-            <Input
-              id="invite-email"
-              type="email"
-              placeholder="jane@school.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+            <Label htmlFor="invite-phone">Mobile Number</Label>
+            <div className="flex overflow-hidden rounded-lg border border-input focus-within:ring-2 focus-within:ring-ring/50">
+              <span className="flex items-center bg-muted px-3 text-sm text-muted-foreground">+91</span>
+              <Input
+                id="invite-phone"
+                type="tel"
+                inputMode="numeric"
+                pattern="\d{10}"
+                maxLength={10}
+                placeholder="9876543210"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
+                required
+                className="rounded-none border-0 focus-visible:ring-0"
+              />
+            </div>
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="invite-role">Role</Label>
@@ -112,15 +121,13 @@ export function InviteUserDialog({
               required
             >
               {ROLES.map((r) => (
-                <option key={r.value} value={r.value}>
-                  {r.label}
-                </option>
+                <option key={r.value} value={r.value}>{r.label}</option>
               ))}
             </select>
           </div>
           <DialogFooter>
             <Button type="submit" size="sm" disabled={loading}>
-              {loading ? "Inviting…" : "Invite User"}
+              {loading ? "Adding…" : "Add User"}
             </Button>
           </DialogFooter>
         </form>
