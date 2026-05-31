@@ -28,6 +28,11 @@ export async function POST(
     role: string;
   };
 
+  const allowedRoles = ["school_admin", "principal", "teacher", "parent"];
+  if (!allowedRoles.includes(role)) {
+    return NextResponse.json({ error: "Forbidden: invalid role" }, { status: 403 });
+  }
+
   if (!/^\+91\d{10}$/.test(phone)) {
     return NextResponse.json({ error: "Invalid phone number. Must be +91 followed by 10 digits." }, { status: 400 });
   }

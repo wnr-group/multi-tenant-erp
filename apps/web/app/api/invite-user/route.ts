@@ -89,8 +89,19 @@ export async function POST(request: NextRequest) {
   }
 
   if (extraInserts) {
+    const allowedTables = ["teacher_profiles", "parent_profiles"];
+    for (const { table } of extraInserts) {
+      if (!allowedTables.includes(table)) {
+        await adminClient.auth.admin.deleteUser(userId);
+        return NextResponse.json({ error: `Forbidden: table '${table}' is not allowed` }, { status: 403 });
+      }
+    }
     for (const { table, data } of extraInserts) {
-      await adminClient.from(table).insert({ ...data, profile_id: userId });
+      const { error: insertError } = await adminClient.from(table).insert({ ...data, profile_id: userId });
+      if (insertError) {
+        await adminClient.auth.admin.deleteUser(userId);
+        return NextResponse.json({ error: `Failed to insert into ${table}: ${insertError.message}` }, { status: 500 });
+      }
     }
   }
 

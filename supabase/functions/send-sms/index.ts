@@ -11,16 +11,20 @@ serve(async (req) => {
     });
   }
 
-  // Issue 1: Verify caller authentication
+  // Issue 1: Verify caller authentication (fail-closed)
   const hookSecret = Deno.env.get("SMS_HOOK_SECRET");
-  if (hookSecret) {
-    const authHeader = req.headers.get("Authorization");
-    if (authHeader !== `Bearer ${hookSecret}`) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
+  if (!hookSecret) {
+    return new Response(JSON.stringify({ error: "SMS_HOOK_SECRET not configured" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  const authHeader = req.headers.get("Authorization");
+  if (authHeader !== `Bearer ${hookSecret}`) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   // Issue 2: Wrap req.json() in try/catch for malformed bodies

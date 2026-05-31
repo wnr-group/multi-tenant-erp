@@ -10,6 +10,11 @@ WHERE p.id = u.id
   AND u.phone IS NOT NULL
   AND p.phone IS NULL;
 
+-- Assign placeholder for any remaining NULL-phone rows so NOT NULL can apply cleanly
+UPDATE public.profiles
+SET phone = 'LEGACY-' || id::TEXT
+WHERE phone IS NULL;
+
 ALTER TABLE public.profiles
   ALTER COLUMN phone SET NOT NULL,
   ADD CONSTRAINT profiles_phone_unique UNIQUE (phone);

@@ -60,6 +60,12 @@ export async function POST(
 
   const { role, rows } = (await request.json()) as ImportBody;
 
+  // Validate role against allowlist
+  const allowedRoles = ["school_admin", "principal", "teacher", "parent", "student"];
+  if (!allowedRoles.includes(role)) {
+    return NextResponse.json({ error: "Forbidden: invalid role" }, { status: 400 });
+  }
+
   // 4. Pre-fetch classes and sections for student imports
   let classMap = new Map<string, string>();
   let sectionMap = new Map<string, string>();
