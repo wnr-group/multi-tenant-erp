@@ -234,7 +234,7 @@ content_path = "./supabase/templates/invite.html"
 # content_path = "./templates/password_changed_notification.html"
 
 [auth.sms]
-enable_signup = true
+enable_signup = false
 enable_confirmations = true
 template = "Your code is {{ .Code }}"
 max_frequency = "5s"
