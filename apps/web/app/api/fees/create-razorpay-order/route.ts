@@ -4,7 +4,19 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 
 export async function POST(request: NextRequest) {
-  const supabase = await createServerSupabaseClient();
+  // Support both cookie-based (web) and Bearer token (mobile) auth
+  const authHeader = request.headers.get("authorization");
+  let supabase;
+  if (authHeader?.startsWith("Bearer ")) {
+    const { createClient: createAnonClient } = await import("@supabase/supabase-js");
+    supabase = createAnonClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+  } else {
+    supabase = await createServerSupabaseClient();
+  }
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

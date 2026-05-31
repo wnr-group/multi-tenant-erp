@@ -16,6 +16,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Mobile app calls these API routes with Bearer token — skip cookie auth + school-domain check
+  if (pathname.startsWith("/api/fees/") || pathname.startsWith("/api/students/import")) {
+    return NextResponse.next();
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(

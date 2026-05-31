@@ -55,6 +55,96 @@ function DonutChart({ paid, total }: { paid: number; total: number }) {
   );
 }
 
+const PIE_COLORS = ["#6366F1", "#10B981", "#F59E0B", "#EF4444", "#3B82F6", "#EC4899", "#8B5CF6", "#14B8A6"];
+
+function FeeTypePieChart({ lineItems }: { lineItems: FeeLineItem[] }) {
+  if (lineItems.length === 0) return null;
+
+  // Group by fee_type
+  const grouped: Record<string, { total: number; paid: number }> = {};
+  for (const li of lineItems) {
+    if (!grouped[li.fee_type]) grouped[li.fee_type] = { total: 0, paid: 0 };
+    grouped[li.fee_type].total += li.total_amount;
+    grouped[li.fee_type].paid += li.amount_paid;
+  }
+  const entries = Object.entries(grouped);
+  const grandTotal = entries.reduce((s, [, v]) => s + v.total, 0);
+  if (grandTotal === 0) return null;
+
+  const size = 160;
+  const strokeWidth = 18;
+  const r = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * r;
+
+  // Build arc segments
+  let offset = 0;
+  const segments = entries.map(([type, { total }], i) => {
+    const pct = total / grandTotal;
+    const dash = pct * circumference;
+    const seg = { type, total, pct, dash, offset, color: PIE_COLORS[i % PIE_COLORS.length] };
+    offset += dash;
+    return seg;
+  });
+
+  return (
+    <View style={{ backgroundColor: "#fff", borderRadius: 20, padding: 20, gap: 16 }}>
+      <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#111827" }}>Fee Breakdown by Type</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+        {/* Pie chart */}
+        <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <G rotation="-90" origin={`${size / 2},${size / 2}`}>
+            {segments.map((seg) => (
+              <Circle
+                key={seg.type}
+                cx={size / 2} cy={size / 2} r={r}
+                fill="none"
+                stroke={seg.color}
+                strokeWidth={strokeWidth}
+                strokeDasharray={`${seg.dash - 2} ${circumference - seg.dash + 2}`}
+                strokeDashoffset={-seg.offset}
+              />
+            ))}
+          </G>
+        </Svg>
+        {/* Legend */}
+        <View style={{ flex: 1, gap: 8 }}>
+          {segments.map((seg) => (
+            <View key={seg.type} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: seg.color }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: "#374151" }}>{seg.type}</Text>
+                <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: "#9CA3AF" }}>
+                  ₹{seg.total.toLocaleString("en-IN")} · {Math.round(seg.pct * 100)}%
+                </Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+      {/* Paid vs Outstanding per type */}
+      <View style={{ gap: 8 }}>
+        {entries.map(([type, { total, paid }], i) => {
+          const outstanding = total - paid;
+          const paidPct = total > 0 ? paid / total : 0;
+          return (
+            <View key={type} style={{ gap: 4 }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: "#374151" }}>{type}</Text>
+                <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: outstanding > 0 ? "#EF4444" : "#10B981" }}>
+                  {outstanding > 0 ? `₹${outstanding.toLocaleString("en-IN")} due` : "Paid"}
+                </Text>
+              </View>
+              <View style={{ height: 4, backgroundColor: "#F3F4F6", borderRadius: 2 }}>
+                <View style={{ height: 4, width: `${Math.round(paidPct * 100)}%`, backgroundColor: PIE_COLORS[i % PIE_COLORS.length], borderRadius: 2 }} />
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 interface FeeLineItem {
   id: string;
   fee_type: string;
@@ -192,22 +282,38 @@ export default function ParentFees() {
     setPayingId("selected");
     try {
       const apiBase = process.env.EXPO_PUBLIC_WEB_API_URL ?? "";
-      const orderRes = await fetch(`${apiBase}/api/fees/create-razorpay-order`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount_paise: amountPaise,
-          student_id: sp.id,
-          line_item_ids: selected.map((li) => li.id),
-        }),
-      });
-      const orderData = await orderRes.json();
-      if (!orderRes.ok) throw new Error(orderData.error ?? "Order creation failed");
+      if (!apiBase) throw new Error("EXPO_PUBLIC_WEB_API_URL is not set");
+
+      let orderData: any;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const orderRes = await fetch(`${apiBase}/api/fees/create-razorpay-order`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token ?? ""}`,
+          },
+          body: JSON.stringify({
+            amount_paise: amountPaise,
+            student_id: sp.id,
+            line_item_ids: selected.map((li) => li.id),
+          }),
+        });
+        orderData = await orderRes.json();
+        if (!orderRes.ok) throw new Error(`Order API error (${orderRes.status}): ${orderData.error ?? "unknown"}`);
+      } catch (fetchErr: any) {
+        throw new Error(`Cannot reach payment server: ${fetchErr?.message ?? fetchErr}`);
+      }
+
+      if (!orderData.order_id) throw new Error("No order ID returned from server");
+
+      const razorpayKey = process.env.EXPO_PUBLIC_RAZORPAY_KEY_ID ?? "";
+      if (!razorpayKey) throw new Error("Razorpay key not configured");
 
       const options = {
         description: selected.map((li) => li.fee_type).join(", "),
         currency: "INR",
-        key: process.env.EXPO_PUBLIC_RAZORPAY_KEY_ID ?? "",
+        key: razorpayKey,
         amount: amountPaise,
         name: "School Fees",
         order_id: orderData.order_id,
@@ -221,7 +327,10 @@ export default function ParentFees() {
       setSelectedIds(new Set());
       await loadFees();
     } catch (e: any) {
-      if (e?.code !== "PAYMENT_CANCELLED") Alert.alert("Payment failed", e?.description ?? "Try again");
+      if (e?.code !== "PAYMENT_CANCELLED") {
+        Alert.alert("Payment failed", e?.description ?? e?.message ?? "Try again");
+        console.error("Payment error:", e);
+      }
     } finally {
       setPayingId(null);
     }
@@ -233,7 +342,7 @@ export default function ParentFees() {
         <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>Fees</Text>
 
         {/* Balance card */}
-        {loading ? <SkeletonCard /> : (
+        {loading ? <SkeletonCard /> : (<>
           <View style={{ backgroundColor: theme.primary, borderRadius: 20, padding: 24, gap: 8 }}>
             <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.7)", textTransform: "uppercase", letterSpacing: 0.5 }}>Total Outstanding</Text>
             <DonutChart paid={totalPaid} total={totalFeeAmount} />
@@ -252,7 +361,8 @@ export default function ParentFees() {
               </TouchableOpacity>
             )}
           </View>
-        )}
+          <FeeTypePieChart lineItems={lineItems} />
+        </>)}
 
         {/* Fee breakdown */}
         <View>

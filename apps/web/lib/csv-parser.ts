@@ -8,7 +8,7 @@ export function parseCsv(text: string): { headers: string[]; rows: CsvRow[] } {
   const headers = lines[0].split(",").map((h) => h.trim().toLowerCase().replace(/\s+/g, "_"));
   const rows: CsvRow[] = [];
   for (let i = 1; i < lines.length; i++) {
-    const values = lines[i].split(",").map((v) => v.trim());
+    const values = lines[i].split(",").map((v) => v.trim().replace(/^"|"$/g, ""));
     const row: CsvRow = {};
     headers.forEach((h, j) => { row[h] = values[j] ?? ""; });
     rows.push(row);

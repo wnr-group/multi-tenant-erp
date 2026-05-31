@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import Constants from "expo-constants";
 
-const supabaseUrl =
+export const supabaseUrl =
   process.env.EXPO_PUBLIC_SUPABASE_URL ??
   (Constants.expoConfig?.extra?.supabaseUrl as string) ??
   "http://127.0.0.1:54321";

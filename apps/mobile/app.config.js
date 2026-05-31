@@ -1,6 +1,7 @@
 module.exports = ({ config }) => {
   return {
     ...config,
+    plugins: [...(config.plugins ?? []), "expo-sharing"],
     name: process.env.EXPO_PUBLIC_SCHOOL_NAME ?? config.name,
     slug: process.env.EXPO_PUBLIC_BUNDLE_ID
       ? process.env.EXPO_PUBLIC_BUNDLE_ID.split(".").pop()

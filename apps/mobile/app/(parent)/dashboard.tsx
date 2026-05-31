@@ -72,10 +72,10 @@ export default function ParentDashboard() {
         ? supabase.from("attendance_records").select("status").eq("student_id", studentId)
         : Promise.resolve({ data: [] }),
       studentId
-        ? supabase.from("fee_payments").select("amount_paid, fee_structures(amount)").eq("student_id", studentId).eq("status", "pending")
+        ? supabase.from("fee_line_items").select("total_amount, status").eq("student_id", studentId).neq("status", "paid")
         : Promise.resolve({ data: [] }),
       sp?.sections?.id
-        ? supabase.from("homework").select("id").eq("section_id", sp.sections.id).gte("due_date", new Date().toISOString().split("T")[0])
+        ? supabase.from("homework").select("id").eq("section_id", sp.sections.id).eq("due_date", new Date().toISOString().split("T")[0])
         : Promise.resolve({ data: [] }),
       supabase.from("announcements").select("id, title, created_at").order("created_at", { ascending: false }).limit(3),
       schoolId
@@ -85,7 +85,7 @@ export default function ParentDashboard() {
 
     const totalDays = attendanceRes.data?.length ?? 0;
     const presentDays = attendanceRes.data?.filter((r: any) => r.status === "present").length ?? 0;
-    const pendingFees = (feesRes.data ?? []).reduce((sum: number, r: any) => sum + ((r.fee_structures?.amount ?? 0) - r.amount_paid), 0);
+    const pendingFees = (feesRes.data ?? []).reduce((sum: number, r: any) => sum + (r.total_amount ?? 0), 0);
 
     const student: StudentInfo | null = sp ? {
       id: sp.id,

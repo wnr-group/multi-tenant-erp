@@ -1,8 +1,13 @@
 import { useEffect, useState, useCallback } from "react";
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, Alert, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { Calendar } from "react-native-calendars";
-import { supabase } from "../../lib/supabase";
+import * as Print from "expo-print";
+import { StorageAccessFramework, EncodingType, readAsStringAsync, writeAsStringAsync } from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
+import { Platform } from "react-native";
+import { supabase, supabaseUrl } from "../../lib/supabase";
 import { useTheme } from "../../lib/theme";
 import { StatusBadge } from "../../components/StatusBadge";
 import { SectionHeader } from "../../components/SectionHeader";
@@ -44,6 +49,50 @@ export default function ParentAcademics() {
     month: new Date().getMonth() + 1,
   });
   const [studentSectionId, setStudentSectionId] = useState<string | null>(null);
+  const [studentProfileId, setStudentProfileId] = useState<string | null>(null);
+  const [downloadingExamId, setDownloadingExamId] = useState<string | null>(null);
+
+  async function downloadReportCard(examId: string, examName: string) {
+    if (!studentProfileId) return;
+    setDownloadingExamId(examId);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${supabaseUrl}/functions/v1/generate-report-card`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({ studentId: studentProfileId, examId }),
+        }
+      );
+      if (!res.ok) throw new Error("Failed to generate report card");
+      const html = await res.text();
+      const { uri } = await Print.printToFileAsync({ html });
+      const fileName = `Report-Card-${examName.replace(/\s+/g, "-")}.pdf`;
+
+      if (Platform.OS === "android") {
+        const permissions = await StorageAccessFramework.requestDirectoryPermissionsAsync();
+        if (!permissions.granted) return;
+        const base64 = await readAsStringAsync(uri, { encoding: EncodingType.Base64 });
+        const newUri = await StorageAccessFramework.createFileAsync(
+          permissions.directoryUri,
+          fileName,
+          "application/pdf"
+        );
+        await writeAsStringAsync(newUri, base64, { encoding: EncodingType.Base64 });
+        Alert.alert("Saved", `${fileName} saved successfully`);
+      } else {
+        await Sharing.shareAsync(uri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
+      }
+    } catch (e: any) {
+      Alert.alert("Error", e.message ?? "Could not download report card");
+    } finally {
+      setDownloadingExamId(null);
+    }
+  }
 
   useEffect(() => { loadData(); }, []);
 
@@ -90,6 +139,7 @@ export default function ParentAcademics() {
       .single();
     const studentId = sp?.id;
     const sectionId = sp?.section_id;
+    setStudentProfileId(studentId ?? null);
     setStudentSectionId(sectionId ?? null);
 
     // Fetch this student's exam results with exam + academic year info
@@ -109,18 +159,24 @@ export default function ParentAcademics() {
     const allSectionResultsRes = myExamIds.length > 0
       ? await supabase
           .from("exam_results")
-          .select("student_id, exam_id, marks_obtained")
+          .select("student_id, exam_id, marks_obtained, grade")
           .in("exam_id", myExamIds)
       : { data: [] };
 
     // Homework is loaded via loadHomeworkForMonth after sectionId is stored
 
-    // Build per-exam totals for all students (for rank)
+    // Build per-exam totals + subject counts for all students (for rank)
     const allResults = (allSectionResultsRes.data ?? []) as any[];
     const studentTotals: Record<string, Record<string, number>> = {};
+    const studentSubjectCounts: Record<string, Record<string, number>> = {};
+    const studentHasFail: Record<string, Record<string, boolean>> = {};
     for (const r of allResults) {
       if (!studentTotals[r.exam_id]) studentTotals[r.exam_id] = {};
+      if (!studentSubjectCounts[r.exam_id]) studentSubjectCounts[r.exam_id] = {};
+      if (!studentHasFail[r.exam_id]) studentHasFail[r.exam_id] = {};
       studentTotals[r.exam_id][r.student_id] = (studentTotals[r.exam_id][r.student_id] ?? 0) + (r.marks_obtained ?? 0);
+      studentSubjectCounts[r.exam_id][r.student_id] = (studentSubjectCounts[r.exam_id][r.student_id] ?? 0) + 1;
+      if (r.grade === "F") studentHasFail[r.exam_id][r.student_id] = true;
     }
 
     // Group this student's results by exam
@@ -152,12 +208,29 @@ export default function ParentAcademics() {
       examMap[examId].totalMax += r.max_marks ?? 100;
     }
 
-    // Compute rank per exam
+    // Compute rank per exam — exclude failed/absent students
     for (const examId of Object.keys(examMap)) {
-      const totals = Object.values(studentTotals[examId] ?? {});
+      const myStudentId = studentId!;
+      const hasFail = studentHasFail[examId]?.[myStudentId] ?? false;
+      const myCounts = studentSubjectCounts[examId] ?? {};
+      const maxSubjectCount = Math.max(...Object.values(myCounts), 0);
+      const mySubjectCount = myCounts[myStudentId] ?? 0;
+      const isAbsent = mySubjectCount < maxSubjectCount;
+
+      if (hasFail || isAbsent) {
+        examMap[examId].rank = 0; // 0 = no rank
+        examMap[examId].totalStudents = Object.keys(studentTotals[examId] ?? {}).length;
+        continue;
+      }
+
+      // Only rank among eligible students (no fail, not absent)
+      const eligibleTotals = Object.entries(studentTotals[examId] ?? {})
+        .filter(([sid]) => !(studentHasFail[examId]?.[sid]) && (myCounts[sid] ?? 0) >= maxSubjectCount)
+        .map(([, total]) => total);
+
       const myTotal = examMap[examId].totalObtained;
-      examMap[examId].rank = totals.filter(t => t > myTotal).length + 1;
-      examMap[examId].totalStudents = totals.length;
+      examMap[examId].rank = eligibleTotals.filter(t => t > myTotal).length + 1;
+      examMap[examId].totalStudents = eligibleTotals.length;
     }
 
     // Group by academic year
@@ -243,15 +316,28 @@ export default function ParentAcademics() {
                               </Text>
                             ) : null}
                           </View>
-                          <View style={{ alignItems: "flex-end", gap: 4 }}>
-                            <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: theme.primary }}>{exam.totalObtained}/{exam.totalMax}</Text>
-                            {exam.rank > 0 && (
-                              <View style={{ backgroundColor: exam.rank <= 3 ? "#F59E0B18" : theme.surfaceRaised, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
-                                <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: exam.rank <= 3 ? "#D97706" : theme.textSecondary }}>
-                                  Rank {exam.rank}{exam.totalStudents > 0 ? ` of ${exam.totalStudents}` : ""}
-                                </Text>
-                              </View>
-                            )}
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                            <TouchableOpacity
+                              onPress={() => downloadReportCard(exam.examId, exam.examName)}
+                              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                              style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: theme.primary + "15", alignItems: "center", justifyContent: "center" }}
+                            >
+                              {downloadingExamId === exam.examId ? (
+                                <ActivityIndicator size="small" color={theme.primary} />
+                              ) : (
+                                <Ionicons name="download-outline" size={18} color={theme.primary} />
+                              )}
+                            </TouchableOpacity>
+                            <View style={{ alignItems: "flex-end", gap: 4 }}>
+                              <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: theme.primary }}>{exam.totalObtained}/{exam.totalMax}</Text>
+                              {exam.rank > 0 && (
+                                <View style={{ backgroundColor: exam.rank <= 3 ? "#F59E0B18" : theme.surfaceRaised, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+                                  <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: exam.rank <= 3 ? "#D97706" : theme.textSecondary }}>
+                                    Rank {exam.rank}{exam.totalStudents > 0 ? ` of ${exam.totalStudents}` : ""}
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
                           </View>
                         </View>
                         {isExpanded && (
