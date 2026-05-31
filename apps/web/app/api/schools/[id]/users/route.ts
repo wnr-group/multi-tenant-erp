@@ -2,22 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
-const roleLabels: Record<string, string> = {
-  school_admin: "School Admin",
-  principal: "Principal",
-  teacher: "Teacher",
-  student: "Student",
-  parent: "Parent",
-};
-
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { data: roleRow } = await supabase
@@ -32,82 +22,41 @@ export async function POST(
   }
 
   const { id: schoolId } = await params;
-
-  const { email, fullName, role } = (await request.json()) as {
-    email: string;
+  const { phone, fullName, role } = (await request.json()) as {
+    phone: string;
     fullName: string;
     role: string;
   };
+
+  if (!/^\+91\d{10}$/.test(phone)) {
+    return NextResponse.json({ error: "Invalid phone number. Must be +91 followed by 10 digits." }, { status: 400 });
+  }
 
   const adminClient = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const { data: school } = await adminClient
-    .from("schools")
-    .select("domain, name")
-    .eq("id", schoolId)
-    .single();
+  const { data: userData, error: createError } = await adminClient.auth.admin.createUser({
+    phone,
+    phone_confirm: true,
+    user_metadata: { full_name: fullName },
+  });
 
-  const host = request.headers.get("host") ?? "";
-  const port = host.includes(":") ? `:${host.split(":")[1]}` : "";
-  const protocol =
-    host.includes("localhost") || host.includes("lvh.me") ? "http" : "https";
-  const redirectTo = school?.domain
-    ? `${protocol}://${school.domain}${port}/invite`
-    : undefined;
-
-  // Students are data-only records — no auth account
-  if (role === "student") {
-    const { error: studentError } = await adminClient
-      .from("student_profiles")
-      .insert({
-        school_id: schoolId,
-        full_name: fullName,
-        email: email || null,
-      });
-    if (studentError) {
-      return NextResponse.json({ error: studentError.message }, { status: 400 });
-    }
-    return NextResponse.json({ ok: true });
-  }
-
-  // All other roles get auth accounts via invite
-  const { data: inviteData, error: inviteError } =
-    await adminClient.auth.admin.inviteUserByEmail(email, {
-      data: {
-        full_name: fullName,
-        invited_role: roleLabels[role] ?? role,
-        school_name: school?.name ?? "School",
-      },
-      redirectTo,
-    });
-
-  if (inviteError || !inviteData.user) {
+  if (createError || !userData.user) {
     return NextResponse.json(
-      { error: inviteError?.message ?? "Failed to invite user" },
+      { error: createError?.message ?? "Failed to create user" },
       { status: 400 }
     );
   }
 
-  const userId = inviteData.user.id;
+  const userId = userData.user.id;
 
-  await adminClient.from("user_roles").insert({
-    user_id: userId,
-    school_id: schoolId,
-    role,
-  });
-
-  await adminClient
-    .from("profiles")
-    .update({ school_id: schoolId, full_name: fullName })
-    .eq("id", userId);
+  await adminClient.from("user_roles").insert({ user_id: userId, school_id: schoolId, role });
+  await adminClient.from("profiles").update({ school_id: schoolId, full_name: fullName, phone }).eq("id", userId);
 
   if (role === "teacher") {
-    await adminClient
-      .from("teacher_profiles")
-      .insert({ profile_id: userId, school_id: schoolId });
+    await adminClient.from("teacher_profiles").insert({ profile_id: userId, school_id: schoolId });
   }
 
   return NextResponse.json({ userId });

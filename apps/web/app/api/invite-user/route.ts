@@ -18,71 +18,40 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { email, fullName, schoolId, role, extraInserts } = await request.json() as {
-    email: string;
+  const { phone, fullName, schoolId, role, extraInserts } = await request.json() as {
+    phone: string;
     fullName: string;
     schoolId: string;
     role: string;
     extraInserts?: { table: string; data: Record<string, unknown> }[];
   };
 
+  if (!/^\+91\d{10}$/.test(phone)) {
+    return NextResponse.json({ error: "Invalid phone number. Must be +91 followed by 10 digits." }, { status: 400 });
+  }
+
   const adminClient = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  // Look up the school's domain so the invite redirects to the right URL
-  const { data: school } = await adminClient
-    .from("schools")
-    .select("domain, name")
-    .eq("id", schoolId)
-    .single();
+  const { data: userData, error: createError } = await adminClient.auth.admin.createUser({
+    phone,
+    phone_confirm: true,
+    user_metadata: { full_name: fullName },
+  });
 
-  // Build redirect URL — use the school's domain so the invite lands on the correct school portal
-  const host = request.headers.get("host") ?? "";
-  const port = host.includes(":") ? `:${host.split(":")[1]}` : "";
-  const protocol = host.includes("localhost") || host.includes("lvh.me") ? "http" : "https";
-  const redirectTo = school?.domain
-    ? `${protocol}://${school.domain}${port}/invite`
-    : undefined;
-
-  const roleLabels: Record<string, string> = {
-    school_admin: "School Admin",
-    principal: "Principal",
-    teacher: "Teacher",
-    student: "Student",
-    parent: "Parent",
-  };
-
-  const { data: inviteData, error: inviteError } =
-    await adminClient.auth.admin.inviteUserByEmail(email, {
-      data: {
-        full_name: fullName,
-        invited_role: roleLabels[role] ?? role,
-        school_name: school?.name ?? "School",
-      },
-      redirectTo,
-    });
-
-  if (inviteError || !inviteData.user) {
+  if (createError || !userData.user) {
     return NextResponse.json(
-      { error: inviteError?.message ?? "Failed to invite user" },
+      { error: createError?.message ?? "Failed to create user" },
       { status: 400 }
     );
   }
 
-  const userId = inviteData.user.id;
+  const userId = userData.user.id;
 
-  await adminClient.from("user_roles").insert({
-    user_id: userId,
-    school_id: schoolId,
-    role,
-  });
-
-  await adminClient
-    .from("profiles")
-    .update({ school_id: schoolId, full_name: fullName })
-    .eq("id", userId);
+  await adminClient.from("user_roles").insert({ user_id: userId, school_id: schoolId, role });
+  await adminClient.from("profiles").update({ school_id: schoolId, full_name: fullName, phone }).eq("id", userId);
 
   if (extraInserts) {
     for (const { table, data } of extraInserts) {
