@@ -63,7 +63,7 @@ export async function POST(
   // Validate role against allowlist
   const allowedRoles = ["school_admin", "principal", "teacher", "parent", "student"];
   if (!allowedRoles.includes(role)) {
-    return NextResponse.json({ error: "Forbidden: invalid role" }, { status: 400 });
+    return NextResponse.json({ error: "Forbidden: invalid role" }, { status: 403 });
   }
 
   // 4. Pre-fetch classes and sections for student imports
