@@ -11,7 +11,31 @@ serve(async (req) => {
     });
   }
 
-  const { phone, otp } = await req.json() as { phone: string; otp: string };
+  // Issue 1: Verify caller authentication
+  const hookSecret = Deno.env.get("SMS_HOOK_SECRET");
+  if (hookSecret) {
+    const authHeader = req.headers.get("Authorization");
+    if (authHeader !== `Bearer ${hookSecret}`) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  }
+
+  // Issue 2: Wrap req.json() in try/catch for malformed bodies
+  let phone: string | undefined;
+  let otp: string | undefined;
+  try {
+    const body = await req.json() as { phone?: string; otp?: string };
+    phone = body.phone;
+    otp = body.otp;
+  } catch {
+    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 
   if (!phone || !otp) {
     return new Response(JSON.stringify({ error: "phone and otp required" }), {
@@ -20,9 +44,16 @@ serve(async (req) => {
     });
   }
 
-  const authKey = Deno.env.get("MSG91_AUTH_KEY")!;
-  const flowId = Deno.env.get("MSG91_FLOW_ID")!;
-  const senderId = Deno.env.get("MSG91_SENDER_ID")!;
+  // Issue 3: Guard environment variable access
+  const authKey = Deno.env.get("MSG91_AUTH_KEY");
+  const flowId = Deno.env.get("MSG91_FLOW_ID");
+  const senderId = Deno.env.get("MSG91_SENDER_ID");
+  if (!authKey || !flowId || !senderId) {
+    return new Response(JSON.stringify({ error: "SMS provider not configured" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 
   // MSG91 expects phone without leading +
   const mobile = phone.replace(/^\+/, "");
