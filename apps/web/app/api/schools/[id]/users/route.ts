@@ -52,11 +52,23 @@ export async function POST(
 
   const userId = userData.user.id;
 
-  await adminClient.from("user_roles").insert({ user_id: userId, school_id: schoolId, role });
-  await adminClient.from("profiles").update({ school_id: schoolId, full_name: fullName, phone }).eq("id", userId);
+  const { error: roleError } = await adminClient.from("user_roles").insert({ user_id: userId, school_id: schoolId, role });
+  if (roleError) {
+    await adminClient.auth.admin.deleteUser(userId);
+    return NextResponse.json({ error: `Failed to assign role: ${roleError.message}` }, { status: 500 });
+  }
+  const { error: profileError } = await adminClient.from("profiles").update({ school_id: schoolId, full_name: fullName, phone }).eq("id", userId);
+  if (profileError) {
+    await adminClient.auth.admin.deleteUser(userId);
+    return NextResponse.json({ error: `Failed to update profile: ${profileError.message}` }, { status: 500 });
+  }
 
   if (role === "teacher") {
-    await adminClient.from("teacher_profiles").insert({ profile_id: userId, school_id: schoolId });
+    const { error: teacherError } = await adminClient.from("teacher_profiles").insert({ profile_id: userId, school_id: schoolId });
+    if (teacherError) {
+      await adminClient.auth.admin.deleteUser(userId);
+      return NextResponse.json({ error: `Failed to create teacher profile: ${teacherError.message}` }, { status: 500 });
+    }
   }
 
   return NextResponse.json({ userId });
