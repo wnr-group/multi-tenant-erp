@@ -1,0 +1,45 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getSchoolId } from "@/lib/school";
+
+export async function POST(request: NextRequest) {
+  const { draftYearId } = await request.json();
+  if (!draftYearId) return NextResponse.json({ error: "draftYearId required" }, { status: 400 });
+
+  const supabase = await createServerSupabaseClient();
+  const schoolId = await getSchoolId();
+  if (!schoolId) return NextResponse.json({ error: "No school context" }, { status: 400 });
+
+  // Verify the caller is authenticated and has admin rights
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { data: roleRow } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", user.id)
+    .eq("school_id", schoolId)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (!roleRow || !["school_admin", "super_admin"].includes(roleRow.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Archive current active year
+  await supabase
+    .from("academic_years")
+    .update({ status: "archived" })
+    .eq("school_id", schoolId)
+    .eq("status", "active");
+
+  // Activate draft year
+  const { error } = await supabase
+    .from("academic_years")
+    .update({ status: "active" })
+    .eq("id", draftYearId)
+    .eq("school_id", schoolId);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}
