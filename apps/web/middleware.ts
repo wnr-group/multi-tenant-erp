@@ -120,6 +120,35 @@ export async function middleware(request: NextRequest) {
     response.headers.set("x-active-section", activeSection);
   }
 
+  // Resolve academic year context for school users
+  if (schoolId) {
+    let academicYearId: string | null = null;
+
+    // Teachers always use the active year — cookie ignored
+    if (role !== "teacher") {
+      const yearFromCookie = request.cookies.get("academic_year_id")?.value ?? null;
+      if (yearFromCookie) {
+        academicYearId = yearFromCookie;
+      }
+    }
+
+    if (!academicYearId) {
+      const { data: activeYear } = await supabase
+        .from("academic_years")
+        .select("id")
+        .eq("school_id", schoolId)
+        .eq("status", "active")
+        .single();
+      academicYearId = activeYear?.id ?? null;
+    }
+
+    if (academicYearId) {
+      request.headers.set("x-academic-year-id", academicYearId);
+      response = NextResponse.next({ request });
+      response.headers.set("x-academic-year-id", academicYearId);
+    }
+  }
+
   // Super admin on school domain → treat as school_admin
   const effectiveRole = role === "super_admin" ? "school_admin" : role;
 
