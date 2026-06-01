@@ -15,7 +15,7 @@ export type Database = {
           created_at: string
           end_date: string
           id: string
-          is_current: boolean
+          status: 'draft' | 'active' | 'archived'
           name: string
           school_id: string
           start_date: string
@@ -24,7 +24,7 @@ export type Database = {
           created_at?: string
           end_date: string
           id?: string
-          is_current?: boolean
+          status?: 'draft' | 'active' | 'archived'
           name: string
           school_id: string
           start_date: string
@@ -33,7 +33,7 @@ export type Database = {
           created_at?: string
           end_date?: string
           id?: string
-          is_current?: boolean
+          status?: 'draft' | 'active' | 'archived'
           name?: string
           school_id?: string
           start_date?: string

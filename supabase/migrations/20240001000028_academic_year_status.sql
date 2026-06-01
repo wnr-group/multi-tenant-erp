@@ -4,6 +4,6 @@ ALTER TABLE public.academic_years
     CHECK (status IN ('draft', 'active', 'archived'));
 
 -- Only one active year per school at a time
-CREATE UNIQUE INDEX idx_academic_years_one_active
+CREATE UNIQUE INDEX IF NOT EXISTS idx_academic_years_one_active
   ON public.academic_years (school_id)
   WHERE status = 'active';
