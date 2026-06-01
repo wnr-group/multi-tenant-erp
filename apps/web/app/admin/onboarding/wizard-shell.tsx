@@ -23,9 +23,6 @@ export function WizardShell({
   logoUrl,
   initialStep,
   initialAcademicYearId,
-  classCount,
-  teacherCount,
-  studentCount,
 }: {
   schoolId: string;
   schoolName: string;
@@ -33,9 +30,6 @@ export function WizardShell({
   logoUrl: string | null;
   initialStep: number;
   initialAcademicYearId?: string | null;
-  classCount?: number;
-  teacherCount?: number;
-  studentCount?: number;
 }) {
   const [step, setStep] = useState(initialStep);
   const [academicYearId, setAcademicYearId] = useState<string | null>(initialAcademicYearId ?? null);
@@ -132,8 +126,8 @@ export function WizardShell({
               schoolId={schoolId}
               academicYearId={academicYearId ?? ""}
               brandColor={brandColor}
-              onComplete={() => setDone(true)}
-              onSkip={() => setDone(true)}
+              onComplete={() => { if (academicYearId) setDone(true); }}
+              onSkip={() => { if (academicYearId) setDone(true); }}
             />
           )}
         </div>

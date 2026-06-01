@@ -39,7 +39,12 @@ export function StepTeachers({
 
   async function handleSave() {
     const valid = rows.filter((r) => r.fullName.trim() && r.phone.trim().length === 10);
-    if (valid.length === 0) { onComplete(); return; }
+    const hasPartial = rows.some((r) => r.fullName.trim() || r.phone.trim());
+    if (valid.length === 0) {
+      if (hasPartial) { toast.error("Each teacher needs a name and a 10-digit phone number"); return; }
+      onComplete();
+      return;
+    }
     setLoading(true);
     const res = await fetch("/api/onboarding/create-teachers", {
       method: "POST",

@@ -39,7 +39,7 @@ export function PostOnboardingBanner() {
           </Link>
         </div>
       </div>
-      <button onClick={dismiss} className="rounded p-1 text-emerald-600 hover:bg-emerald-100">
+      <button onClick={dismiss} aria-label="Dismiss onboarding banner" className="rounded p-1 text-emerald-600 hover:bg-emerald-100">
         <X className="h-4 w-4" />
       </button>
     </div>

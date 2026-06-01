@@ -57,7 +57,7 @@ export function StepStudents({
         const firstSection = mapped.find((s) => s.classId === firstClass.id);
         setRows([{ fullName: "", classId: firstClass.id, sectionId: firstSection?.id ?? "" }]);
       }
-    });
+    }).catch(() => toast.error("Failed to load classes. Please refresh."));
   }, [schoolId, academicYearId]);
 
   function updateRow(index: number, field: keyof StudentRow, value: string) {

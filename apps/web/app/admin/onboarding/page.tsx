@@ -11,6 +11,15 @@ export default async function OnboardingPage() {
   const schoolId = await getSchoolId();
   if (!schoolId) redirect("/login");
 
+  const { data: roleRow } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", user.id)
+    .eq("is_active", true)
+    .limit(1)
+    .maybeSingle();
+  if (!roleRow || !["school_admin", "super_admin"].includes(roleRow.role)) redirect("/login");
+
   const { data: school } = await supabase
     .from("schools")
     .select("name, primary_color, logo_url")
