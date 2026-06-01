@@ -2,7 +2,7 @@
 ALTER TABLE public.sections
   ADD COLUMN IF NOT EXISTS academic_year_id UUID REFERENCES public.academic_years(id) ON DELETE CASCADE;
 
-CREATE INDEX idx_sections_academic_year ON public.sections(academic_year_id);
+CREATE INDEX IF NOT EXISTS idx_sections_academic_year ON public.sections(academic_year_id);
 
 -- Add academic_year_id to timetable
 ALTER TABLE public.timetable
@@ -29,8 +29,8 @@ CREATE TABLE IF NOT EXISTS public.section_assignments (
   UNIQUE(section_id, academic_year_id)
 );
 
-CREATE INDEX idx_section_assignments_year ON public.section_assignments(academic_year_id);
-CREATE INDEX idx_section_assignments_school ON public.section_assignments(school_id);
+CREATE INDEX IF NOT EXISTS idx_section_assignments_year ON public.section_assignments(academic_year_id);
+CREATE INDEX IF NOT EXISTS idx_section_assignments_school ON public.section_assignments(school_id);
 
 -- Drop year-specific columns from teacher_profiles
 ALTER TABLE public.teacher_profiles
