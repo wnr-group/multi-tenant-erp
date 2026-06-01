@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getSchoolId } from "@/lib/school";
 
 export default async function AdminLayout({
   children,
@@ -22,6 +23,18 @@ export default async function AdminLayout({
 
   const allowed = ["school_admin", "super_admin"];
   if (!roleRow || !allowed.includes(roleRow.role)) redirect("/login");
+
+  // Redirect to onboarding if school has no academic years yet
+  const schoolId = await getSchoolId();
+  if (schoolId) {
+    const { count } = await supabase
+      .from("academic_years")
+      .select("*", { count: "exact", head: true })
+      .eq("school_id", schoolId);
+    if ((count ?? 0) === 0) {
+      redirect("/admin/onboarding");
+    }
+  }
 
   return <>{children}</>;
 }
