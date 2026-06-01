@@ -8,6 +8,7 @@ interface TopBarProps {
   userName: string;
   userRole: string;
   brandColor?: string;
+  yearSwitcher?: React.ReactNode;
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -27,7 +28,7 @@ function formatSegment(segment: string): string {
     .join(" ");
 }
 
-export function TopBar({ userName, userRole, brandColor }: TopBarProps) {
+export function TopBar({ userName, userRole, brandColor, yearSwitcher }: TopBarProps) {
   const pathname = usePathname();
   const segments = pathname.split("/").filter(Boolean);
 
@@ -62,6 +63,9 @@ export function TopBar({ userName, userRole, brandColor }: TopBarProps) {
           ))
         )}
       </nav>
+      {yearSwitcher && (
+        <div className="flex items-center">{yearSwitcher}</div>
+      )}
       <div className="flex items-center gap-4">
         <CommandSearch userRole={userRole} />
         <button className="relative rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">

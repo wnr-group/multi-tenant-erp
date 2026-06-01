@@ -1,11 +1,12 @@
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
 import { Sidebar } from "@/components/sidebar";
 import { TopBar } from "@/components/top-bar";
 import { SectionSwitcher } from "@/components/section-switcher";
 import type { SectionOption } from "@/components/section-switcher";
+import { AcademicYearSwitcher } from "@/components/academic-year-switcher";
 
 const SCHOOL_ROLES = [
   "super_admin",
@@ -121,6 +122,19 @@ export default async function SchoolLayout({
     schoolName = school?.name ?? "School ERP";
   }
 
+  // Fetch years for switcher (admin/principal only)
+  const hdrs = await headers();
+  const currentYearId = hdrs.get("x-academic-year-id") ?? null;
+  let years: { id: string; name: string; status: "draft" | "active" | "archived" }[] = [];
+  if (schoolId && (realRole === "school_admin" || realRole === "super_admin" || realRole === "principal")) {
+    const { data: yearRows } = await supabase
+      .from("academic_years")
+      .select("id, name, status")
+      .eq("school_id", schoolId)
+      .order("start_date", { ascending: false });
+    years = (yearRows ?? []) as typeof years;
+  }
+
   // Read active section cookie
   const cookieStore = await cookies();
   const activeSectionId = cookieStore.get("active_section")?.value ?? null;
@@ -129,10 +143,10 @@ export default async function SchoolLayout({
   let sections: SectionOption[] = [];
   if (schoolId) {
     if (realRole === "teacher") {
-      const [{ data: teacherProfile }, { data: timetableRows }] = await Promise.all([
+      const [, { data: timetableRows }] = await Promise.all([
         supabase
           .from("teacher_profiles")
-          .select("class_teacher_of, section:sections!teacher_profiles_class_teacher_of_fkey(id, name, class:classes(name, order))")
+          .select("profile_id")
           .eq("profile_id", user.id)
           .maybeSingle(),
         supabase
@@ -142,14 +156,6 @@ export default async function SchoolLayout({
       ]);
 
       const seen = new Set<string>();
-
-      if (teacherProfile?.section) {
-        const sec = teacherProfile.section as unknown as { id: string; name: string; class: { name: string; order: number } | null };
-        if (sec?.id) {
-          seen.add(sec.id);
-          sections.push({ id: sec.id, name: sec.name, className: sec.class?.name ?? "", classOrder: sec.class?.order ?? 0 });
-        }
-      }
 
       for (const row of timetableRows ?? []) {
         const sec = row.section as unknown as { id: string; name: string; class: { name: string; order: number } | null };
@@ -178,11 +184,19 @@ export default async function SchoolLayout({
   let sidebarUserName = userName;
   if (inTeacherContext && activeSectionId && schoolId) {
     const { data: ct } = await supabase
-      .from("teacher_profiles")
-      .select("profile_id, profile:profiles!teacher_profiles_profile_id_fkey(full_name)")
-      .eq("class_teacher_of", activeSectionId)
+      .from("section_assignments")
+      .select("class_teacher_id")
+      .eq("section_id", activeSectionId)
       .maybeSingle();
-    const ctProfile = ct?.profile as unknown as { full_name: string } | null;
+    let ctProfile: { full_name: string } | null = null;
+    if (ct?.class_teacher_id) {
+      const { data: pr } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", ct.class_teacher_id)
+        .maybeSingle();
+      ctProfile = pr;
+    }
     if (ctProfile?.full_name) sidebarUserName = ctProfile.full_name;
   }
 
@@ -197,7 +211,9 @@ export default async function SchoolLayout({
     navItems = NAV_ITEMS.teacher;
     displayRole = "teacher";
   } else {
-    navItems = NAV_ITEMS[realRole] ?? [];
+    // super_admin visiting a school subdomain gets the school_admin nav
+    const navRole = realRole === "super_admin" ? "school_admin" : realRole;
+    navItems = NAV_ITEMS[navRole] ?? [];
     displayRole = realRole;
   }
 
@@ -226,6 +242,11 @@ export default async function SchoolLayout({
           userName={sidebarUserName}
           userRole={displayRole}
           brandColor={brandColor}
+          yearSwitcher={
+            years.length > 0 ? (
+              <AcademicYearSwitcher years={years} currentYearId={currentYearId} />
+            ) : undefined
+          }
         />
         <main className="flex-1 overflow-y-auto p-8">
           {children}
