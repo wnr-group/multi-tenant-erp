@@ -1,7 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
 import { PageHeader } from "@/components/page-header";
-import { AddAcademicYearDialog, AddExamDialog } from "./academic-dialogs";
+import { NewYearButton, ActivateYearButton, AddExamDialog } from "./academic-dialogs";
 import { AcademicYearsTable, ExamsTable } from "./academics-table";
 
 export default async function AcademicsPage() {
@@ -10,7 +10,7 @@ export default async function AcademicsPage() {
 
   const { data: academicYears } = await supabase
     .from("academic_years")
-    .select("id, name, start_date, end_date, is_current")
+    .select("id, name, start_date, end_date, status")
     .eq("school_id", schoolId)
     .order("start_date", { ascending: false });
 
@@ -21,14 +21,15 @@ export default async function AcademicsPage() {
     .order("start_date", { ascending: false });
 
   const years = academicYears ?? [];
-  const currentYear = years.find((y) => y.is_current);
+  const activeYear = years.find((y) => y.status === "active");
+  const draftYear = years.find((y) => y.status === "draft");
 
   const yearRows = years.map((y) => ({
     id: y.id,
     name: y.name,
     start: y.start_date ?? "—",
     end: y.end_date ?? "—",
-    is_current: y.is_current ?? false,
+    status: y.status as "draft" | "active" | "archived",
   }));
 
   const examRows = (exams ?? []).map((e) => {
@@ -44,23 +45,34 @@ export default async function AcademicsPage() {
 
   return (
     <div className="space-y-10">
-      {/* Academic Years section */}
       <section>
         <PageHeader
           title="Academics"
           description="Manage academic years and exams for your school."
-          action={<AddAcademicYearDialog schoolId={schoolId} />}
+          action={
+            <div className="flex items-center gap-2">
+              {!draftYear && (
+                <NewYearButton schoolId={schoolId} activeYearId={activeYear?.id ?? null} />
+              )}
+              {draftYear && (
+                <ActivateYearButton draftYearId={draftYear.id} schoolId={schoolId} />
+              )}
+              {draftYear && (
+                <a href="/admin/academics/promote" className="rounded-lg border border-indigo-600 px-4 py-2 text-sm font-semibold text-indigo-600 hover:bg-indigo-50">
+                  Promote Students →
+                </a>
+              )}
+            </div>
+          }
           stats={[
             { label: "Academic Years", value: years.length },
-            { label: "Current Year", value: currentYear?.name ?? "—" },
+            { label: "Active Year", value: activeYear?.name ?? "—" },
             { label: "Exams", value: (exams ?? []).length },
           ]}
         />
-
-        <AcademicYearsTable yearRows={yearRows} />
+        <AcademicYearsTable yearRows={yearRows} schoolId={schoolId} />
       </section>
 
-      {/* Exams section */}
       <section>
         <PageHeader
           title="Exams"
@@ -72,7 +84,6 @@ export default async function AcademicsPage() {
             />
           }
         />
-
         <ExamsTable examRows={examRows} />
       </section>
     </div>

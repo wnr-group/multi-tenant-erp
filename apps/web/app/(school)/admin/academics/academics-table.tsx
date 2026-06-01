@@ -2,14 +2,13 @@
 import { Calendar } from "lucide-react";
 import { FilterableDataTable } from "@/components/filterable-data-table";
 import { EmptyState } from "@/components/empty-state";
-import { Badge } from "@/components/ui/badge";
 
 interface YearRow {
   id: string;
   name: string;
   start: string;
   end: string;
-  is_current: boolean;
+  status: "draft" | "active" | "archived";
 }
 
 interface ExamRow {
@@ -20,7 +19,8 @@ interface ExamRow {
   end: string;
 }
 
-export function AcademicYearsTable({ yearRows }: { yearRows: YearRow[] }) {
+export function AcademicYearsTable({ yearRows, schoolId }: { yearRows: YearRow[]; schoolId: string }) {
+  void schoolId;
   return (
     <FilterableDataTable
       data={yearRows}
@@ -30,12 +30,17 @@ export function AcademicYearsTable({ yearRows }: { yearRows: YearRow[] }) {
         { header: "End", accessor: "end" },
         {
           header: "Status",
-          accessor: (row: YearRow) =>
-            row.is_current ? (
-              <Badge variant="default">Current</Badge>
-            ) : (
-              <Badge variant="secondary">Inactive</Badge>
-            ),
+          accessor: (row: YearRow) => (
+            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+              row.status === "active"
+                ? "bg-emerald-100 text-emerald-700"
+                : row.status === "draft"
+                ? "bg-amber-100 text-amber-700"
+                : "bg-gray-100 text-gray-500"
+            }`}>
+              {row.status}
+            </span>
+          ),
         },
       ]}
       searchKeys={["name"]}
