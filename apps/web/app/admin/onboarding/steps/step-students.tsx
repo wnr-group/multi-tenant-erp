@@ -47,8 +47,7 @@ export function StepStudents({
     const supabase = createClient();
     Promise.all([
       supabase.from("classes").select("id, name").eq("school_id", schoolId).order("order"),
-      // sections has no academic_year_id column — filter by school_id only
-      supabase.from("sections").select("id, name, class_id").eq("school_id", schoolId),
+      supabase.from("sections").select("id, name, class_id").eq("school_id", schoolId).eq("academic_year_id", academicYearId),
     ]).then(([{ data: cls }, { data: sec }]) => {
       setClasses(cls ?? []);
       const mapped = (sec ?? []).map((s) => ({ id: s.id, name: s.name, classId: s.class_id }));
