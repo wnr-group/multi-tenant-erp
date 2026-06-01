@@ -188,6 +188,8 @@ DECLARE
   sec_b UUID;
   class_num INT;
   i INT;
+  sp_id UUID;
+  active_year_id UUID := 'aaaaaaaa-0000-0000-0000-000000000002';
 BEGIN
   FOR cls IN
     SELECT id, name, "order" FROM public.classes
@@ -195,41 +197,42 @@ BEGIN
     ORDER BY "order"
   LOOP
     class_num := cls."order";
-    -- Derive section UUIDs from the pattern used in the INSERT above
-    sec_a := (
-      SELECT id FROM public.sections
-      WHERE class_id = cls.id AND name = 'A'
-    );
-    sec_b := (
-      SELECT id FROM public.sections
-      WHERE class_id = cls.id AND name = 'B'
-    );
+    sec_a := (SELECT id FROM public.sections WHERE class_id = cls.id AND name = 'A');
+    sec_b := (SELECT id FROM public.sections WHERE class_id = cls.id AND name = 'B');
 
     -- Section A: 43 students
     FOR i IN 1..43 LOOP
       INSERT INTO public.student_profiles (
-        school_id, class_id, section_id,
+        school_id,
         full_name, admission_number
       ) VALUES (
         'aaaaaaaa-0000-0000-0000-000000000001',
-        cls.id,
-        sec_a,
         'Student ' || class_num || 'A-' || i,
         'ADM-' || LPAD(((class_num - 1) * 85 + i)::TEXT, 4, '0')
+      ) RETURNING id INTO sp_id;
+
+      INSERT INTO public.student_enrollments (
+        student_profile_id, academic_year_id, school_id, class_id, section_id, is_active
+      ) VALUES (
+        sp_id, active_year_id, 'aaaaaaaa-0000-0000-0000-000000000001', cls.id, sec_a, true
       );
     END LOOP;
 
     -- Section B: 42 students
     FOR i IN 1..42 LOOP
       INSERT INTO public.student_profiles (
-        school_id, class_id, section_id,
+        school_id,
         full_name, admission_number
       ) VALUES (
         'aaaaaaaa-0000-0000-0000-000000000001',
-        cls.id,
-        sec_b,
         'Student ' || class_num || 'B-' || i,
         'ADM-' || LPAD(((class_num - 1) * 85 + 43 + i)::TEXT, 4, '0')
+      ) RETURNING id INTO sp_id;
+
+      INSERT INTO public.student_enrollments (
+        student_profile_id, academic_year_id, school_id, class_id, section_id, is_active
+      ) VALUES (
+        sp_id, active_year_id, 'aaaaaaaa-0000-0000-0000-000000000001', cls.id, sec_b, true
       );
     END LOOP;
   END LOOP;
@@ -276,9 +279,10 @@ BEGIN
     )
   LOOP
     FOR sp IN
-      SELECT s.id AS student_id, s.class_id
-      FROM public.student_profiles s
-      WHERE s.school_id = 'aaaaaaaa-0000-0000-0000-000000000001'
+      SELECT se.student_profile_id AS student_id, se.class_id
+      FROM public.student_enrollments se
+      WHERE se.school_id = 'aaaaaaaa-0000-0000-0000-000000000001'
+        AND se.academic_year_id = 'aaaaaaaa-0000-0000-0000-000000000002'
     LOOP
       SELECT fs.id, fs.amount INTO fs_id, fs_amount
       FROM public.fee_structures fs
@@ -369,23 +373,23 @@ BEGIN
   WHILE school_days < 7 LOOP
     IF EXTRACT(DOW FROM d) BETWEEN 1 AND 5 THEN -- Mon=1, Fri=5
       FOR sp IN
-        SELECT id FROM public.student_profiles
-        WHERE school_id = 'aaaaaaaa-0000-0000-0000-000000000001'
+        SELECT se.student_profile_id AS id, se.section_id
+        FROM public.student_enrollments se
+        WHERE se.school_id = 'aaaaaaaa-0000-0000-0000-000000000001'
+          AND se.academic_year_id = 'aaaaaaaa-0000-0000-0000-000000000002'
       LOOP
         rnd := random();
         INSERT INTO public.attendance_records (
           school_id, student_id, section_id, date, status, marked_by
-        )
-        SELECT
+        ) VALUES (
           'aaaaaaaa-0000-0000-0000-000000000001',
           sp.id,
-          s.section_id,
+          sp.section_id,
           d,
           CASE WHEN rnd < 0.85 THEN 'present'::public.attendance_status
                ELSE 'absent'::public.attendance_status END,
           'aaaaaaaa-0000-0000-0000-000000000011'
-        FROM public.student_profiles s
-        WHERE s.id = sp.id;
+        );
       END LOOP;
       school_days := school_days + 1;
     END IF;
@@ -580,15 +584,25 @@ INSERT INTO public.user_roles (user_id, school_id, role, is_active) VALUES
   ('aaaaaaaa-0000-0000-0000-000000000030', 'aaaaaaaa-0000-0000-0000-000000000001', 'parent', true);
 
 -- Student record linked to parent
-INSERT INTO public.student_profiles (id, school_id, class_id, section_id, full_name, admission_number, parent_profile_id)
+INSERT INTO public.student_profiles (id, school_id, full_name, admission_number, parent_profile_id)
 VALUES (
   'dddddddd-0000-0000-0000-000000000001',
   'aaaaaaaa-0000-0000-0000-000000000001',
-  'bbbbbbbb-0000-0000-0000-000000000008',  -- Class 8
-  'cccccccc-0000-0000-0000-000000000801',  -- Class 8A
   'Aryan Sharma',
   'ADM-TEST-001',
   'aaaaaaaa-0000-0000-0000-000000000030'
+);
+
+-- Enrollment for Aryan Sharma in active year (Class 8A)
+INSERT INTO public.student_enrollments (
+  student_profile_id, academic_year_id, school_id, class_id, section_id, is_active
+) VALUES (
+  'dddddddd-0000-0000-0000-000000000001',
+  'aaaaaaaa-0000-0000-0000-000000000002',
+  'aaaaaaaa-0000-0000-0000-000000000001',
+  'bbbbbbbb-0000-0000-0000-000000000008',
+  'cccccccc-0000-0000-0000-000000000801',
+  true
 );
 
 -- Fee payments (Nov 2025–Feb 2026 paid, Mar partial, Apr pending)
@@ -730,10 +744,10 @@ DECLARE
   base_marks INT;
 BEGIN
   SELECT ARRAY(
-    SELECT id FROM public.student_profiles
-    WHERE section_id = 'cccccccc-0000-0000-0000-000000000801'
-      AND id != 'dddddddd-0000-0000-0000-000000000001'
-    ORDER BY admission_number
+    SELECT se.student_profile_id FROM public.student_enrollments se
+    WHERE se.section_id = 'cccccccc-0000-0000-0000-000000000801'
+      AND se.student_profile_id != 'dddddddd-0000-0000-0000-000000000001'
+    ORDER BY se.student_profile_id
     LIMIT 10
   ) INTO student_ids;
 
