@@ -816,48 +816,104 @@ export type Database = {
           },
         ]
       }
-      student_profiles: {
+      student_enrollments: {
         Row: {
-          admission_number: string | null
+          academic_year_id: string
           class_id: string
           created_at: string
           id: string
-          parent_profile_id: string | null
-          profile_id: string
+          is_active: boolean
           roll_number: string | null
           school_id: string
           section_id: string
+          student_profile_id: string
         }
         Insert: {
-          admission_number?: string | null
+          academic_year_id: string
           class_id: string
           created_at?: string
           id?: string
-          parent_profile_id?: string | null
-          profile_id: string
+          is_active?: boolean
           roll_number?: string | null
           school_id: string
           section_id: string
+          student_profile_id: string
         }
         Update: {
-          admission_number?: string | null
+          academic_year_id?: string
           class_id?: string
           created_at?: string
           id?: string
-          parent_profile_id?: string | null
-          profile_id?: string
+          is_active?: boolean
           roll_number?: string | null
           school_id?: string
           section_id?: string
+          student_profile_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "student_profiles_class_id_fkey"
+            foreignKeyName: "student_enrollments_academic_year_id_fkey"
+            columns: ["academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "academic_years"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_enrollments_class_id_fkey"
             columns: ["class_id"]
             isOneToOne: false
             referencedRelation: "classes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "student_enrollments_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_enrollments_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_enrollments_student_profile_id_fkey"
+            columns: ["student_profile_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_profiles: {
+        Row: {
+          admission_number: string | null
+          created_at: string
+          id: string
+          parent_profile_id: string | null
+          profile_id: string
+          school_id: string
+        }
+        Insert: {
+          admission_number?: string | null
+          created_at?: string
+          id?: string
+          parent_profile_id?: string | null
+          profile_id: string
+          school_id: string
+        }
+        Update: {
+          admission_number?: string | null
+          created_at?: string
+          id?: string
+          parent_profile_id?: string | null
+          profile_id?: string
+          school_id?: string
+        }
+        Relationships: [
           {
             foreignKeyName: "student_profiles_parent_profile_id_fkey"
             columns: ["parent_profile_id"]
@@ -877,13 +933,6 @@ export type Database = {
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "student_profiles_section_id_fkey"
-            columns: ["section_id"]
-            isOneToOne: false
-            referencedRelation: "sections"
             referencedColumns: ["id"]
           },
         ]

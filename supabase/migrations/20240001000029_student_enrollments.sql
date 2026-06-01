@@ -16,6 +16,7 @@ CREATE INDEX idx_student_enrollments_student ON public.student_enrollments(stude
 CREATE INDEX idx_student_enrollments_year ON public.student_enrollments(academic_year_id);
 CREATE INDEX idx_student_enrollments_school ON public.student_enrollments(school_id);
 CREATE INDEX idx_student_enrollments_section ON public.student_enrollments(section_id);
+CREATE INDEX idx_student_enrollments_class ON public.student_enrollments(class_id);
 
 -- Drop year-specific columns from student_profiles
 ALTER TABLE public.student_profiles
