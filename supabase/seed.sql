@@ -19,14 +19,14 @@ VALUES (
 -- ---------------------------------------------------------------
 -- ACADEMIC YEAR
 -- ---------------------------------------------------------------
-INSERT INTO public.academic_years (id, school_id, name, start_date, end_date, is_current)
+INSERT INTO public.academic_years (id, school_id, name, start_date, end_date, status)
 VALUES (
   'aaaaaaaa-0000-0000-0000-000000000002',
   'aaaaaaaa-0000-0000-0000-000000000001',
   '2026-27',
   '2026-04-01',
   '2027-03-31',
-  true
+  'active'
 );
 
 -- ---------------------------------------------------------------
@@ -41,42 +41,42 @@ INSERT INTO auth.users (
   email_change_token_new, email_change
 )
 VALUES
-  ('aaaaaaaa-0000-0000-0000-000000000010', '+919000000001', now(),
+  ('aaaaaaaa-0000-0000-0000-000000000010', '919000000001', now(),
    '{"full_name":"Dinesh (Super Admin)"}'::jsonb,
    now(), now(), 'authenticated', 'authenticated',
    '00000000-0000-0000-0000-000000000000', '', '', '', ''),
 
-  ('aaaaaaaa-0000-0000-0000-000000000011', '+919000000002', now(),
+  ('aaaaaaaa-0000-0000-0000-000000000011', '919000000002', now(),
    '{"full_name":"Arjun Sharma"}'::jsonb,
    now(), now(), 'authenticated', 'authenticated',
    '00000000-0000-0000-0000-000000000000', '', '', '', ''),
 
-  ('aaaaaaaa-0000-0000-0000-000000000012', '+919000000003', now(),
+  ('aaaaaaaa-0000-0000-0000-000000000012', '919000000003', now(),
    '{"full_name":"Dr. Meena Iyer"}'::jsonb,
    now(), now(), 'authenticated', 'authenticated',
    '00000000-0000-0000-0000-000000000000', '', '', '', ''),
 
-  ('aaaaaaaa-0000-0000-0000-000000000013', '+919000000004', now(),
+  ('aaaaaaaa-0000-0000-0000-000000000013', '919000000004', now(),
    '{"full_name":"Ravi Kumar"}'::jsonb,
    now(), now(), 'authenticated', 'authenticated',
    '00000000-0000-0000-0000-000000000000', '', '', '', ''),
 
-  ('aaaaaaaa-0000-0000-0000-000000000014', '+919000000005', now(),
+  ('aaaaaaaa-0000-0000-0000-000000000014', '919000000005', now(),
    '{"full_name":"Priya Nair"}'::jsonb,
    now(), now(), 'authenticated', 'authenticated',
    '00000000-0000-0000-0000-000000000000', '', '', '', ''),
 
-  ('aaaaaaaa-0000-0000-0000-000000000015', '+919000000006', now(),
+  ('aaaaaaaa-0000-0000-0000-000000000015', '919000000006', now(),
    '{"full_name":"Suresh Babu"}'::jsonb,
    now(), now(), 'authenticated', 'authenticated',
    '00000000-0000-0000-0000-000000000000', '', '', '', ''),
 
-  ('aaaaaaaa-0000-0000-0000-000000000016', '+919000000007', now(),
+  ('aaaaaaaa-0000-0000-0000-000000000016', '919000000007', now(),
    '{"full_name":"Kavitha Reddy"}'::jsonb,
    now(), now(), 'authenticated', 'authenticated',
    '00000000-0000-0000-0000-000000000000', '', '', '', ''),
 
-  ('aaaaaaaa-0000-0000-0000-000000000017', '+919000000008', now(),
+  ('aaaaaaaa-0000-0000-0000-000000000017', '919000000008', now(),
    '{"full_name":"Anand Pillai"}'::jsonb,
    now(), now(), 'authenticated', 'authenticated',
    '00000000-0000-0000-0000-000000000000', '', '', '', '');
@@ -563,7 +563,7 @@ INSERT INTO auth.users (
   aud, role, instance_id, confirmation_token, recovery_token,
   email_change_token_new, email_change
 ) VALUES (
-  'aaaaaaaa-0000-0000-0000-000000000030', '+919000000009', now(),
+  'aaaaaaaa-0000-0000-0000-000000000030', '919000000009', now(),
   '{"full_name":"Sunita Sharma"}'::jsonb,
   now(), now(), 'authenticated', 'authenticated',
   '00000000-0000-0000-0000-000000000000', '', '', '', ''
@@ -769,14 +769,14 @@ END $$;
 -- ---------------------------------------------------------------
 -- SECOND ACADEMIC YEAR + EXAM (for grouping test)
 -- ---------------------------------------------------------------
-INSERT INTO public.academic_years (id, school_id, name, start_date, end_date, is_current)
+INSERT INTO public.academic_years (id, school_id, name, start_date, end_date, status)
 VALUES (
   'aaaaaaaa-0000-0000-0000-000000000003',
   'aaaaaaaa-0000-0000-0000-000000000001',
   '2025-26',
   '2025-04-01',
   '2026-03-31',
-  false
+  'archived'
 );
 
 INSERT INTO public.exams (id, school_id, academic_year_id, name, start_date, end_date)
