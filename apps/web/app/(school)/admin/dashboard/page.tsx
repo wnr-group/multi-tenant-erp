@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
+import { getAcademicYearId } from "@/lib/academic-year";
 import { Users, GraduationCap, BookOpen, IndianRupee } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,20 +33,23 @@ export default async function AdminDashboard() {
   const schoolId = await getSchoolId();
   const today = new Date().toISOString().slice(0, 10);
 
+  const academicYearId = await getAcademicYearId(schoolId!);
+
   // Stat card queries (parallel)
   const [
     { count: teacherCount },
     { count: studentCount },
-    { count: classCount },
-    { data: academicYear },
+    { count: sectionCount },
   ] = await Promise.all([
     supabase.from("teacher_profiles").select("*", { count: "exact", head: true }).eq("school_id", schoolId!),
-    supabase.from("student_profiles").select("*", { count: "exact", head: true }).eq("school_id", schoolId!),
-    supabase.from("classes").select("*", { count: "exact", head: true }).eq("school_id", schoolId!),
-    supabase.from("academic_years").select("id").eq("school_id", schoolId!).eq("is_current", true).single(),
+    supabase.from("student_enrollments").select("*", { count: "exact", head: true })
+      .eq("school_id", schoolId!)
+      .eq("academic_year_id", academicYearId ?? "")
+      .eq("is_active", true),
+    supabase.from("sections").select("*", { count: "exact", head: true })
+      .eq("school_id", schoolId!)
+      .eq("academic_year_id", academicYearId ?? ""),
   ]);
-
-  void academicYear;
 
   // Fee collected this academic year
   const { data: feePayments } = await supabase
@@ -96,13 +100,15 @@ export default async function AdminDashboard() {
 
   // Students by class
   const { data: classStudents } = await supabase
-    .from("student_profiles")
-    .select("class_id, classes(name, order)")
-    .eq("school_id", schoolId!);
+    .from("student_enrollments")
+    .select("class_id, class:classes(name, order)")
+    .eq("school_id", schoolId!)
+    .eq("academic_year_id", academicYearId ?? "")
+    .eq("is_active", true);
 
   const classMap = new Map<string, { name: string; order: number; count: number }>();
   for (const s of classStudents ?? []) {
-    const cls = s.classes as unknown as { name: string; order: number } | null;
+    const cls = s.class as unknown as { name: string; order: number } | null;
     if (!cls) continue;
     const key = s.class_id as string;
     if (!classMap.has(key)) classMap.set(key, { name: cls.name, order: cls.order, count: 0 });
@@ -129,7 +135,7 @@ export default async function AdminDashboard() {
   const stats: { label: string; value: string | number; icon: LucideIcon; iconBg: string; iconColor: string }[] = [
     { label: "Students",     value: studentCount ?? 0,                                             icon: GraduationCap, iconBg: "bg-emerald-50", iconColor: "text-emerald-600" },
     { label: "Teachers",     value: teacherCount ?? 0,                                             icon: Users,         iconBg: "bg-indigo-50",  iconColor: "text-indigo-600"  },
-    { label: "Classes",      value: classCount ?? 0,                                               icon: BookOpen,      iconBg: "bg-violet-50",  iconColor: "text-violet-600"  },
+    { label: "Classes",      value: sectionCount ?? 0,                                             icon: BookOpen,      iconBg: "bg-violet-50",  iconColor: "text-violet-600"  },
     { label: "Fee Collected", value: `₹${(totalCollected / 100000).toFixed(1)}L`,                 icon: IndianRupee,   iconBg: "bg-amber-50",   iconColor: "text-amber-600"   },
   ];
 
