@@ -138,13 +138,12 @@ export async function middleware(request: NextRequest) {
         .select("id")
         .eq("school_id", schoolId)
         .eq("status", "active")
-        .single();
+        .maybeSingle();
       academicYearId = activeYear?.id ?? null;
     }
 
     if (academicYearId) {
       request.headers.set("x-academic-year-id", academicYearId);
-      response = NextResponse.next({ request });
       response.headers.set("x-academic-year-id", academicYearId);
     }
   }

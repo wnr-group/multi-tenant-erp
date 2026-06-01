@@ -12,6 +12,6 @@ export async function getAcademicYearId(schoolId: string): Promise<string | null
     .select("id")
     .eq("school_id", schoolId)
     .eq("status", "active")
-    .single();
+    .maybeSingle();
   return data?.id ?? null;
 }
