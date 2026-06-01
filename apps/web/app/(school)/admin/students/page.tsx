@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
+import { getAcademicYearId } from "@/lib/academic-year";
 import { PageHeader } from "@/components/page-header";
 import { AddStudentDialog } from "./add-student-dialog";
 import { BulkActions } from "./bulk-actions";
@@ -9,14 +10,16 @@ import { StudentsTable } from "./students-table";
 export default async function StudentsPage() {
   const supabase = await createServerSupabaseClient();
   const schoolId = (await getSchoolId())!;
+  const academicYearId = await getAcademicYearId(schoolId);
 
-  const [{ data: students }, { data: classes }] = await Promise.all([
+  const [{ data: enrollments }, { data: classes }] = await Promise.all([
     supabase
-      .from("student_profiles")
+      .from("student_enrollments")
       .select(
-        "id, full_name, email, roll_number, admission_number, parent_phone, class:classes(name), section:sections(name)"
+        "id, roll_number, is_active, student_profile:student_profiles(id, full_name, admission_number, email, parent_phone), class:classes(name), section:sections(name)"
       )
       .eq("school_id", schoolId)
+      .eq("academic_year_id", academicYearId ?? "")
       .limit(5000),
     supabase
       .from("classes")
@@ -25,18 +28,20 @@ export default async function StudentsPage() {
       .order("order"),
   ]);
 
-  const rows = (students ?? []).map((s) => {
-    const c = s.class as unknown as { name: string } | null;
-    const sec = s.section as unknown as { name: string } | null;
+  const rows = (enrollments ?? []).map((e) => {
+    const sp = e.student_profile as unknown as { id: string; full_name: string; admission_number: string; email: string; parent_phone: string } | null;
+    const c = e.class as unknown as { name: string } | null;
+    const sec = e.section as unknown as { name: string } | null;
     return {
-      id: s.id,
-      name: s.full_name ?? "",
-      email: s.email ?? "",
-      roll: s.roll_number ?? "",
-      admission_number: s.admission_number ?? "",
+      id: sp?.id ?? e.id,
+      enrollmentId: e.id,
+      name: sp?.full_name ?? "",
+      email: sp?.email ?? "",
+      roll: e.roll_number ?? "",
+      admission_number: sp?.admission_number ?? "",
       class_name: c?.name ?? "",
       section: sec?.name ?? "",
-      parent_phone: s.parent_phone ?? "",
+      parent_phone: sp?.parent_phone ?? "",
     };
   });
 
