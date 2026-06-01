@@ -4,15 +4,22 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ActionDialog } from "@/components/action-dialog";
 import { AddExamForm } from "./add-exam-form";
+import { NewYearWizard } from "./new-year-wizard";
 
 export function NewYearButton({ schoolId, activeYearId }: { schoolId: string; activeYearId: string | null }) {
-  void schoolId;
-  void activeYearId;
-  // Will be replaced with full wizard in Task 11
+  const [open, setOpen] = useState(false);
   return (
-    <button className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
-      + New Academic Year
-    </button>
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+      >
+        + New Academic Year
+      </button>
+      {open && (
+        <NewYearWizard schoolId={schoolId} activeYearId={activeYearId} onClose={() => setOpen(false)} />
+      )}
+    </>
   );
 }
 
