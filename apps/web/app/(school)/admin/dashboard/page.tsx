@@ -10,6 +10,7 @@ import { StudentsByClassChart } from "./students-by-class-chart";
 import type { FeeMonth } from "./fee-collection-chart";
 import type { AttendanceData } from "./attendance-chart";
 import type { ClassCount } from "./students-by-class-chart";
+import { PostOnboardingBanner } from "./post-onboarding-banner";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -141,6 +142,7 @@ export default async function AdminDashboard() {
 
   return (
     <div className="space-y-6">
+      <PostOnboardingBanner />
       <h1 className="text-2xl font-semibold text-foreground">School Overview</h1>
 
       {/* Row 1 — Stat Cards */}

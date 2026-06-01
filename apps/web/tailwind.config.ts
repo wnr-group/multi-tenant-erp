@@ -55,9 +55,14 @@ const config: Config = {
           "0%": { opacity: "0", transform: "translateY(12px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
+        grow: {
+          "0%": { width: "0%" },
+          "100%": { width: "100%" },
+        },
       },
       animation: {
         "fade-in-up": "fade-in-up 0.4s ease-out forwards",
+        grow: "grow 2s linear forwards",
       },
     },
   },
