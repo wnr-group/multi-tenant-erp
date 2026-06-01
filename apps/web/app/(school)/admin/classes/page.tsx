@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
+import { getAcademicYearId } from "@/lib/academic-year";
 import { PageHeader } from "@/components/page-header";
 import { AddClassDialog, AddSectionDialog } from "./class-dialogs";
 import { ClassesDataTable, SectionsDataTable } from "./classes-table";
@@ -8,18 +9,21 @@ import { ClassesQuickSetup } from "./classes-quick-setup";
 export default async function ClassesPage() {
   const supabase = await createServerSupabaseClient();
   const schoolId = (await getSchoolId())!;
+  const academicYearId = await getAcademicYearId(schoolId);
 
-  const { data: classes } = await supabase
-    .from("classes")
-    .select("id, name, \"order\"")
-    .eq("school_id", schoolId)
-    .order("order");
-
-  const { data: sections } = await supabase
-    .from("sections")
-    .select("id, name, class_id, class:classes(name)")
-    .eq("school_id", schoolId)
-    .order("name");
+  const [{ data: classes }, { data: sections }] = await Promise.all([
+    supabase
+      .from("classes")
+      .select("id, name, \"order\"")
+      .eq("school_id", schoolId)
+      .order("order"),
+    supabase
+      .from("sections")
+      .select("id, name, class_id, class:classes(name)")
+      .eq("school_id", schoolId)
+      .eq("academic_year_id", academicYearId ?? "")
+      .order("name"),
+  ]);
 
   const sectionRows = (sections ?? []).map((s) => {
     const cls = s.class as unknown as { name: string } | null;
@@ -28,7 +32,7 @@ export default async function ClassesPage() {
 
   return (
     <div className="space-y-10">
-      <ClassesQuickSetup schoolId={schoolId} />
+      <ClassesQuickSetup schoolId={schoolId} academicYearId={academicYearId ?? ""} />
 
       <div>
         <PageHeader

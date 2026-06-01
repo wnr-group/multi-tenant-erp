@@ -17,7 +17,7 @@ const PRESET_CLASSES = [
 
 const PRESET_SECTIONS = ["A", "B", "C", "D", "E"];
 
-export function ClassesQuickSetup({ schoolId }: { schoolId: string }) {
+export function ClassesQuickSetup({ schoolId, academicYearId, onAfterCreate }: { schoolId: string; academicYearId: string; onAfterCreate?: () => void }) {
   const router = useRouter();
   const [selectedClasses, setSelectedClasses] = useState<Set<string>>(new Set());
   const [customClasses, setCustomClasses] = useState<string[]>([]);
@@ -130,6 +130,7 @@ export function ClassesQuickSetup({ schoolId }: { schoolId: string }) {
         school_id: schoolId,
         class_id: cls.id,
         name: sectionName,
+        academic_year_id: academicYearId,
       }))
     );
 
@@ -153,6 +154,7 @@ export function ClassesQuickSetup({ schoolId }: { schoolId: string }) {
     setSelectedSections(new Set(["A", "B"]));
     setCustomSections([]);
     router.refresh();
+    onAfterCreate?.();
   }
 
   return (
