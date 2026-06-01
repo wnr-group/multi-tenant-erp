@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { GraduationCap, Check } from "lucide-react";
+import { Check } from "lucide-react";
+import Image from "next/image";
 import { StepAcademicYear } from "./steps/step-academic-year";
 import { StepClasses } from "./steps/step-classes";
 import { StepTeachers } from "./steps/step-teachers";
@@ -19,7 +20,9 @@ export function WizardShell({
   schoolId,
   schoolName,
   brandColor,
+  logoUrl,
   initialStep,
+  initialAcademicYearId,
   classCount,
   teacherCount,
   studentCount,
@@ -27,13 +30,15 @@ export function WizardShell({
   schoolId: string;
   schoolName: string;
   brandColor: string;
+  logoUrl: string | null;
   initialStep: number;
-  classCount: number;
-  teacherCount: number;
-  studentCount: number;
+  initialAcademicYearId?: string | null;
+  classCount?: number;
+  teacherCount?: number;
+  studentCount?: number;
 }) {
   const [step, setStep] = useState(initialStep);
-  const [academicYearId, setAcademicYearId] = useState<string | null>(null);
+  const [academicYearId, setAcademicYearId] = useState<string | null>(initialAcademicYearId ?? null);
   const [done, setDone] = useState(false);
 
   if (done) return <CompletionScreen schoolName={schoolName} brandColor={brandColor} />;
@@ -43,12 +48,22 @@ export function WizardShell({
       {/* Header */}
       <header className="flex h-14 items-center justify-between border-b bg-white px-8">
         <div className="flex items-center gap-2.5">
-          <div
-            className="flex h-8 w-8 items-center justify-center rounded-lg"
-            style={{ backgroundColor: brandColor }}
-          >
-            <GraduationCap className="h-[18px] w-[18px] text-white" />
-          </div>
+          {logoUrl ? (
+            <Image
+              src={logoUrl}
+              alt={schoolName}
+              width={32}
+              height={32}
+              className="rounded-lg object-cover"
+            />
+          ) : (
+            <div
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-sm font-bold text-white"
+              style={{ backgroundColor: brandColor }}
+            >
+              {schoolName.charAt(0).toUpperCase()}
+            </div>
+          )}
           <span className="text-sm font-semibold text-foreground">{schoolName}</span>
         </div>
       </header>

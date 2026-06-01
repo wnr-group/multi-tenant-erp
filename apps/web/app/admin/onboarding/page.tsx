@@ -11,30 +11,53 @@ export default async function OnboardingPage() {
   const schoolId = await getSchoolId();
   if (!schoolId) redirect("/login");
 
-  // If school already has years, redirect to dashboard
-  const { count } = await supabase
-    .from("academic_years")
-    .select("*", { count: "exact", head: true })
-    .eq("school_id", schoolId);
-
-  if ((count ?? 0) > 0) redirect("/admin/dashboard");
-
-  // Fetch school name for display
   const { data: school } = await supabase
     .from("schools")
-    .select("name, primary_color")
+    .select("name, primary_color, logo_url")
     .eq("id", schoolId)
     .single();
+
+  // Derive resume step from DB state
+  const [
+    { data: yearRow },
+    { count: classCount },
+    { count: teacherCount },
+    { count: studentCount },
+  ] = await Promise.all([
+    supabase
+      .from("academic_years")
+      .select("id")
+      .eq("school_id", schoolId)
+      .eq("status", "active")
+      .maybeSingle(),
+    supabase.from("classes").select("*", { count: "exact", head: true }).eq("school_id", schoolId),
+    supabase.from("teacher_profiles").select("*", { count: "exact", head: true }).eq("school_id", schoolId),
+    supabase.from("student_profiles").select("*", { count: "exact", head: true }).eq("school_id", schoolId),
+  ]);
+
+  const hasYear = !!yearRow;
+  const hasClasses = (classCount ?? 0) > 0;
+  const hasTeachers = (teacherCount ?? 0) > 0;
+  const hasStudents = (studentCount ?? 0) > 0;
+
+  // All four done → school is fully set up, skip the wizard
+  if (hasYear && hasClasses && hasTeachers && hasStudents) {
+    redirect("/admin/dashboard");
+  }
+
+  let initialStep = 1;
+  if (hasYear && !hasClasses) initialStep = 2;
+  else if (hasYear && hasClasses && !hasTeachers) initialStep = 3;
+  else if (hasYear && hasClasses && hasTeachers && !hasStudents) initialStep = 4;
 
   return (
     <WizardShell
       schoolId={schoolId}
       schoolName={school?.name ?? "Your School"}
       brandColor={school?.primary_color ?? "#4f46e5"}
-      initialStep={1}
-      classCount={0}
-      teacherCount={0}
-      studentCount={0}
+      logoUrl={school?.logo_url ?? null}
+      initialStep={initialStep}
+      initialAcademicYearId={yearRow?.id ?? null}
     />
   );
 }

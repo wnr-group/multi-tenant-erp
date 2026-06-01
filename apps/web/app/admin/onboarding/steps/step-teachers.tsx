@@ -39,7 +39,7 @@ export function StepTeachers({
 
   async function handleSave() {
     const valid = rows.filter((r) => r.fullName.trim() && r.phone.trim().length === 10);
-    if (valid.length === 0) { toast.error("Add at least one teacher with name and 10-digit phone"); return; }
+    if (valid.length === 0) { onComplete(); return; }
     setLoading(true);
     const res = await fetch("/api/onboarding/create-teachers", {
       method: "POST",
