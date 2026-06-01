@@ -249,6 +249,12 @@ export default async function SchoolLayout({
           }
         />
         <main className="flex-1 overflow-y-auto p-8">
+          {years.find((y) => y.id === currentYearId)?.status === "draft" && (
+            <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              <strong>Draft year:</strong> You are configuring a year that is not yet active. Changes here will not affect the live school until you activate this year from the{" "}
+              <a href="/admin/academics" className="underline">Academics page</a>.
+            </div>
+          )}
           {children}
         </main>
       </div>
