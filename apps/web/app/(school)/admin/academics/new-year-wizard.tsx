@@ -140,21 +140,26 @@ export function NewYearWizard({ schoolId, activeYearId, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="relative w-full max-w-2xl rounded-xl bg-white p-8 shadow-xl">
-        <button onClick={onClose} className="absolute right-4 top-4 rounded p-1 hover:bg-muted">
-          <X className="h-4 w-4" />
-        </button>
-
-        <div className="mb-6 flex items-center gap-2 text-sm">
-          {["Create Year", "Review Sections", "Review Fees"].map((label, i) => (
-            <div key={label} className="flex items-center gap-2">
-              {i > 0 && <span className="text-muted-foreground">→</span>}
-              <span className={`font-medium ${step === i + 1 ? "text-indigo-600" : step > i + 1 ? "text-emerald-600" : "text-muted-foreground"}`}>
-                {step > i + 1 ? "✓ " : ""}{label}
-              </span>
-            </div>
-          ))}
+      <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-xl">
+        {/* Fixed header — always visible */}
+        <div className="shrink-0 border-b px-8 pb-4 pt-6">
+          <button onClick={onClose} className="absolute right-4 top-4 rounded p-1 hover:bg-muted">
+            <X className="h-4 w-4" />
+          </button>
+          <div className="flex items-center gap-2 text-sm">
+            {["Create Year", "Review Sections", "Review Fees"].map((label, i) => (
+              <div key={label} className="flex items-center gap-2">
+                {i > 0 && <span className="text-muted-foreground">→</span>}
+                <span className={`font-medium ${step === i + 1 ? "text-indigo-600" : step > i + 1 ? "text-emerald-600" : "text-muted-foreground"}`}>
+                  {step > i + 1 ? "✓ " : ""}{label}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
+
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto px-8 py-6">
 
         {step === 1 && (
           <div className="space-y-4">
@@ -254,6 +259,8 @@ export function NewYearWizard({ schoolId, activeYearId, onClose }: Props) {
             </div>
           </div>
         )}
+
+        </div>{/* end scrollable body */}
       </div>
     </div>
   );
