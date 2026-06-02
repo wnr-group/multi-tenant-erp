@@ -4,6 +4,7 @@ import { getSchoolId } from "@/lib/school";
 
 interface StudentInput {
   fullName: string;
+  parentPhone: string;
   classId: string;
   sectionId: string;
   academicYearId: string;
@@ -61,6 +62,7 @@ export async function POST(request: NextRequest) {
       profile_id: userId,
       school_id: schoolId,
       admission_number: `ADM-${uid.slice(0, 8).toUpperCase()}`,
+      parent_phone: s.parentPhone || null,
     }).select("id").single();
 
     if (spErr || !sp) {

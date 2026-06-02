@@ -17,6 +17,7 @@ interface StudentRow {
   roll: string;
   class_name: string;
   section: string;
+  parent_phone: string;
 }
 
 interface ClassOption {
@@ -39,6 +40,7 @@ export function StudentsTable({
         { header: "Roll No.", accessor: "roll" },
         { header: "Class", accessor: "class_name" },
         { header: "Section", accessor: "section" },
+        { header: "Parent Phone", accessor: "parent_phone" },
       ]}
       searchKeys={["name", "roll"]}
       searchPlaceholder="Search by name or roll number…"

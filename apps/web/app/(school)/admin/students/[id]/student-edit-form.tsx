@@ -20,6 +20,7 @@ interface Props {
   initialEmail: string;
   initialRoll: string;
   initialAdmission: string;
+  initialParentPhone: string;
   initialClassId: string;
   initialSectionId: string;
   classes: ClassOption[];
@@ -33,6 +34,7 @@ export function StudentEditForm({
   initialEmail,
   initialRoll,
   initialAdmission,
+  initialParentPhone,
   initialClassId,
   initialSectionId,
   classes,
@@ -42,6 +44,7 @@ export function StudentEditForm({
   const [email, setEmail] = useState(initialEmail);
   const [roll, setRoll] = useState(initialRoll);
   const [admission, setAdmission] = useState(initialAdmission);
+  const [parentPhone, setParentPhone] = useState(initialParentPhone);
   const [classId, setClassId] = useState(initialClassId);
   const [sectionId, setSectionId] = useState(initialSectionId);
   const [sections, setSections] = useState<SectionOption[]>([]);
@@ -80,10 +83,10 @@ export function StudentEditForm({
         if (profileErr) { toast.error(profileErr.message); return; }
       }
 
-      // Update admission number on student_profiles
+      // Update admission number and parent phone on student_profiles
       const { error: spErr } = await supabase
         .from("student_profiles")
-        .update({ admission_number: admission || null })
+        .update({ admission_number: admission || null, parent_phone: parentPhone || null })
         .eq("id", studentId);
       if (spErr) { toast.error(spErr.message); return; }
 
@@ -113,6 +116,7 @@ export function StudentEditForm({
       <div><Label>Email</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
       <div><Label>Roll Number</Label><Input value={roll} onChange={(e) => setRoll(e.target.value)} /></div>
       <div><Label>Admission Number</Label><Input value={admission} onChange={(e) => setAdmission(e.target.value)} /></div>
+      <div className="col-span-2"><Label>Parent Phone *</Label><Input type="tel" value={parentPhone} onChange={(e) => setParentPhone(e.target.value)} placeholder="+91 98765 43210" /></div>
       <div>
         <Label>Class</Label>
         <NativeSelect

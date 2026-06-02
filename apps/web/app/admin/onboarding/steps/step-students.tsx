@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 
 interface StudentRow {
   fullName: string;
+  parentPhone: string;
   classId: string;
   sectionId: string;
 }
@@ -37,7 +38,7 @@ export function StepStudents({
   onComplete: () => void;
   onSkip: () => void;
 }) {
-  const [rows, setRows] = useState<StudentRow[]>([{ fullName: "", classId: "", sectionId: "" }]);
+  const [rows, setRows] = useState<StudentRow[]>([{ fullName: "", parentPhone: "", classId: "", sectionId: "" }]);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [sections, setSections] = useState<SectionOption[]>([]);
   const [loading, setLoading] = useState(false);
@@ -55,7 +56,7 @@ export function StepStudents({
       if ((cls ?? []).length === 1) {
         const firstClass = cls![0];
         const firstSection = mapped.find((s) => s.classId === firstClass.id);
-        setRows([{ fullName: "", classId: firstClass.id, sectionId: firstSection?.id ?? "" }]);
+        setRows([{ fullName: "", parentPhone: "", classId: firstClass.id, sectionId: firstSection?.id ?? "" }]);
       }
     }).catch(() => toast.error("Failed to load classes. Please refresh."));
   }, [schoolId, academicYearId]);
@@ -73,7 +74,7 @@ export function StepStudents({
 
   function addRow() {
     const last = rows[rows.length - 1];
-    setRows((prev) => [...prev, { fullName: "", classId: last?.classId ?? "", sectionId: last?.sectionId ?? "" }]);
+    setRows((prev) => [...prev, { fullName: "", parentPhone: "", classId: last?.classId ?? "", sectionId: last?.sectionId ?? "" }]);
   }
 
   function removeRow(index: number) {
@@ -81,9 +82,9 @@ export function StepStudents({
   }
 
   async function handleSave() {
-    const valid = rows.filter((r) => r.fullName.trim() && r.classId && r.sectionId);
+    const valid = rows.filter((r) => r.fullName.trim() && r.parentPhone.trim() && r.classId && r.sectionId);
     if (valid.length === 0) {
-      toast.error("Add at least one student with name, class, and section");
+      toast.error("Add at least one student with name, phone, class, and section");
       return;
     }
     setLoading(true);
@@ -126,6 +127,13 @@ export function StepStudents({
                     value={row.fullName}
                     onChange={(e) => updateRow(i, "fullName", e.target.value)}
                     className="flex-1"
+                  />
+                  <Input
+                    placeholder="Parent phone"
+                    type="tel"
+                    value={row.parentPhone}
+                    onChange={(e) => updateRow(i, "parentPhone", e.target.value)}
+                    className="w-36"
                   />
                   <select
                     value={row.classId}

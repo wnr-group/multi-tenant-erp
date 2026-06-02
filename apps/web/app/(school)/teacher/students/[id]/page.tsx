@@ -36,7 +36,7 @@ export default async function TeacherStudentDetailPage({
   const [{ data: student }, { data: classes }] = await Promise.all([
     supabase
       .from("student_profiles")
-      .select("id, full_name, email, admission_number, profile:profiles!profile_id(full_name, email, avatar_url)")
+      .select("id, full_name, email, admission_number, parent_phone, profile:profiles!profile_id(full_name, email, avatar_url)")
       .eq("id", id)
       .single(),
     supabase
@@ -59,6 +59,7 @@ export default async function TeacherStudentDetailPage({
   const profile = student.profile as unknown as { full_name: string; email: string; avatar_url: string | null } | null;
   const displayName = profile?.full_name ?? (student as unknown as { full_name: string | null }).full_name ?? "Student";
   const displayEmail = profile?.email ?? (student as unknown as { email: string | null }).email ?? "";
+  const displayParentPhone = (student as unknown as { parent_phone: string | null }).parent_phone ?? "";
   const cls = enrollment?.class as unknown as { name: string } | null;
   const sec = enrollment?.section as unknown as { name: string } | null;
 
@@ -109,6 +110,7 @@ export default async function TeacherStudentDetailPage({
           schoolId={schoolId}
           initialName={displayName !== "Student" ? displayName : ""}
           initialEmail={displayEmail}
+          initialParentPhone={displayParentPhone}
           initialRoll={enrollment?.roll_number ?? ""}
           initialAdmission={student.admission_number ?? ""}
           initialClassId={enrollment?.class_id ?? ""}
