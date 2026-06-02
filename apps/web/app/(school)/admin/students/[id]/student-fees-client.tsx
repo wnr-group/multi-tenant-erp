@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase";
+import { toast } from "sonner";
+import { Plus } from "lucide-react";
 import { FeesPieChart } from "./student-fees-pie-chart";
 
 interface LineItem {
@@ -36,6 +39,11 @@ interface Props {
   studentName: string;
 }
 
+const PAYMENT_METHODS = ["cash", "upi", "bank_transfer", "cheque"] as const;
+const METHOD_LABELS: Record<string, string> = {
+  cash: "Cash", upi: "UPI", bank_transfer: "Bank Transfer", cheque: "Cheque",
+};
+
 function StatusBadge({ status }: { status: string }) {
   const cls =
     status === "paid" ? "bg-emerald-100 text-emerald-800" :
@@ -44,59 +52,137 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${cls}`}>{status}</span>;
 }
 
-export function StudentFeesClient({ lineItems, payments, schoolId: _schoolId, studentId, studentName: _studentName }: Props) {
+function InlineFormRow({ colSpan, color, title, children }: {
+  colSpan: number; color: string; title: string; children: React.ReactNode;
+}) {
+  return (
+    <tr>
+      <td colSpan={colSpan} className={`px-6 py-4 ${color}`}>
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-current opacity-70">{title}</p>
+        {children}
+      </td>
+    </tr>
+  );
+}
+
+export function StudentFeesClient({ lineItems, payments, schoolId, studentId }: Props) {
   const router = useRouter();
-  const [selectedLineItem, setSelectedLineItem] = useState<LineItem | null>(null);
-  const [selectedPayment, setSelectedPayment] = useState<PaymentRecord | null>(null);
+
+  // Add Fee form
+  const [addingFee, setAddingFee] = useState(false);
+  const [feeForm, setFeeForm] = useState({ fee_type: "", total_amount: "", due_date: "" });
+  const [feeLoading, setFeeLoading] = useState(false);
+
+  // Record Payment form (per line item)
   const [recordingFor, setRecordingFor] = useState<LineItem | null>(null);
-  const [offlineForm, setOfflineForm] = useState({
-    amount: "",
-    payment_method: "cash",
-    transaction_id: "",
-    notes: "",
+  const [payForm, setPayForm] = useState({ amount: "", payment_method: "cash", transaction_id: "", notes: "" });
+  const [payLoading, setPayLoading] = useState(false);
+
+  // Add standalone Payment form
+  const [addingPayment, setAddingPayment] = useState(false);
+  const [standaloneForm, setStandaloneForm] = useState({
+    amount: "", payment_method: "cash", transaction_id: "", notes: "",
+    allocations: {} as Record<string, string>, // line_item_id → amount string
   });
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState("");
+  const [standaloneLoading, setStandaloneLoading] = useState(false);
+
+  // Detail expansions
+  const [expandedLi, setExpandedLi] = useState<string | null>(null);
+  const [expandedPay, setExpandedPay] = useState<string | null>(null);
 
   const totalDue = lineItems.reduce((s, li) => s + li.total_amount, 0);
   const totalPaid = lineItems.reduce((s, li) => s + li.amount_paid, 0);
   const outstanding = Math.max(0, totalDue - totalPaid);
 
-  async function handleRecordOffline(lineItem: LineItem) {
-    setSaveError("");
-    const amountNum = parseFloat(offlineForm.amount);
-    if (isNaN(amountNum) || amountNum <= 0) { setSaveError("Enter a valid amount."); return; }
-    const pending = lineItem.total_amount - lineItem.amount_paid;
-    if (amountNum > pending) { setSaveError(`Amount cannot exceed outstanding ₹${pending.toLocaleString("en-IN")}.`); return; }
-
-    setSaving(true);
-    try {
-      const res = await fetch("/api/fees/record-offline-payment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          student_id: studentId,
-          payment_method: offlineForm.payment_method,
-          transaction_id: offlineForm.transaction_id || undefined,
-          notes: offlineForm.notes || undefined,
-          allocations: [{ line_item_id: lineItem.id, amount_applied: amountNum }],
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setSaveError(data.error ?? "Failed to record payment."); return; }
-      setRecordingFor(null);
-      setOfflineForm({ amount: "", payment_method: "cash", transaction_id: "", notes: "" });
-      router.refresh();
-    } catch {
-      setSaveError("Unexpected error.");
-    } finally {
-      setSaving(false);
-    }
+  // --- Add Fee ---
+  async function handleAddFee() {
+    const amount = parseFloat(feeForm.total_amount);
+    if (!feeForm.fee_type.trim()) { toast.error("Fee type is required."); return; }
+    if (isNaN(amount) || amount <= 0) { toast.error("Enter a valid amount."); return; }
+    setFeeLoading(true);
+    const supabase = createClient();
+    const { error } = await supabase.from("fee_line_items").insert({
+      school_id: schoolId,
+      student_id: studentId,
+      fee_type: feeForm.fee_type.trim(),
+      total_amount: amount,
+      due_date: feeForm.due_date || null,
+      status: "pending",
+    });
+    setFeeLoading(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Fee added.");
+    setFeeForm({ fee_type: "", total_amount: "", due_date: "" });
+    setAddingFee(false);
+    router.refresh();
   }
+
+  // --- Record Payment per line item ---
+  async function handleRecordPayment(li: LineItem) {
+    const amount = parseFloat(payForm.amount);
+    if (isNaN(amount) || amount <= 0) { toast.error("Enter a valid amount."); return; }
+    const pending = li.total_amount - li.amount_paid;
+    if (amount > pending) { toast.error(`Amount cannot exceed outstanding ₹${pending.toLocaleString("en-IN")}.`); return; }
+    setPayLoading(true);
+    const res = await fetch("/api/fees/record-offline-payment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        student_id: studentId,
+        payment_method: payForm.payment_method,
+        transaction_id: payForm.transaction_id || undefined,
+        notes: payForm.notes || undefined,
+        allocations: [{ line_item_id: li.id, amount_applied: amount }],
+      }),
+    });
+    setPayLoading(false);
+    const data = await res.json();
+    if (!res.ok) { toast.error(data.error ?? "Failed to record payment."); return; }
+    toast.success("Payment recorded.");
+    setRecordingFor(null);
+    setPayForm({ amount: "", payment_method: "cash", transaction_id: "", notes: "" });
+    router.refresh();
+  }
+
+  // --- Add standalone Payment ---
+  async function handleAddPayment() {
+    const total = parseFloat(standaloneForm.amount);
+    if (isNaN(total) || total <= 0) { toast.error("Enter a valid total amount."); return; }
+    const allocEntries = Object.entries(standaloneForm.allocations)
+      .map(([id, v]) => ({ line_item_id: id, amount_applied: parseFloat(v) }))
+      .filter((a) => !isNaN(a.amount_applied) && a.amount_applied > 0);
+    if (allocEntries.length === 0) { toast.error("Allocate the amount to at least one fee line item."); return; }
+    const allocTotal = allocEntries.reduce((s, a) => s + a.amount_applied, 0);
+    if (Math.abs(allocTotal - total) > 0.01) {
+      toast.error(`Allocated ₹${allocTotal.toLocaleString("en-IN")} must equal total ₹${total.toLocaleString("en-IN")}.`);
+      return;
+    }
+    setStandaloneLoading(true);
+    const res = await fetch("/api/fees/record-offline-payment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        student_id: studentId,
+        payment_method: standaloneForm.payment_method,
+        transaction_id: standaloneForm.transaction_id || undefined,
+        notes: standaloneForm.notes || undefined,
+        allocations: allocEntries,
+      }),
+    });
+    setStandaloneLoading(false);
+    const data = await res.json();
+    if (!res.ok) { toast.error(data.error ?? "Failed to record payment."); return; }
+    toast.success("Payment recorded.");
+    setAddingPayment(false);
+    setStandaloneForm({ amount: "", payment_method: "cash", transaction_id: "", notes: "", allocations: {} });
+    router.refresh();
+  }
+
+  const pendingLineItems = lineItems.filter((li) => li.status !== "paid");
 
   return (
     <div className="space-y-6">
-      {/* Summary + Pie */}
+      {/* Summary */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         {[
           { label: "Total Due", value: `₹${totalDue.toLocaleString("en-IN")}`, color: "text-foreground" },
@@ -111,9 +197,66 @@ export function StudentFeesClient({ lineItems, payments, schoolId: _schoolId, st
         <FeesPieChart totalPaid={totalPaid} outstanding={outstanding} />
       </div>
 
-      {/* Line Items Table */}
+      {/* Fee Line Items */}
       <div>
-        <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Fee Line Items</h3>
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Fee Line Items</h3>
+          <button
+            onClick={() => { setAddingFee(!addingFee); setFeeForm({ fee_type: "", total_amount: "", due_date: "" }); }}
+            className="flex items-center gap-1 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
+          >
+            <Plus className="h-3.5 w-3.5" /> Add Fee
+          </button>
+        </div>
+
+        {/* Add Fee inline form */}
+        {addingFee && (
+          <div className="mb-3 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-indigo-600">New Fee</p>
+            <div className="flex flex-wrap items-end gap-3">
+              <div>
+                <label className="text-xs text-muted-foreground">Fee Type *</label>
+                <input
+                  type="text"
+                  value={feeForm.fee_type}
+                  onChange={(e) => setFeeForm((f) => ({ ...f, fee_type: e.target.value }))}
+                  placeholder="e.g. Tuition, Transport…"
+                  className="mt-0.5 block w-44 rounded-md border border-input bg-white px-3 py-1.5 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Amount (₹) *</label>
+                <input
+                  type="number" min={1}
+                  value={feeForm.total_amount}
+                  onChange={(e) => setFeeForm((f) => ({ ...f, total_amount: e.target.value }))}
+                  placeholder="0"
+                  className="mt-0.5 block w-28 rounded-md border border-input bg-white px-3 py-1.5 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Due Date</label>
+                <input
+                  type="date"
+                  value={feeForm.due_date}
+                  onChange={(e) => setFeeForm((f) => ({ ...f, due_date: e.target.value }))}
+                  className="mt-0.5 block rounded-md border border-input bg-white px-3 py-1.5 text-sm"
+                />
+              </div>
+              <button
+                onClick={handleAddFee}
+                disabled={feeLoading}
+                className="rounded-md bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {feeLoading ? "Saving…" : "Save"}
+              </button>
+              <button onClick={() => setAddingFee(false)} className="text-sm text-muted-foreground hover:text-foreground">
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="overflow-x-auto rounded-lg border bg-card shadow-sm">
           <table className="min-w-full divide-y divide-border text-sm">
             <thead className="bg-muted/50">
@@ -132,7 +275,7 @@ export function StudentFeesClient({ lineItems, payments, schoolId: _schoolId, st
                     <td className="px-4 py-3">
                       <button
                         className="font-medium text-indigo-600 hover:underline"
-                        onClick={() => setSelectedLineItem(selectedLineItem?.id === li.id ? null : li)}
+                        onClick={() => setExpandedLi(expandedLi === li.id ? null : li.id)}
                       >
                         {li.fee_type}
                       </button>
@@ -145,7 +288,10 @@ export function StudentFeesClient({ lineItems, payments, schoolId: _schoolId, st
                     <td className="px-4 py-3">
                       {li.status !== "paid" && (
                         <button
-                          onClick={() => { setRecordingFor(recordingFor?.id === li.id ? null : li); setSaveError(""); }}
+                          onClick={() => {
+                            setRecordingFor(recordingFor?.id === li.id ? null : li);
+                            setPayForm({ amount: "", payment_method: "cash", transaction_id: "", notes: "" });
+                          }}
                           className="text-sm font-medium text-blue-600 hover:underline"
                         >
                           Record Payment
@@ -154,88 +300,74 @@ export function StudentFeesClient({ lineItems, payments, schoolId: _schoolId, st
                     </td>
                   </tr>
 
-                  {selectedLineItem?.id === li.id && (
-                    <tr key={`${li.id}-detail`}>
-                      <td colSpan={7} className="bg-indigo-50 px-6 py-4">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-indigo-600 mb-2">Line Item Details</p>
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div><span className="text-muted-foreground">Fee Type:</span> {li.fee_type}</div>
-                          <div><span className="text-muted-foreground">Total Amount:</span> ₹{li.total_amount.toLocaleString("en-IN")}</div>
-                          <div><span className="text-muted-foreground">Amount Paid:</span> ₹{li.amount_paid.toLocaleString("en-IN")}</div>
-                          <div><span className="text-muted-foreground">Pending:</span> ₹{(li.total_amount - li.amount_paid).toLocaleString("en-IN")}</div>
-                          <div><span className="text-muted-foreground">Due Date:</span> {li.due_date ?? "—"}</div>
-                          <div><span className="text-muted-foreground">Status:</span> {li.status}</div>
-                          <div><span className="text-muted-foreground">Added By:</span> {li.added_by}</div>
-                          <div><span className="text-muted-foreground">Created:</span> {new Date(li.created_at).toLocaleDateString("en-IN")}</div>
-                        </div>
-                      </td>
-                    </tr>
+                  {expandedLi === li.id && (
+                    <InlineFormRow key={`${li.id}-detail`} colSpan={7} color="bg-indigo-50" title="Line Item Details">
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div><span className="text-muted-foreground">Fee Type:</span> {li.fee_type}</div>
+                        <div><span className="text-muted-foreground">Total:</span> ₹{li.total_amount.toLocaleString("en-IN")}</div>
+                        <div><span className="text-muted-foreground">Paid:</span> ₹{li.amount_paid.toLocaleString("en-IN")}</div>
+                        <div><span className="text-muted-foreground">Pending:</span> ₹{(li.total_amount - li.amount_paid).toLocaleString("en-IN")}</div>
+                        <div><span className="text-muted-foreground">Due Date:</span> {li.due_date ?? "—"}</div>
+                        <div><span className="text-muted-foreground">Added By:</span> {li.added_by}</div>
+                      </div>
+                    </InlineFormRow>
                   )}
 
                   {recordingFor?.id === li.id && (
-                    <tr key={`${li.id}-record`}>
-                      <td colSpan={7} className="bg-blue-50 px-6 py-4">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-blue-600 mb-3">Record Offline Payment</p>
-                        <div className="flex flex-wrap items-end gap-3">
-                          <div>
-                            <label className="text-xs text-muted-foreground">Amount (₹)</label>
-                            <input
-                              type="number" min={1} max={li.total_amount - li.amount_paid}
-                              value={offlineForm.amount}
-                              onChange={(e) => setOfflineForm((f) => ({ ...f, amount: e.target.value }))}
-                              className="mt-0.5 block w-28 rounded-md border border-input bg-white px-3 py-1.5 text-sm"
-                              placeholder={String(li.total_amount - li.amount_paid)}
-                            />
-                          </div>
-                          <div>
-                            <label className="text-xs text-muted-foreground">Method</label>
-                            <select
-                              value={offlineForm.payment_method}
-                              onChange={(e) => setOfflineForm((f) => ({ ...f, payment_method: e.target.value }))}
-                              className="mt-0.5 block rounded-md border border-input bg-white px-3 py-1.5 text-sm"
-                            >
-                              {["cash", "upi", "bank_transfer", "cheque"].map((m) => (
-                                <option key={m} value={m}>{m.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase())}</option>
-                              ))}
-                            </select>
-                          </div>
-                          <div>
-                            <label className="text-xs text-muted-foreground">Transaction / Receipt ID</label>
-                            <input
-                              type="text"
-                              value={offlineForm.transaction_id}
-                              onChange={(e) => setOfflineForm((f) => ({ ...f, transaction_id: e.target.value }))}
-                              className="mt-0.5 block w-36 rounded-md border border-input bg-white px-3 py-1.5 text-sm"
-                              placeholder="Optional"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-xs text-muted-foreground">Notes</label>
-                            <input
-                              type="text"
-                              value={offlineForm.notes}
-                              onChange={(e) => setOfflineForm((f) => ({ ...f, notes: e.target.value }))}
-                              className="mt-0.5 block w-36 rounded-md border border-input bg-white px-3 py-1.5 text-sm"
-                              placeholder="Optional"
-                            />
-                          </div>
-                          <button
-                            onClick={() => handleRecordOffline(li)}
-                            disabled={saving}
-                            className="rounded-md bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-                          >
-                            {saving ? "Saving…" : "Save"}
-                          </button>
-                          <button
-                            onClick={() => setRecordingFor(null)}
-                            className="text-sm text-muted-foreground hover:text-foreground"
-                          >
-                            Cancel
-                          </button>
+                    <InlineFormRow key={`${li.id}-record`} colSpan={7} color="bg-blue-50" title="Record Payment">
+                      <div className="flex flex-wrap items-end gap-3">
+                        <div>
+                          <label className="text-xs text-muted-foreground">Amount (₹) *</label>
+                          <input
+                            type="number" min={1} max={li.total_amount - li.amount_paid}
+                            value={payForm.amount}
+                            onChange={(e) => setPayForm((f) => ({ ...f, amount: e.target.value }))}
+                            placeholder={String(li.total_amount - li.amount_paid)}
+                            className="mt-0.5 block w-28 rounded-md border border-input bg-white px-3 py-1.5 text-sm"
+                          />
                         </div>
-                        {saveError && <p className="mt-2 text-xs text-red-600">{saveError}</p>}
-                      </td>
-                    </tr>
+                        <div>
+                          <label className="text-xs text-muted-foreground">Method</label>
+                          <select
+                            value={payForm.payment_method}
+                            onChange={(e) => setPayForm((f) => ({ ...f, payment_method: e.target.value }))}
+                            className="mt-0.5 block rounded-md border border-input bg-white px-3 py-1.5 text-sm"
+                          >
+                            {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{METHOD_LABELS[m]}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground">Receipt / Transaction ID</label>
+                          <input
+                            type="text"
+                            value={payForm.transaction_id}
+                            onChange={(e) => setPayForm((f) => ({ ...f, transaction_id: e.target.value }))}
+                            placeholder="Optional"
+                            className="mt-0.5 block w-36 rounded-md border border-input bg-white px-3 py-1.5 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground">Notes</label>
+                          <input
+                            type="text"
+                            value={payForm.notes}
+                            onChange={(e) => setPayForm((f) => ({ ...f, notes: e.target.value }))}
+                            placeholder="Optional"
+                            className="mt-0.5 block w-36 rounded-md border border-input bg-white px-3 py-1.5 text-sm"
+                          />
+                        </div>
+                        <button
+                          onClick={() => handleRecordPayment(li)}
+                          disabled={payLoading}
+                          className="rounded-md bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          {payLoading ? "Saving…" : "Save"}
+                        </button>
+                        <button onClick={() => setRecordingFor(null)} className="text-sm text-muted-foreground hover:text-foreground">
+                          Cancel
+                        </button>
+                      </div>
+                    </InlineFormRow>
                   )}
                 </>
               ))}
@@ -244,9 +376,106 @@ export function StudentFeesClient({ lineItems, payments, schoolId: _schoolId, st
         </div>
       </div>
 
-      {/* Payment Transactions Table */}
+      {/* Payment Transactions */}
       <div>
-        <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Payment Transactions</h3>
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Payment Transactions</h3>
+          {pendingLineItems.length > 0 && (
+            <button
+              onClick={() => { setAddingPayment(!addingPayment); setStandaloneForm({ amount: "", payment_method: "cash", transaction_id: "", notes: "", allocations: {} }); }}
+              className="flex items-center gap-1 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"
+            >
+              <Plus className="h-3.5 w-3.5" /> Add Payment
+            </button>
+          )}
+        </div>
+
+        {/* Standalone Add Payment form */}
+        {addingPayment && (
+          <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-emerald-700">New Payment</p>
+            <div className="flex flex-wrap items-end gap-3 mb-4">
+              <div>
+                <label className="text-xs text-muted-foreground">Total Amount (₹) *</label>
+                <input
+                  type="number" min={1}
+                  value={standaloneForm.amount}
+                  onChange={(e) => setStandaloneForm((f) => ({ ...f, amount: e.target.value }))}
+                  placeholder="0"
+                  className="mt-0.5 block w-28 rounded-md border border-input bg-white px-3 py-1.5 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Method</label>
+                <select
+                  value={standaloneForm.payment_method}
+                  onChange={(e) => setStandaloneForm((f) => ({ ...f, payment_method: e.target.value }))}
+                  className="mt-0.5 block rounded-md border border-input bg-white px-3 py-1.5 text-sm"
+                >
+                  {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{METHOD_LABELS[m]}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Receipt / Transaction ID</label>
+                <input
+                  type="text"
+                  value={standaloneForm.transaction_id}
+                  onChange={(e) => setStandaloneForm((f) => ({ ...f, transaction_id: e.target.value }))}
+                  placeholder="Optional"
+                  className="mt-0.5 block w-36 rounded-md border border-input bg-white px-3 py-1.5 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Notes</label>
+                <input
+                  type="text"
+                  value={standaloneForm.notes}
+                  onChange={(e) => setStandaloneForm((f) => ({ ...f, notes: e.target.value }))}
+                  placeholder="Optional"
+                  className="mt-0.5 block w-36 rounded-md border border-input bg-white px-3 py-1.5 text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Allocate per pending line item */}
+            <p className="mb-2 text-xs font-medium text-muted-foreground">Allocate to fee line items *</p>
+            <div className="space-y-2 mb-4">
+              {pendingLineItems.map((li) => {
+                const pending = li.total_amount - li.amount_paid;
+                return (
+                  <div key={li.id} className="flex items-center gap-3">
+                    <span className="w-44 truncate text-sm">{li.fee_type}</span>
+                    <span className="text-xs text-muted-foreground">pending ₹{pending.toLocaleString("en-IN")}</span>
+                    <input
+                      type="number" min={0} max={pending}
+                      value={standaloneForm.allocations[li.id] ?? ""}
+                      onChange={(e) => setStandaloneForm((f) => ({
+                        ...f,
+                        allocations: { ...f.allocations, [li.id]: e.target.value },
+                      }))}
+                      placeholder="0"
+                      className="w-24 rounded-md border border-input bg-white px-3 py-1 text-sm"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleAddPayment}
+                disabled={standaloneLoading}
+                className="rounded-md bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {standaloneLoading ? "Saving…" : "Save Payment"}
+              </button>
+              <button onClick={() => setAddingPayment(false)} className="text-sm text-muted-foreground hover:text-foreground">
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="overflow-x-auto rounded-lg border bg-card shadow-sm">
           <table className="min-w-full divide-y divide-border text-sm">
             <thead className="bg-muted/50">
@@ -264,7 +493,7 @@ export function StudentFeesClient({ lineItems, payments, schoolId: _schoolId, st
                   <tr key={p.id} className="hover:bg-muted/30">
                     <td className="px-4 py-3">{new Date(p.payment_date).toLocaleDateString("en-IN")}</td>
                     <td className="px-4 py-3 tabular-nums font-medium text-emerald-700">₹{p.total_amount.toLocaleString("en-IN")}</td>
-                    <td className="px-4 py-3 capitalize">{p.payment_method.replace("_", " ")}</td>
+                    <td className="px-4 py-3">{METHOD_LABELS[p.payment_method] ?? p.payment_method}</td>
                     <td className="px-4 py-3">
                       <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${p.mode === "online" ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-700"}`}>
                         {p.mode}
@@ -275,44 +504,41 @@ export function StudentFeesClient({ lineItems, payments, schoolId: _schoolId, st
                     <td className="px-4 py-3">
                       <button
                         className="text-sm font-medium text-indigo-600 hover:underline"
-                        onClick={() => setSelectedPayment(selectedPayment?.id === p.id ? null : p)}
+                        onClick={() => setExpandedPay(expandedPay === p.id ? null : p.id)}
                       >
                         Details
                       </button>
                     </td>
                   </tr>
 
-                  {selectedPayment?.id === p.id && (
-                    <tr key={`${p.id}-detail`}>
-                      <td colSpan={7} className="bg-indigo-50 px-6 py-4">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-indigo-600 mb-2">Payment Details</p>
-                        <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-                          <div><span className="text-muted-foreground">Date:</span> {new Date(p.payment_date).toLocaleString("en-IN")}</div>
-                          <div><span className="text-muted-foreground">Total Amount:</span> ₹{p.total_amount.toLocaleString("en-IN")}</div>
-                          <div><span className="text-muted-foreground">Method:</span> {p.payment_method.replace("_", " ")}</div>
-                          <div><span className="text-muted-foreground">Mode:</span> {p.mode}</div>
-                          <div><span className="text-muted-foreground">Paid By:</span> {p.paid_by}</div>
-                          <div><span className="text-muted-foreground">Transaction ID:</span> {p.transaction_id ?? "—"}</div>
-                          {p.razorpay_payment_id && (
-                            <div><span className="text-muted-foreground">Razorpay ID:</span> {p.razorpay_payment_id}</div>
-                          )}
-                          {p.notes && <div className="col-span-2"><span className="text-muted-foreground">Notes:</span> {p.notes}</div>}
-                        </div>
-                        {p.line_items_covered.length > 0 && (
-                          <>
-                            <p className="text-xs font-medium text-muted-foreground mb-1">Applied to:</p>
-                            <ul className="space-y-0.5">
-                              {p.line_items_covered.map((lic, i) => (
-                                <li key={i} className="text-sm flex justify-between max-w-xs">
-                                  <span>{lic.fee_type}</span>
-                                  <span className="font-medium text-emerald-700">₹{lic.amount_applied.toLocaleString("en-IN")}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </>
+                  {expandedPay === p.id && (
+                    <InlineFormRow key={`${p.id}-detail`} colSpan={7} color="bg-indigo-50" title="Payment Details">
+                      <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+                        <div><span className="text-muted-foreground">Date:</span> {new Date(p.payment_date).toLocaleString("en-IN")}</div>
+                        <div><span className="text-muted-foreground">Total Amount:</span> ₹{p.total_amount.toLocaleString("en-IN")}</div>
+                        <div><span className="text-muted-foreground">Method:</span> {METHOD_LABELS[p.payment_method] ?? p.payment_method}</div>
+                        <div><span className="text-muted-foreground">Mode:</span> {p.mode}</div>
+                        <div><span className="text-muted-foreground">Paid By:</span> {p.paid_by}</div>
+                        <div><span className="text-muted-foreground">Transaction ID:</span> {p.transaction_id ?? "—"}</div>
+                        {p.razorpay_payment_id && (
+                          <div><span className="text-muted-foreground">Razorpay ID:</span> {p.razorpay_payment_id}</div>
                         )}
-                      </td>
-                    </tr>
+                        {p.notes && <div className="col-span-2"><span className="text-muted-foreground">Notes:</span> {p.notes}</div>}
+                      </div>
+                      {p.line_items_covered.length > 0 && (
+                        <>
+                          <p className="mb-1 text-xs font-medium text-muted-foreground">Applied to:</p>
+                          <ul className="space-y-0.5">
+                            {p.line_items_covered.map((lic, i) => (
+                              <li key={i} className="flex max-w-xs justify-between text-sm">
+                                <span>{lic.fee_type}</span>
+                                <span className="font-medium text-emerald-700">₹{lic.amount_applied.toLocaleString("en-IN")}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </>
+                      )}
+                    </InlineFormRow>
                   )}
                 </>
               ))}
