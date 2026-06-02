@@ -69,14 +69,43 @@ export async function DELETE(
   if (error) return NextResponse.json({ error }, { status });
 
   const { roleId } = await params;
-
   const adminClient = await getAdminClient();
 
-  const { error: dbError } = await adminClient
+  // Resolve the auth user id from the role row
+  const { data: roleRow, error: roleErr } = await adminClient
     .from("user_roles")
-    .delete()
-    .eq("id", roleId);
+    .select("user_id")
+    .eq("id", roleId)
+    .single();
 
-  if (dbError) return NextResponse.json({ error: dbError.message }, { status: 400 });
+  if (roleErr || !roleRow) {
+    return NextResponse.json({ error: "Role not found" }, { status: 404 });
+  }
+
+  const userId = roleRow.user_id as string;
+
+  // Delete all records that reference this user with NOT NULL FKs.
+  // Records with nullable FKs are nulled out instead (school_gallery, feedback, audit_log).
+  await Promise.all([
+    // Operational records owned by the user (NOT NULL FK — must delete)
+    adminClient.from("timetable").delete().eq("teacher_id", userId),
+    adminClient.from("section_assignments").delete().eq("class_teacher_id", userId),
+    adminClient.from("attendance_records").delete().eq("marked_by", userId),
+    adminClient.from("homework").delete().eq("teacher_id", userId),
+    adminClient.from("exam_results").delete().eq("teacher_id", userId),
+    adminClient.from("discipline_records").delete().eq("recorded_by", userId),
+    adminClient.from("announcements").delete().eq("created_by", userId),
+    adminClient.from("feedback").delete().eq("from_user_id", userId),
+    // Nullable FK columns — null out rather than delete
+    adminClient.from("school_gallery").update({ uploaded_by: null }).eq("uploaded_by", userId),
+    adminClient.from("feedback").update({ to_user_id: null }).eq("to_user_id", userId),
+  ]);
+
+  // Delete the auth user — cascades to profiles and user_roles automatically
+  const { error: deleteErr } = await adminClient.auth.admin.deleteUser(userId);
+  if (deleteErr) {
+    return NextResponse.json({ error: deleteErr.message }, { status: 400 });
+  }
+
   return NextResponse.json({ success: true });
 }
