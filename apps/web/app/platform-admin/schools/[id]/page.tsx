@@ -35,7 +35,7 @@ export default async function SchoolDetailPage({
 
   const userIds = [...new Set((roleRows ?? []).map((r) => r.user_id))];
   const { data: profiles } = userIds.length > 0
-    ? await supabase.from("profiles").select("id, full_name, email").in("id", userIds)
+    ? await supabase.from("profiles").select("id, full_name, email, phone").in("id", userIds)
     : { data: [] };
 
   const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
@@ -47,6 +47,7 @@ export default async function SchoolDetailPage({
       roleId: r.id,
       full_name: profile?.full_name ?? "",
       email: profile?.email ?? "",
+      phone: profile?.phone ?? "",
       role: r.role,
       is_active: r.is_active,
     };

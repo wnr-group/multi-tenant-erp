@@ -13,6 +13,7 @@ export interface SchoolUser {
   roleId: string;
   full_name: string;
   email: string;
+  phone: string;
   role: string;
   is_active: boolean;
 }
@@ -120,6 +121,7 @@ export function UsersTab({ schoolId, users }: Props) {
             <tr className="border-b text-left text-gray-500">
               <th className="pb-2 font-medium">Name</th>
               <th className="pb-2 font-medium">Email</th>
+              <th className="pb-2 font-medium">Phone</th>
               <th className="pb-2 font-medium">Role</th>
               <th className="pb-2 font-medium">Status</th>
               <th className="pb-2 font-medium">Actions</th>
@@ -133,7 +135,8 @@ export function UsersTab({ schoolId, users }: Props) {
                   <td className="py-2.5 font-medium text-gray-900">
                     {user.full_name}
                   </td>
-                  <td className="py-2.5 text-gray-500">{user.email}</td>
+                  <td className="py-2.5 text-gray-500">{user.email || "—"}</td>
+                  <td className="py-2.5 text-gray-500">{user.phone || "—"}</td>
                   <td className="py-2.5 text-gray-700">
                     {roleLabel(user.role)}
                   </td>
