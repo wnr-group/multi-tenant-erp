@@ -14,16 +14,17 @@ interface SectionOption { id: string; name: string }
 
 export function AddStudentForm({
   schoolId,
+  academicYearId,
   classes,
   onSuccess,
 }: {
   schoolId: string;
+  academicYearId: string;
   classes: ClassOption[];
   onSuccess?: () => void;
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
   const [rollNumber, setRollNumber] = useState("");
   const [admissionNumber, setAdmissionNumber] = useState("");
   const [parentPhone, setParentPhone] = useState("");
@@ -33,40 +34,64 @@ export function AddStudentForm({
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!classId) return;
+    if (!classId || !academicYearId) return;
     const supabase = createClient();
     supabase
       .from("sections")
       .select("id, name")
       .eq("class_id", classId)
+      .eq("academic_year_id", academicYearId)
       .then(({ data, error }) => {
         if (!error) {
           setSections(data ?? []);
           setSectionId("");
         }
       });
-  }, [classId]);
+  }, [classId, academicYearId]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!parentPhone.trim()) {
+      toast.error("Parent phone is required.");
+      return;
+    }
     setLoading(true);
     try {
       const supabase = createClient();
-      const { error } = await supabase.from("student_profiles").insert({
+
+      const { data: sp, error: spErr } = await supabase
+        .from("student_profiles")
+        .insert({
+          school_id: schoolId,
+          full_name: name,
+          admission_number: admissionNumber || null,
+          parent_phone: parentPhone || null,
+        })
+        .select("id")
+        .single();
+
+      if (spErr || !sp) {
+        toast.error(spErr?.message ?? "Failed to create student.");
+        return;
+      }
+
+      const { error: enrollErr } = await supabase.from("student_enrollments").insert({
+        student_profile_id: sp.id,
+        academic_year_id: academicYearId,
         school_id: schoolId,
-        full_name: name,
-        email: email || null,
         class_id: classId || null,
         section_id: sectionId || null,
         roll_number: rollNumber || null,
-        admission_number: admissionNumber || null,
-        parent_phone: parentPhone || null,
+        is_active: true,
       });
-      if (error) {
-        toast.error(error.message);
+
+      if (enrollErr) {
+        toast.error(enrollErr.message);
+        await supabase.from("student_profiles").delete().eq("id", sp.id);
         return;
       }
-      setName(""); setEmail(""); setRollNumber(""); setAdmissionNumber("");
+
+      setName(""); setRollNumber(""); setAdmissionNumber("");
       setParentPhone(""); setClassId(""); setSectionId("");
       toast.success("Student added.");
       router.refresh();
@@ -79,19 +104,9 @@ export function AddStudentForm({
   return (
     <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
       <div><Label>Full Name *</Label><Input value={name} onChange={(e) => setName(e.target.value)} required /></div>
-      <div><Label>Email (optional)</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
+      <div><Label>Parent Phone *</Label><Input type="tel" value={parentPhone} onChange={(e) => setParentPhone(e.target.value)} placeholder="+91 98765 43210" required /></div>
       <div><Label>Roll Number</Label><Input value={rollNumber} onChange={(e) => setRollNumber(e.target.value)} /></div>
       <div><Label>Admission Number</Label><Input value={admissionNumber} onChange={(e) => setAdmissionNumber(e.target.value)} /></div>
-      <div className="col-span-2">
-        <Label>Parent Phone *</Label>
-        <Input
-          type="tel"
-          value={parentPhone}
-          onChange={(e) => setParentPhone(e.target.value)}
-          placeholder="+91 98765 43210"
-          required
-        />
-      </div>
       <div>
         <Label>Class</Label>
         <NativeSelect

@@ -38,38 +38,15 @@ export async function POST(request: NextRequest) {
 
   for (const s of students) {
     const uid = crypto.randomUUID();
-    const { data: authUser, error: authError } = await svc.auth.admin.createUser({
-      email: `student-${uid}@noreply.internal`,
-      user_metadata: { full_name: s.fullName },
-    });
-
-    if (authError || !authUser.user) { failed.push(s.fullName); continue; }
-
-    const userId = authUser.user.id;
-
-    const { error: profileErr } = await svc.from("profiles").update({
-      full_name: s.fullName,
-      school_id: schoolId,
-    }).eq("id", userId);
-
-    if (profileErr) {
-      failed.push(s.fullName);
-      await svc.auth.admin.deleteUser(userId);
-      continue;
-    }
 
     const { data: sp, error: spErr } = await svc.from("student_profiles").insert({
-      profile_id: userId,
       school_id: schoolId,
+      full_name: s.fullName,
       admission_number: `ADM-${uid.slice(0, 8).toUpperCase()}`,
       parent_phone: s.parentPhone || null,
     }).select("id").single();
 
-    if (spErr || !sp) {
-      failed.push(s.fullName);
-      await svc.auth.admin.deleteUser(userId);
-      continue;
-    }
+    if (spErr || !sp) { failed.push(s.fullName); continue; }
 
     const { error: enrollErr } = await svc.from("student_enrollments").insert({
       student_profile_id: sp.id,
@@ -82,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     if (enrollErr) {
       failed.push(s.fullName);
-      await svc.auth.admin.deleteUser(userId);
+      await svc.from("student_profiles").delete().eq("id", sp.id);
       continue;
     }
 

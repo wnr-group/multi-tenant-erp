@@ -65,7 +65,7 @@ export default async function StudentsPage() {
               App Not Installed
             </Link>
             <BulkActions students={rows} />
-            <AddStudentDialog schoolId={schoolId} classes={classes ?? []} />
+            <AddStudentDialog schoolId={schoolId} academicYearId={academicYearId ?? ""} classes={classes ?? []} />
           </div>
         }
         stats={[
