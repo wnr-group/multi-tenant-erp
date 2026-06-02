@@ -14,12 +14,12 @@ interface SectionOption { id: string; name: string }
 
 interface Props {
   studentId: string;
+  enrollmentId: string | null;
   schoolId: string;
   initialName: string;
   initialEmail: string;
   initialRoll: string;
   initialAdmission: string;
-  initialParentPhone: string;
   initialClassId: string;
   initialSectionId: string;
   classes: ClassOption[];
@@ -27,12 +27,12 @@ interface Props {
 
 export function StudentEditForm({
   studentId,
+  enrollmentId,
   schoolId,
   initialName,
   initialEmail,
   initialRoll,
   initialAdmission,
-  initialParentPhone,
   initialClassId,
   initialSectionId,
   classes,
@@ -42,7 +42,6 @@ export function StudentEditForm({
   const [email, setEmail] = useState(initialEmail);
   const [roll, setRoll] = useState(initialRoll);
   const [admission, setAdmission] = useState(initialAdmission);
-  const [parentPhone, setParentPhone] = useState(initialParentPhone);
   const [classId, setClassId] = useState(initialClassId);
   const [sectionId, setSectionId] = useState(initialSectionId);
   const [sections, setSections] = useState<SectionOption[]>([]);
@@ -57,7 +56,6 @@ export function StudentEditForm({
       .eq("class_id", classId)
       .then(({ data }) => {
         setSections(data ?? []);
-        setSectionId("");
       });
   }, [classId]);
 
@@ -66,19 +64,42 @@ export function StudentEditForm({
     setLoading(true);
     try {
       const supabase = createClient();
-      const { error } = await supabase
+
+      // Update name/email on profiles via the profile_id join
+      const { data: sp } = await supabase
         .from("student_profiles")
-        .update({
-          full_name: name,
-          email: email || null,
-          roll_number: roll || null,
-          admission_number: admission || null,
-          parent_phone: parentPhone || null,
-          class_id: classId || null,
-          section_id: sectionId || null,
-        })
+        .select("profile_id")
+        .eq("id", studentId)
+        .single();
+
+      if (sp?.profile_id) {
+        const { error: profileErr } = await supabase
+          .from("profiles")
+          .update({ full_name: name, email: email || undefined })
+          .eq("id", sp.profile_id);
+        if (profileErr) { toast.error(profileErr.message); return; }
+      }
+
+      // Update admission number on student_profiles
+      const { error: spErr } = await supabase
+        .from("student_profiles")
+        .update({ admission_number: admission || null })
         .eq("id", studentId);
-      if (error) { toast.error(error.message); return; }
+      if (spErr) { toast.error(spErr.message); return; }
+
+      // Update class/section/roll on the enrollment row
+      if (enrollmentId) {
+        const { error: enrErr } = await supabase
+          .from("student_enrollments")
+          .update({
+            roll_number: roll || null,
+            class_id: classId || null,
+            section_id: sectionId || null,
+          })
+          .eq("id", enrollmentId);
+        if (enrErr) { toast.error(enrErr.message); return; }
+      }
+
       toast.success("Student profile updated.");
       router.refresh();
     } finally {
@@ -92,16 +113,12 @@ export function StudentEditForm({
       <div><Label>Email</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
       <div><Label>Roll Number</Label><Input value={roll} onChange={(e) => setRoll(e.target.value)} /></div>
       <div><Label>Admission Number</Label><Input value={admission} onChange={(e) => setAdmission(e.target.value)} /></div>
-      <div className="col-span-2">
-        <Label>Parent Phone</Label>
-        <Input type="tel" value={parentPhone} onChange={(e) => setParentPhone(e.target.value)} placeholder="+91 98765 43210" />
-      </div>
       <div>
         <Label>Class</Label>
         <NativeSelect
           options={classes.map((c) => ({ value: c.id, label: c.name }))}
           value={classId}
-          onChange={(e) => setClassId(e.target.value)}
+          onChange={(e) => { setClassId(e.target.value); setSectionId(""); }}
           placeholder="Select class"
         />
       </div>

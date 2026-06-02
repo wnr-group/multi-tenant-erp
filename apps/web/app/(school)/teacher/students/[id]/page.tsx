@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
+import { getAcademicYearId } from "@/lib/academic-year";
 import { buttonVariants } from "@/components/ui/button";
 import { PhotoUpload } from "@/app/(school)/admin/students/[id]/photo-upload";
 import { StudentEditForm } from "@/app/(school)/admin/students/[id]/student-edit-form";
@@ -30,11 +31,12 @@ export default async function TeacherStudentDetailPage({
 
   const supabase = await createServerSupabaseClient();
   const schoolId = (await getSchoolId())!;
+  const academicYearId = await getAcademicYearId(schoolId);
 
   const [{ data: student }, { data: classes }] = await Promise.all([
     supabase
       .from("student_profiles")
-      .select("id, full_name, email, roll_number, admission_number, photo_url, parent_phone, class_id, section_id, class:classes(name), section:sections(name)")
+      .select("id, admission_number, profile:profiles(full_name, email, avatar_url)")
       .eq("id", id)
       .single(),
     supabase
@@ -46,8 +48,17 @@ export default async function TeacherStudentDetailPage({
 
   if (!student) notFound();
 
-  const cls = student.class as unknown as { name: string } | null;
-  const sec = student.section as unknown as { name: string } | null;
+  const { data: enrollment } = await supabase
+    .from("student_enrollments")
+    .select("id, roll_number, class_id, section_id, class:classes(name), section:sections(name)")
+    .eq("student_profile_id", id)
+    .eq("school_id", schoolId)
+    .eq("academic_year_id", academicYearId ?? "")
+    .maybeSingle();
+
+  const profile = student.profile as unknown as { full_name: string; email: string; avatar_url: string | null } | null;
+  const cls = enrollment?.class as unknown as { name: string } | null;
+  const sec = enrollment?.section as unknown as { name: string } | null;
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "attendance", label: "Attendance" },
@@ -73,16 +84,15 @@ export default async function TeacherStudentDetailPage({
         <div className="flex items-start gap-5">
           <PhotoUpload
             studentId={student.id}
-            studentName={student.full_name ?? "Student"}
-            photoUrl={student.photo_url ?? null}
+            studentName={profile?.full_name ?? "Student"}
+            photoUrl={profile?.avatar_url ?? null}
           />
           <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-bold text-gray-900">{student.full_name ?? "—"}</h1>
+            <h1 className="text-xl font-bold text-gray-900">{profile?.full_name ?? "—"}</h1>
             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
               {cls?.name && <span>{cls.name}{sec?.name ? ` · Section ${sec.name}` : ""}</span>}
-              {student.roll_number && <span>Roll No: {student.roll_number}</span>}
+              {enrollment?.roll_number && <span>Roll No: {enrollment.roll_number}</span>}
               {student.admission_number && <span>Adm: {student.admission_number}</span>}
-              {student.parent_phone && <span>📞 {student.parent_phone}</span>}
             </div>
           </div>
         </div>
@@ -93,14 +103,14 @@ export default async function TeacherStudentDetailPage({
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500">Edit Profile</h2>
         <StudentEditForm
           studentId={student.id}
+          enrollmentId={enrollment?.id ?? null}
           schoolId={schoolId}
-          initialName={student.full_name ?? ""}
-          initialEmail={student.email ?? ""}
-          initialRoll={student.roll_number ?? ""}
+          initialName={profile?.full_name ?? ""}
+          initialEmail={profile?.email ?? ""}
+          initialRoll={enrollment?.roll_number ?? ""}
           initialAdmission={student.admission_number ?? ""}
-          initialParentPhone={student.parent_phone ?? ""}
-          initialClassId={student.class_id ?? ""}
-          initialSectionId={student.section_id ?? ""}
+          initialClassId={enrollment?.class_id ?? ""}
+          initialSectionId={enrollment?.section_id ?? ""}
           classes={classes ?? []}
         />
       </div>
@@ -134,7 +144,7 @@ export default async function TeacherStudentDetailPage({
             </>
           )}
           {activeTab === "academics" && <StudentAcademicsTab studentId={id} />}
-          {activeTab === "fees" && <StudentFeesTab studentId={id} studentName={student.full_name ?? "Student"} />}
+          {activeTab === "fees" && <StudentFeesTab studentId={id} studentName={profile?.full_name ?? "Student"} />}
         </div>
       </div>
     </div>
