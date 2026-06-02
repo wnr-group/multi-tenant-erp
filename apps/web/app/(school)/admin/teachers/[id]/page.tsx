@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getSchoolId } from "@/lib/school";
+import { getAcademicYearId } from "@/lib/academic-year";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { ArrowLeft, Mail } from "lucide-react";
@@ -14,7 +16,7 @@ export default async function TeacherDetailPage({
 
   const { data: teacher } = await supabase
     .from("teacher_profiles")
-    .select("id, created_at, profile:profiles(full_name, email), school_id")
+    .select("id, created_at, profile_id, school_id, profile:profiles(full_name, email)")
     .eq("id", id)
     .single();
 
@@ -28,6 +30,47 @@ export default async function TeacherDetailPage({
     .slice(0, 2)
     .join("")
     .toUpperCase();
+
+  let assignedSections: { id: string; name: string; className: string }[] = [];
+  let subjectsTaught: { id: string; name: string; className: string }[] = [];
+
+  const schoolId = await getSchoolId();
+  const userId = teacher.profile_id as string | null;
+
+  if (userId && schoolId) {
+    const academicYearId = await getAcademicYearId(schoolId);
+
+    let query = supabase
+      .from("timetable")
+      .select(`
+        section:sections(id, name, class:classes(name)),
+        subject:subjects(id, name, class:classes(name))
+      `)
+      .eq("teacher_id", userId)
+      .eq("school_id", schoolId);
+
+    if (academicYearId) {
+      query = query.eq("academic_year_id", academicYearId);
+    }
+
+    const { data: timetableRows } = await query;
+
+    const seenSections = new Set<string>();
+    const seenSubjects = new Set<string>();
+
+    for (const row of timetableRows ?? []) {
+      const sec = row.section as unknown as { id: string; name: string; class: { name: string } | null } | null;
+      if (sec?.id && !seenSections.has(sec.id)) {
+        seenSections.add(sec.id);
+        assignedSections.push({ id: sec.id, name: sec.name, className: sec.class?.name ?? "" });
+      }
+      const sub = row.subject as unknown as { id: string; name: string; class: { name: string } | null } | null;
+      if (sub?.id && !seenSubjects.has(sub.id)) {
+        seenSubjects.add(sub.id);
+        subjectsTaught.push({ id: sub.id, name: sub.name, className: sub.class?.name ?? "" });
+      }
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -57,11 +100,34 @@ export default async function TeacherDetailPage({
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-lg border bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500">Assigned Classes</h2>
-          <p className="text-sm italic text-gray-400">Class assignments will appear here once teacher-class linking is implemented.</p>
+          {assignedSections.length === 0 ? (
+            <p className="text-sm italic text-gray-400">No classes assigned for this academic year.</p>
+          ) : (
+            <div className="space-y-2">
+              {assignedSections.map((sec) => (
+                <div key={sec.id} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+                  <span className="font-medium text-gray-800">Class {sec.className}</span>
+                  <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">Section {sec.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
+
         <div className="rounded-lg border bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500">Subjects Taught</h2>
-          <p className="text-sm italic text-gray-400">Subject assignments will appear here once teacher-class linking is implemented.</p>
+          {subjectsTaught.length === 0 ? (
+            <p className="text-sm italic text-gray-400">No subjects assigned for this academic year.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {subjectsTaught.map((sub) => (
+                <span key={sub.id} className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-700">
+                  {sub.name}
+                  {sub.className && <span className="ml-1 text-xs text-indigo-400">· {sub.className}</span>}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
