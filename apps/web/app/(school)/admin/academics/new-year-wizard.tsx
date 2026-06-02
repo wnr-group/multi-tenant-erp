@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -32,6 +33,12 @@ interface Props {
 
 export function NewYearWizard({ schoolId, activeYearId, onClose }: Props) {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+  const portalRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    portalRef.current = document.body;
+    setMounted(true);
+  }, []);
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [newYearId, setNewYearId] = useState<string | null>(null);
@@ -138,8 +145,8 @@ export function NewYearWizard({ schoolId, activeYearId, onClose }: Props) {
     onClose();
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+  const content = (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-xl">
         {/* Fixed header — always visible */}
         <div className="shrink-0 border-b px-8 pb-4 pt-6">
@@ -264,4 +271,7 @@ export function NewYearWizard({ schoolId, activeYearId, onClose }: Props) {
       </div>
     </div>
   );
+
+  if (!mounted || !portalRef.current) return null;
+  return createPortal(content, portalRef.current);
 }
