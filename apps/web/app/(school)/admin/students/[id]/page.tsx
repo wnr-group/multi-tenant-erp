@@ -36,7 +36,7 @@ export default async function StudentDetailPage({
   const [{ data: student }, { data: classes }] = await Promise.all([
     supabase
       .from("student_profiles")
-      .select("id, admission_number, profile:profiles(full_name, email, avatar_url)")
+      .select("id, full_name, email, admission_number, profile:profiles!profile_id(full_name, email, avatar_url)")
       .eq("id", id)
       .single(),
     supabase
@@ -58,6 +58,8 @@ export default async function StudentDetailPage({
     .maybeSingle();
 
   const profile = student.profile as unknown as { full_name: string; email: string; avatar_url: string | null } | null;
+  const displayName = profile?.full_name ?? (student as unknown as { full_name: string | null }).full_name ?? "Student";
+  const displayEmail = profile?.email ?? (student as unknown as { email: string | null }).email ?? "";
   const cls = enrollment?.class as unknown as { name: string } | null;
   const sec = enrollment?.section as unknown as { name: string } | null;
 
@@ -85,11 +87,11 @@ export default async function StudentDetailPage({
         <div className="flex items-start gap-5">
           <PhotoUpload
             studentId={student.id}
-            studentName={profile?.full_name ?? "Student"}
+            studentName={displayName}
             photoUrl={profile?.avatar_url ?? null}
           />
           <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-bold text-gray-900">{profile?.full_name ?? "—"}</h1>
+            <h1 className="text-xl font-bold text-gray-900">{displayName}</h1>
             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
               {cls?.name && <span>{cls.name}{sec?.name ? ` · Section ${sec.name}` : ""}</span>}
               {enrollment?.roll_number && <span>Roll No: {enrollment.roll_number}</span>}
@@ -106,8 +108,8 @@ export default async function StudentDetailPage({
           studentId={student.id}
           enrollmentId={enrollment?.id ?? null}
           schoolId={schoolId}
-          initialName={profile?.full_name ?? ""}
-          initialEmail={profile?.email ?? ""}
+          initialName={displayName !== "Student" ? displayName : ""}
+          initialEmail={displayEmail}
           initialRoll={enrollment?.roll_number ?? ""}
           initialAdmission={student.admission_number ?? ""}
           initialClassId={enrollment?.class_id ?? ""}
@@ -145,7 +147,7 @@ export default async function StudentDetailPage({
             </>
           )}
           {activeTab === "academics" && <StudentAcademicsTab studentId={id} />}
-          {activeTab === "fees" && <StudentFeesTab studentId={id} studentName={profile?.full_name ?? "Student"} />}
+          {activeTab === "fees" && <StudentFeesTab studentId={id} studentName={displayName} />}
         </div>
       </div>
     </div>
