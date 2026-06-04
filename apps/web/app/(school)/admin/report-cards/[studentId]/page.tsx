@@ -14,12 +14,19 @@ export default async function ReportCardPage({ params, searchParams }: Props) {
   const supabase = await createServerSupabaseClient();
   const schoolId = (await getSchoolId())!;
 
-  const [{ data: student }, { data: exam }, { data: results }, { data: school }] = await Promise.all([
+  const [{ data: student }, { data: enrollment }, { data: exam }, { data: results }, { data: school }] = await Promise.all([
     supabase
       .from("student_profiles")
-      .select("id, full_name, roll_number, admission_number, photo_url, class:classes(name), section:sections(name)")
+      .select("id, full_name, admission_number, photo_url")
       .eq("id", studentId)
       .single(),
+    supabase
+      .from("student_enrollments")
+      .select("roll_number, class:classes(name), section:sections(name)")
+      .eq("student_profile_id", studentId)
+      .eq("school_id", schoolId)
+      .eq("is_active", true)
+      .maybeSingle(),
     examId
       ? supabase.from("exams").select("id, name, start_date, end_date, academic_year:academic_years(name)").eq("id", examId).single()
       : Promise.resolve({ data: null }),
@@ -72,15 +79,15 @@ export default async function ReportCardPage({ params, searchParams }: Props) {
   const overallPct = totalMax > 0 ? Math.round((totalObtained / totalMax) * 1000) / 10 : 0;
   const overallGrade = getGrade(overallPct);
 
-  const cls = student.class as unknown as { name: string } | null;
-  const sec = student.section as unknown as { name: string } | null;
+  const cls = enrollment?.class as unknown as { name: string } | null;
+  const sec = enrollment?.section as unknown as { name: string } | null;
   const ay = exam?.academic_year as unknown as { name: string } | null;
 
   const reportData = {
     schoolName: school?.name ?? "School",
     schoolColor: school?.primary_color ?? "#4f46e5",
     studentName: student.full_name ?? "—",
-    rollNumber: student.roll_number ?? "—",
+    rollNumber: enrollment?.roll_number ?? "—",
     admissionNumber: student.admission_number ?? "—",
     className: cls?.name ?? "—",
     section: sec?.name ?? "—",

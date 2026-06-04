@@ -30,11 +30,11 @@ export default async function AttendanceMarkPage({
     .eq("id", sectionId)
     .single();
 
-  const { data: students } = await supabase
-    .from("student_profiles")
-    .select("id, roll_number, full_name")
+  const { data: studentEnrollments } = await supabase
+    .from("student_enrollments")
+    .select("student_profile_id, roll_number, student_profile:student_profiles(id, full_name)")
     .eq("section_id", sectionId)
-    .order("full_name");
+    .eq("is_active", true);
 
   const { data: existing } = await supabase
     .from("attendance_records")
@@ -47,12 +47,15 @@ export default async function AttendanceMarkPage({
     existingMap[rec.student_id] = rec.status ?? "present";
   }
 
-  const studentRows = (students ?? []).map((s) => ({
-    id: s.id,
-    roll_number: s.roll_number ?? "",
-    full_name: s.full_name ?? "—",
-    status: existingMap[s.id] ?? "present",
-  }));
+  const studentRows = (studentEnrollments ?? []).map((e) => {
+    const sp = e.student_profile as unknown as { id: string; full_name: string | null } | null;
+    return {
+      id: sp?.id ?? "",
+      roll_number: e.roll_number ?? "",
+      full_name: sp?.full_name ?? "—",
+      status: existingMap[sp?.id ?? ""] ?? "present",
+    };
+  }).filter((s) => s.id);
 
   const sec = sectionRow as unknown as {
     name: string;

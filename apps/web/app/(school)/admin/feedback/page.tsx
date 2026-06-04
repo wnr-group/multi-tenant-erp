@@ -22,7 +22,7 @@ export default async function AdminFeedbackPage() {
     fromUserIds.length
       ? supabase
           .from("student_profiles")
-          .select("id, full_name, roll_number, photo_url, parent_profile_id, class:classes(name), section:sections(name)")
+          .select("id, full_name, photo_url, parent_profile_id")
           .in("parent_profile_id", fromUserIds)
       : Promise.resolve({ data: [] }),
   ]);
@@ -37,9 +37,9 @@ export default async function AdminFeedbackPage() {
       {
         id: s.id,
         full_name: s.full_name ?? null,
-        class_name: s.class?.name ?? null,
-        section_name: s.section?.name ?? null,
-        roll_number: s.roll_number ?? null,
+        class_name: null,
+        section_name: null,
+        roll_number: null,
         photo_url: s.photo_url ?? null,
       },
     ])

@@ -66,9 +66,10 @@ export default async function ExamMarksPage({
 
       // Students scoped to this section only
       supabase
-        .from("student_profiles")
-        .select("id, roll_number, profile:profiles(full_name)")
+        .from("student_enrollments")
+        .select("student_profile_id, roll_number, student_profile:student_profiles(id, full_name)")
         .eq("section_id", sectionId)
+        .eq("is_active", true)
         .order("roll_number"),
 
       // Existing results for this exam
@@ -79,14 +80,14 @@ export default async function ExamMarksPage({
     ]);
 
   const studentRows = (students ?? []).map((s) => {
-    const profile = s.profile as unknown as { full_name: string } | null;
+    const sp = s.student_profile as unknown as { id: string; full_name: string | null } | null;
     return {
-      id: s.id,
+      id: sp?.id ?? "",
       roll_number: s.roll_number ?? "",
-      full_name: profile?.full_name ?? "—",
+      full_name: sp?.full_name ?? "—",
       section_label: sectionLabel,
     };
-  });
+  }).filter((s) => s.id);
 
   return (
     <div>

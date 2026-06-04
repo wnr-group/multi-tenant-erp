@@ -25,19 +25,21 @@ export default async function TeacherDisciplinePage() {
   const schoolId = (await getSchoolId())!;
 
   // Fetch students enrolled in the active section
-  const { data: students } = await supabase
-    .from("student_profiles")
-    .select("id, full_name, roll_number")
+  const { data: enrollments } = await supabase
+    .from("student_enrollments")
+    .select("student_profile_id, roll_number, student_profile:student_profiles(id, full_name)")
     .eq("section_id", sectionId)
-    .order("full_name");
+    .eq("is_active", true);
 
   // Build student lookup map and dropdown options
   const studentMap = new Map<string, { name: string; roll: string }>();
   const studentOptions: { value: string; label: string }[] = [];
 
-  for (const sp of students ?? []) {
+  for (const e of enrollments ?? []) {
+    const sp = e.student_profile as unknown as { id: string; full_name: string | null } | null;
+    if (!sp) continue;
     const name = sp.full_name ?? "—";
-    const roll = (sp as any).roll_number ?? "—";
+    const roll = e.roll_number ?? "—";
     studentMap.set(sp.id, { name, roll });
     studentOptions.push({ value: sp.id, label: name });
   }

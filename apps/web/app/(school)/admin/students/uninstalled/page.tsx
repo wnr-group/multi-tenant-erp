@@ -20,7 +20,7 @@ export default async function UninstalledStudentsPage({
   const [studentsRes, classesRes] = await Promise.all([
     supabase
       .from("student_profiles")
-      .select("id, full_name, parent_phone, roll_number, class:classes(id, name), section:sections(name)")
+      .select("id, full_name, parent_phone")
       .eq("school_id", schoolId)
       .not("parent_phone", "is", null)
       .is("parent_profile_id", null)
@@ -32,10 +32,10 @@ export default async function UninstalledStudentsPage({
     id: s.id,
     full_name: s.full_name ?? "—",
     parent_phone: s.parent_phone ?? "",
-    roll_number: s.roll_number ?? "",
-    class_id: s.class?.id ?? "",
-    class_name: s.class?.name ?? "—",
-    section_name: s.section?.name ?? "—",
+    roll_number: "",
+    class_id: "",
+    class_name: "—",
+    section_name: "—",
   }));
 
   const filtered = classId

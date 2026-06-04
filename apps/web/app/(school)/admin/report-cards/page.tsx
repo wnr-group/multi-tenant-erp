@@ -9,9 +9,10 @@ export default async function ReportCardsPage() {
 
   const [{ data: students }, { data: classes }, { data: exams }] = await Promise.all([
     supabase
-      .from("student_profiles")
-      .select("id, full_name, roll_number, class:classes(name), section:sections(name)")
+      .from("student_enrollments")
+      .select("roll_number, student_profile:student_profiles(id, full_name), class:classes(name), section:sections(name)")
       .eq("school_id", schoolId)
+      .eq("is_active", true)
       .limit(5000),
     supabase
       .from("classes")
@@ -26,16 +27,17 @@ export default async function ReportCardsPage() {
   ]);
 
   const rows = (students ?? []).map((s) => {
+    const sp = s.student_profile as unknown as { id: string; full_name: string | null } | null;
     const c = s.class as unknown as { name: string } | null;
     const sec = s.section as unknown as { name: string } | null;
     return {
-      id: s.id,
-      name: s.full_name ?? "",
+      id: sp?.id ?? "",
+      name: sp?.full_name ?? "",
       roll: s.roll_number ?? "",
       class_name: c?.name ?? "",
       section: sec?.name ?? "",
     };
-  });
+  }).filter((r) => r.id);
 
   const classOptions = (classes ?? []).map((c) => ({ label: c.name, value: c.name }));
   const examOptions = (exams ?? []).map((e) => ({ label: e.name, value: e.id }));

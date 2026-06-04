@@ -32,7 +32,7 @@ export default async function PrincipalStudentDetailPage({
   const [{ data: student }, { data: disciplineRecords }] = await Promise.all([
     supabase
       .from("student_profiles")
-      .select("id, full_name, roll_number, admission_number, photo_url, parent_phone, class_id, section_id, class:classes(name), section:sections(name)")
+      .select("id, full_name, admission_number, photo_url, parent_phone")
       .eq("id", id)
       .single(),
     supabase
@@ -45,8 +45,16 @@ export default async function PrincipalStudentDetailPage({
 
   if (!student) notFound();
 
-  const cls = student.class as unknown as { name: string } | null;
-  const sec = student.section as unknown as { name: string } | null;
+  const { data: enrollment } = await supabase
+    .from("student_enrollments")
+    .select("roll_number, class:classes(name), section:sections(name)")
+    .eq("student_profile_id", id)
+    .eq("school_id", schoolId)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  const cls = enrollment?.class as unknown as { name: string } | null;
+  const sec = enrollment?.section as unknown as { name: string } | null;
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "attendance", label: "Attendance" },
@@ -78,7 +86,7 @@ export default async function PrincipalStudentDetailPage({
             <h1 className="text-xl font-bold text-gray-900">{student.full_name ?? "—"}</h1>
             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
               {cls?.name && <span>{cls.name}{sec?.name ? ` · Section ${sec.name}` : ""}</span>}
-              {student.roll_number && <span>Roll No: {student.roll_number}</span>}
+              {enrollment?.roll_number && <span>Roll No: {enrollment.roll_number}</span>}
               {student.admission_number && <span>Adm: {student.admission_number}</span>}
               {student.parent_phone && <span>Phone: {student.parent_phone}</span>}
             </div>
