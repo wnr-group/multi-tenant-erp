@@ -2,7 +2,7 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
 const PUBLIC_PATHS = ["/login", "/auth/callback", "/download-app"];
-const PLATFORM_ADMIN_DOMAINS = ["admin.balajierp.com", "core.lvh.me"];
+const PLATFORM_ADMIN_DOMAINS = ["admin.balajierp.com", "core.lvh.me", "core.connectmyskool.com"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -37,7 +37,8 @@ export async function middleware(request: NextRequest) {
           const host = request.headers.get("host") ?? "";
           const isLvh = host.includes("lvh.me");
           const isBalaji = host.includes("balajierp.com");
-          const cookieDomain = isLvh ? ".lvh.me" : isBalaji ? ".balajierp.com" : undefined;
+          const isConnectmyskool = host.includes("connectmyskool.com");
+          const cookieDomain = isLvh ? ".lvh.me" : isBalaji ? ".balajierp.com" : isConnectmyskool ? ".connectmyskool.com" : undefined;
 
           cookiesToSet.forEach(({ name, value, options }) => {
             request.cookies.set(name, value);
