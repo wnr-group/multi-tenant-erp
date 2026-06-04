@@ -64,17 +64,21 @@ export function CertificateView({ data }: { data: CertificateData }) {
           <title>Bonafide Certificate — ${data.studentName}</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { font-family: 'Times New Roman', Times, serif; padding: 48px 56px; color: #1a1a1a; font-size: 14px; line-height: 1.6; }
-            .header { display: flex; align-items: flex-start; gap: 20px; padding-bottom: 12px; border-bottom: 2px solid #1a1a1a; margin-bottom: 40px; }
-            .header img { width: 72px; height: 72px; object-fit: contain; }
-            .header-text h1 { font-size: 20px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; color: #1a1a1a; margin-bottom: 4px; }
-            .header-text p { font-size: 11px; color: #444; }
-            .title { text-align: center; font-size: 14px; font-weight: bold; text-decoration: underline; letter-spacing: 1px; margin-bottom: 36px; }
-            .body-text { text-align: justify; font-size: 14px; line-height: 2; text-indent: 48px; position: relative; z-index: 1; }
-            .watermark-wrap { position: relative; }
-            .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 220px; height: 220px; opacity: 0.08; object-fit: contain; z-index: 0; }
-            .footer { display: flex; justify-content: space-between; margin-top: 80px; font-size: 13px; }
-            @media print { body { padding: 48px 56px; } }
+            @page { size: A4 portrait; margin: 0; }
+            body { font-family: 'Times New Roman', Times, serif; color: #1a1a1a; width: 210mm; min-height: 297mm; padding: 40px 60px 60px; position: relative; }
+            .header { display: flex; align-items: center; gap: 24px; padding-bottom: 16px; border-bottom: 3px solid #1a3a7a; }
+            .header img { width: 90px; height: 90px; object-fit: contain; flex-shrink: 0; }
+            .header-text { flex: 1; }
+            .header-text h1 { font-size: 28px; font-weight: bold; text-transform: uppercase; letter-spacing: 3px; color: #8b1a1a; margin-bottom: 6px; font-family: 'Times New Roman', Times, serif; }
+            .header-text p { font-size: 13px; color: #333; line-height: 1.6; }
+            .header-text p strong { font-weight: bold; }
+            .title { text-align: center; font-size: 16px; font-weight: bold; text-decoration: underline; letter-spacing: 1.5px; margin-top: 60px; margin-bottom: 60px; }
+            .body-text { font-size: 16px; line-height: 2.4; text-indent: 60px; position: relative; z-index: 1; margin: 0 20px; }
+            .body-text strong { font-weight: bold; }
+            .watermark-wrap { position: relative; min-height: 300px; }
+            .watermark { position: absolute; bottom: -40px; left: 50%; transform: translateX(-50%); width: 280px; height: 280px; opacity: 0.10; object-fit: contain; z-index: 0; border-radius: 50%; }
+            .footer { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 100px; padding: 0 20px; font-size: 15px; font-weight: bold; }
+            @media print { body { padding: 40px 60px 60px; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
           </style>
         </head>
         <body>
@@ -91,12 +95,7 @@ export function CertificateView({ data }: { data: CertificateData }) {
           <div class="watermark-wrap">
             ${data.schoolLogoUrl ? `<img class="watermark" src="${data.schoolLogoUrl}" alt="" />` : ""}
             <p class="body-text">
-              This is to certify that <strong>${data.studentName.toUpperCase()}</strong>, a student of
-              <strong>${data.className} - ${data.sectionName}</strong>, Adm No. ${data.admissionNumber ?? "—"},
-              ${relation} of ${salutation} <strong>${(data.parentName ?? "—").toUpperCase()}</strong>
-              is a bonafide student of our school for the academic year
-              <strong>${data.academicYearName}</strong>.
-              ${pronoun} date of birth is <strong>${formatDate(data.dateOfBirth)}</strong> as per our school records.
+              This is to certify that <strong>${data.studentName.toUpperCase()}</strong>, a student of <strong>Class ${data.className} - ${data.sectionName}</strong>, Adm No. <strong>${data.admissionNumber ?? "—"}</strong>, ${relation} of <strong>${salutation} ${(data.parentName ?? "—").toUpperCase()}</strong> is a bonafide student of our school for the academic year <strong>${data.academicYearName}</strong>. ${pronoun} date of birth is <strong>${formatDate(data.dateOfBirth)}</strong> as per our school records.
             </p>
           </div>
 
@@ -134,37 +133,40 @@ export function CertificateView({ data }: { data: CertificateData }) {
           </div>
         )}
 
-        <div ref={printRef} className="rounded-xl border border-border bg-white p-12 shadow-sm font-serif">
-          <div className="flex items-start gap-5 border-b-2 border-gray-900 pb-3 mb-10">
+        <div ref={printRef} className="rounded-xl border border-border bg-white px-14 py-10 shadow-sm font-serif">
+          {/* Header */}
+          <div className="flex items-center gap-6 border-b-[3px] border-[#1a3a7a] pb-4">
             {data.schoolLogoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={data.schoolLogoUrl} alt="Logo" className="h-16 w-16 object-contain shrink-0" />
+              <img src={data.schoolLogoUrl} alt="Logo" className="h-[90px] w-[90px] object-contain shrink-0" />
             )}
-            <div>
-              <h1 className="text-lg font-bold uppercase tracking-widest text-gray-900">{data.schoolName}</h1>
+            <div className="flex-1">
+              <h1 className="text-2xl font-bold uppercase tracking-[3px] text-[#8b1a1a]">{data.schoolName}</h1>
               {data.schoolAddress && data.schoolAddress.split("\n").map((line, i) => (
-                <p key={i} className="text-xs text-gray-500">{line}</p>
+                <p key={i} className="text-[13px] text-gray-700 leading-relaxed">{line}</p>
               ))}
             </div>
           </div>
 
-          <p className="text-center text-sm font-bold underline tracking-widest mb-10">TO WHOM IT MAY CONCERN</p>
+          {/* Title */}
+          <p className="text-center text-base font-bold underline tracking-wider mt-14 mb-14">TO WHOM IT MAY CONCERN</p>
 
-          <div className="relative">
+          {/* Body with watermark */}
+          <div className="relative min-h-[250px]">
             {data.schoolLogoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={data.schoolLogoUrl}
                 alt=""
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-52 w-52 object-contain opacity-[0.07] pointer-events-none"
+                className="absolute bottom-[-20px] left-1/2 -translate-x-1/2 h-[280px] w-[280px] object-contain opacity-[0.10] pointer-events-none rounded-full"
               />
             )}
-            <p className="text-sm leading-loose text-justify indent-12 relative z-10">
+            <p className="text-base leading-[2.4] indent-14 relative z-10 mx-4">
               This is to certify that{" "}
               <strong className="uppercase">{data.studentName}</strong>, a student of{" "}
-              <strong>{data.className} - {data.sectionName}</strong>, Adm No. {data.admissionNumber ?? "—"}{" "}
-              {relation} of {salutation}{" "}
-              <strong className="uppercase">{data.parentName ?? "—"}</strong>{" "}
+              <strong>Class {data.className} - {data.sectionName}</strong>, Adm No. <strong>{data.admissionNumber ?? "—"}</strong>,{" "}
+              {relation} of{" "}
+              <strong>{salutation} {(data.parentName ?? "—").toUpperCase()}</strong>{" "}
               is a bonafide student of our school for the academic year{" "}
               <strong>{data.academicYearName}</strong>.{" "}
               {pronoun} date of birth is{" "}
@@ -172,9 +174,10 @@ export function CertificateView({ data }: { data: CertificateData }) {
             </p>
           </div>
 
-          <div className="mt-20 flex justify-between text-sm">
+          {/* Footer */}
+          <div className="mt-24 flex justify-between items-end mx-4 text-[15px] font-bold">
             <span>Date : {formatDate(new Date().toISOString().slice(0, 10))}</span>
-            <span className="font-medium">PRINCIPAL</span>
+            <span>PRINCIPAL</span>
           </div>
         </div>
       </div>
