@@ -22,9 +22,9 @@ export async function GET(request: NextRequest) {
   const [{ data: students }, { data: teachers }] = await Promise.all([
     supabase
       .from("student_profiles")
-      .select("id, full_name, roll_number, class:classes(name), section:sections(name)")
+      .select("id, full_name, admission_number")
       .eq("school_id", schoolId)
-      .or(`full_name.ilike.${pattern},roll_number.ilike.${pattern}`)
+      .or(`full_name.ilike.${pattern},admission_number.ilike.${pattern}`)
       .limit(8),
     supabase
       .from("teacher_profiles")
@@ -42,13 +42,11 @@ export async function GET(request: NextRequest) {
 
   const results = [
     ...(students ?? []).map((s) => {
-      const cls = s.class as unknown as { name: string } | null;
-      const sec = s.section as unknown as { name: string } | null;
       return {
         id: s.id,
         type: "student" as const,
         name: s.full_name ?? "—",
-        detail: [cls?.name, sec?.name].filter(Boolean).join(" – ") || s.roll_number || "",
+        detail: s.admission_number ?? "",
       };
     }),
     ...teacherResults.map((t) => {
