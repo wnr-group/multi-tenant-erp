@@ -21,6 +21,9 @@ interface Props {
   initialRoll: string;
   initialAdmission: string;
   initialParentPhone: string;
+  initialDateOfBirth: string;
+  initialParentName: string;
+  initialGender: string;
   initialClassId: string;
   initialSectionId: string;
   classes: ClassOption[];
@@ -35,6 +38,9 @@ export function StudentEditForm({
   initialRoll,
   initialAdmission,
   initialParentPhone,
+  initialDateOfBirth,
+  initialParentName,
+  initialGender,
   initialClassId,
   initialSectionId,
   classes,
@@ -45,6 +51,9 @@ export function StudentEditForm({
   const [roll, setRoll] = useState(initialRoll);
   const [admission, setAdmission] = useState(initialAdmission);
   const [parentPhone, setParentPhone] = useState(initialParentPhone);
+  const [dateOfBirth, setDateOfBirth] = useState(initialDateOfBirth);
+  const [parentName, setParentName] = useState(initialParentName);
+  const [gender, setGender] = useState(initialGender);
   const [classId, setClassId] = useState(initialClassId);
   const [sectionId, setSectionId] = useState(initialSectionId);
   const [sections, setSections] = useState<SectionOption[]>([]);
@@ -86,7 +95,13 @@ export function StudentEditForm({
       // Update admission number and parent phone on student_profiles
       const { error: spErr } = await supabase
         .from("student_profiles")
-        .update({ admission_number: admission || null, parent_phone: parentPhone || null })
+        .update({
+          admission_number: admission || null,
+          parent_phone: parentPhone || null,
+          date_of_birth: dateOfBirth || null,
+          parent_name: parentName || null,
+          gender: gender || null,
+        })
         .eq("id", studentId);
       if (spErr) { toast.error(spErr.message); return; }
 
@@ -117,6 +132,27 @@ export function StudentEditForm({
       <div><Label>Roll Number</Label><Input value={roll} onChange={(e) => setRoll(e.target.value)} /></div>
       <div><Label>Admission Number</Label><Input value={admission} onChange={(e) => setAdmission(e.target.value)} /></div>
       <div className="col-span-2"><Label>Parent Phone *</Label><Input type="tel" value={parentPhone} onChange={(e) => setParentPhone(e.target.value)} placeholder="+91 98765 43210" /></div>
+      <div className="col-span-2">
+        <Label>Parent / Guardian Name</Label>
+        <Input value={parentName} onChange={(e) => setParentName(e.target.value)} placeholder="e.g. RAMESH A" />
+      </div>
+      <div>
+        <Label>Date of Birth</Label>
+        <Input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} />
+      </div>
+      <div>
+        <Label>Gender</Label>
+        <NativeSelect
+          options={[
+            { value: "male", label: "Male" },
+            { value: "female", label: "Female" },
+            { value: "other", label: "Other" },
+          ]}
+          value={gender}
+          onChange={(e) => setGender(e.target.value)}
+          placeholder="Select gender"
+        />
+      </div>
       <div>
         <Label>Class</Label>
         <NativeSelect
