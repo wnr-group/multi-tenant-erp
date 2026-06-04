@@ -76,9 +76,10 @@ export default async function PrincipalDashboard() {
       .eq("school_id", schoolId)
       .gte("date", earliest)
       .lte("date", today),
-    supabase.from("student_profiles")
+    supabase.from("student_enrollments")
       .select("class_id, classes(name, order)")
-      .eq("school_id", schoolId),
+      .eq("school_id", schoolId)
+      .eq("is_active", true),
     supabase.from("discipline_records")
       .select("created_at")
       .eq("school_id", schoolId)
@@ -107,13 +108,13 @@ export default async function PrincipalDashboard() {
 
   const { data: classAttendanceRows } = await supabase
     .from("attendance_records")
-    .select("status, student_profiles(class_id, classes(name, order))")
+    .select("status, student_enrollments(class_id, classes(name, order))")
     .eq("school_id", schoolId)
     .gte("date", thirtyKey);
 
   const classAttMap = new Map<string, { name: string; order: number; present: number; total: number }>();
   for (const r of classAttendanceRows ?? []) {
-    const sp = r.student_profiles as unknown as { class_id: string; classes: { name: string; order: number } } | null;
+    const sp = r.student_enrollments as unknown as { class_id: string; classes: { name: string; order: number } } | null;
     if (!sp?.classes) continue;
     const key = sp.class_id;
     if (!classAttMap.has(key)) classAttMap.set(key, { name: sp.classes.name, order: sp.classes.order, present: 0, total: 0 });

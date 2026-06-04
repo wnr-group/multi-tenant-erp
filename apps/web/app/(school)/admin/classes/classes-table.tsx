@@ -152,7 +152,7 @@ export function ClassesDataTable({
 
     // Delete non-cascading associations first
     const cleanups = [
-      supabase.from("student_profiles").update({ class_id: null, section_id: null }).eq("class_id", row.id),
+      supabase.from("student_enrollments").delete().eq("class_id", row.id),
       supabase.from("syllabus").delete().eq("class_id", row.id),
       supabase.from("fee_structures").delete().eq("class_id", row.id),
     ];

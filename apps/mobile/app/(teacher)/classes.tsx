@@ -107,19 +107,19 @@ export default function TeacherClasses() {
     // Load subjects, students, exams, homework in parallel
     const [subjectsRes, studentsRes, examsRes, hwRes] = await Promise.all([
       supabase.from("subjects").select("id, name").eq("class_id", classId).eq("school_id", schoolId).order("name"),
-      supabase.from("student_profiles").select("id, full_name").eq("section_id", sectionId).order("full_name"),
+      supabase.from("student_enrollments").select("student_profile_id, student_profiles(id, full_name)").eq("section_id", sectionId).eq("is_active", true).order("student_profile_id"),
       supabase.from("exams").select("id, name").eq("school_id", schoolId).order("start_date", { ascending: false }).limit(10),
       supabase.from("homework").select("id, title, due_date, subjects(name), sections(name, classes(name))").eq("teacher_id", userId).eq("section_id", sectionId).order("due_date", { ascending: false }).limit(20),
     ]);
 
     // Fetch results only for students in this section
-    const studentIds = (studentsRes.data ?? []).map((s: any) => s.id);
+    const studentIds = (studentsRes.data ?? []).map((s: any) => s.student_profiles?.id).filter(Boolean);
     const resultsRes = studentIds.length > 0
       ? await supabase.from("exam_results").select("id, marks_obtained, max_marks, grade, subjects(name), student_profiles!student_id(full_name)").in("student_id", studentIds).eq("school_id", schoolId).order("created_at", { ascending: false })
       : { data: [] };
 
     setSubjectOptions((subjectsRes.data ?? []).map((s: any) => ({ label: s.name, value: s.id })));
-    setStudentOptions((studentsRes.data ?? []).map((s: any) => ({ label: s.full_name ?? "Student", value: s.id })));
+    setStudentOptions((studentsRes.data ?? []).map((s: any) => ({ label: s.student_profiles?.full_name ?? "Student", value: s.student_profiles?.id ?? "" })).filter((o: any) => o.value));
     setExamOptions((examsRes.data ?? []).map((e: any) => ({ label: e.name, value: e.id })));
 
     setHomework((hwRes.data ?? []).map((r: any) => ({

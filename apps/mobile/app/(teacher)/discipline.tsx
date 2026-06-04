@@ -86,10 +86,10 @@ export default function TeacherDiscipline() {
     const sectionId = activeSection?.id ?? "";
 
     const studentsRes = sectionId
-      ? await supabase.from("student_profiles").select("id, full_name").eq("section_id", sectionId).order("full_name")
+      ? await supabase.from("student_enrollments").select("student_profile_id, student_profiles(id, full_name)").eq("section_id", sectionId).eq("is_active", true).order("student_profile_id")
       : { data: [] };
 
-    const studentIds = (studentsRes.data ?? []).map((s: any) => s.id);
+    const studentIds = (studentsRes.data ?? []).map((s: any) => s.student_profiles?.id).filter(Boolean);
     const recordsRes = studentIds.length > 0
       ? await supabase
           .from("discipline_records")
@@ -100,7 +100,7 @@ export default function TeacherDiscipline() {
           .limit(30)
       : { data: [] };
 
-    setStudentOptions((studentsRes.data ?? []).map((s: any) => ({ label: s.full_name ?? "Student", value: s.id })));
+    setStudentOptions((studentsRes.data ?? []).map((s: any) => ({ label: s.student_profiles?.full_name ?? "Student", value: s.student_profiles?.id ?? "" })).filter((o: any) => o.value));
     setRecords((recordsRes.data ?? []).map((r: any) => ({
       id: r.id,
       student_name: r.student_profiles?.full_name ?? "Unknown Student",

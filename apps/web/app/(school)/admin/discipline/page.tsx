@@ -17,22 +17,22 @@ export default async function AdminDisciplinePage() {
 
   const { data: records } = await supabase
     .from("discipline_records")
-    .select("id, category, severity, description, created_at, student:student_profiles(full_name, roll_number, section:sections(name, class:classes(name)))")
+    .select("id, category, severity, description, created_at, student:student_profiles(full_name, enrollments:student_enrollments(roll_number, section:sections(name, class:classes(name))))")
     .eq("school_id", schoolId)
     .order("created_at", { ascending: false });
 
   const rows = (records ?? []).map((r) => {
     const sp = r.student as unknown as {
       full_name: string;
-      roll_number: string | null;
-      section: { name: string; class: { name: string } | null } | null;
+      enrollments: { roll_number: string | null; section: { name: string; class: { name: string } | null } | null }[] | null;
     } | null;
-    const className = sp?.section?.class?.name ?? "";
-    const sectionName = sp?.section?.name ?? "";
+    const enrollment = sp?.enrollments?.[0] ?? null;
+    const className = enrollment?.section?.class?.name ?? "";
+    const sectionName = enrollment?.section?.name ?? "";
     return {
       id: r.id,
       student_name: sp?.full_name ?? "—",
-      roll_number: sp?.roll_number ?? "—",
+      roll_number: enrollment?.roll_number ?? "—",
       class_section: className && sectionName ? `${className} – ${sectionName}` : "—",
       category: r.category ?? "—",
       severity: r.severity as string | null,

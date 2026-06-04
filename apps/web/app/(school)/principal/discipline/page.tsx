@@ -19,18 +19,19 @@ export default async function DisciplinePage() {
   const { data: records } = await supabase
     .from("discipline_records")
     .select(
-      "id, student_id, category, severity, description, created_at, student:student_profiles(full_name, roll_number)"
+      "id, student_id, category, severity, description, created_at, student:student_profiles(full_name, enrollments:student_enrollments(roll_number))"
     )
     .eq("school_id", schoolId)
     .order("created_at", { ascending: false });
 
   const rows = (records ?? []).map((r) => {
-    const sp = r.student as unknown as { full_name: string; roll_number: string | null } | null;
+    const sp = r.student as unknown as { full_name: string; enrollments: { roll_number: string | null }[] | null } | null;
+    const rollNumber = sp?.enrollments?.[0]?.roll_number ?? "—";
     return {
       id: r.id,
       student_id: (r as any).student_id ?? "",
       student_name: sp?.full_name ?? "—",
-      roll_number: sp?.roll_number ?? "—",
+      roll_number: rollNumber,
       category: r.category ?? "—",
       severity: r.severity,
       description: r.description ?? "—",
