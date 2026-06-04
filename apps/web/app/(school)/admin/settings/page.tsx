@@ -79,7 +79,7 @@ export default function SettingsPage() {
       address: address || null,
     }).eq("id", schoolId);
     setLoading(false);
-    if (error) { toast.error("Failed to save settings."); } else { toast.success("Settings saved."); }
+    if (error) { toast.error(error.message || "Failed to save settings."); } else { toast.success("Settings saved."); }
   }
 
   return (

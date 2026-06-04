@@ -34,3 +34,4 @@ CREATE POLICY "bonafide_insert" ON public.bonafide_certificates FOR INSERT
     public.get_my_role() IN ('school_admin', 'principal', 'super_admin')
     AND school_id = public.get_my_school_id()
   );
+
