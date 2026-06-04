@@ -32,6 +32,7 @@ const NAV_ITEMS: Record<string, { label: string; href: string }[]> = {
     { label: "Feedback",       href: "/admin/feedback" },
     { label: "Reports",        href: "/admin/reports" },
     { label: "Report Cards",   href: "/admin/report-cards" },
+    { label: "Certificates",   href: "/admin/certificates" },
     { label: "Settings",       href: "/admin/settings" },
   ],
   teacher: [
@@ -59,6 +60,7 @@ const NAV_ITEMS: Record<string, { label: string; href: string }[]> = {
     { label: "Discipline",    href: "/principal/discipline" },
     { label: "Feedback",      href: "/principal/feedback" },
     { label: "Reports",       href: "/principal/reports" },
+    { label: "Certificates",  href: "/principal/certificates" },
   ],
   super_admin: [
     { label: "Dashboard", href: "/platform-admin/dashboard" },
