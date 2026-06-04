@@ -92,7 +92,7 @@ export function StudentEditForm({
         if (profileErr) { toast.error(profileErr.message); return; }
       }
 
-      // Update admission number and parent phone on student_profiles
+      // Update student_profiles fields
       const { error: spErr } = await supabase
         .from("student_profiles")
         .update({
