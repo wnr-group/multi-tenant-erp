@@ -66,10 +66,9 @@ export function CertificateView({ data }: { data: CertificateData }) {
             * { margin: 0; padding: 0; box-sizing: border-box; }
             @page { size: A4 portrait; margin: 0; }
             body { font-family: 'Times New Roman', Times, serif; color: #1a1a1a; width: 210mm; min-height: 297mm; padding: 40px 60px 60px; position: relative; }
-            .header { display: flex; align-items: center; gap: 24px; padding-bottom: 16px; border-bottom: 3px solid #1a3a7a; }
-            .header img { width: 90px; height: 90px; object-fit: contain; flex-shrink: 0; }
-            .header-text { flex: 1; }
-            .header-text h1 { font-size: 28px; font-weight: bold; text-transform: uppercase; letter-spacing: 3px; color: #8b1a1a; margin-bottom: 6px; font-family: 'Times New Roman', Times, serif; }
+            .header { text-align: center; padding-bottom: 16px; border-bottom: 3px solid #1a3a7a; }
+            .header img { width: 90px; height: 90px; object-fit: contain; margin: 0 auto 10px; display: block; }
+            .header-text h1 { font-size: 28px; font-weight: bold; text-transform: uppercase; letter-spacing: 3px; color: #c41e1e; margin-bottom: 6px; font-family: 'Times New Roman', Times, serif; }
             .header-text p { font-size: 13px; color: #333; line-height: 1.6; }
             .header-text p strong { font-weight: bold; }
             .title { text-align: center; font-size: 16px; font-weight: bold; text-decoration: underline; letter-spacing: 1.5px; margin-top: 60px; margin-bottom: 60px; }
@@ -90,12 +89,13 @@ export function CertificateView({ data }: { data: CertificateData }) {
             </div>
           </div>
 
+
           <div class="title">TO WHOM IT MAY CONCERN</div>
 
           <div class="watermark-wrap">
             ${data.schoolLogoUrl ? `<img class="watermark" src="${data.schoolLogoUrl}" alt="" />` : ""}
             <p class="body-text">
-              This is to certify that <strong>${data.studentName.toUpperCase()}</strong>, a student of <strong>Class ${data.className} - ${data.sectionName}</strong>, Adm No. <strong>${data.admissionNumber ?? "—"}</strong>, ${relation} of <strong>${salutation} ${(data.parentName ?? "—").toUpperCase()}</strong> is a bonafide student of our school for the academic year <strong>${data.academicYearName}</strong>. ${pronoun} date of birth is <strong>${formatDate(data.dateOfBirth)}</strong> as per our school records.
+              This is to certify that <strong>${data.studentName.toUpperCase()}</strong>, a student of <strong>${data.className} - ${data.sectionName}</strong>, Adm No. <strong>${data.admissionNumber ?? "—"}</strong>, ${relation} of <strong>${salutation} ${(data.parentName ?? "—").toUpperCase()}</strong> is a bonafide student of our school for the academic year <strong>${data.academicYearName}</strong>. ${pronoun} date of birth is <strong>${formatDate(data.dateOfBirth)}</strong> as per our school records.
             </p>
           </div>
 
@@ -135,17 +135,15 @@ export function CertificateView({ data }: { data: CertificateData }) {
 
         <div ref={printRef} className="rounded-xl border border-border bg-white px-14 py-10 shadow-sm font-serif">
           {/* Header */}
-          <div className="flex items-center gap-6 border-b-[3px] border-[#1a3a7a] pb-4">
+          <div className="text-center border-b-[3px] border-[#1a3a7a] pb-4">
             {data.schoolLogoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={data.schoolLogoUrl} alt="Logo" className="h-[90px] w-[90px] object-contain shrink-0" />
+              <img src={data.schoolLogoUrl} alt="Logo" className="h-[90px] w-[90px] object-contain mx-auto mb-2" />
             )}
-            <div className="flex-1">
-              <h1 className="text-2xl font-bold uppercase tracking-[3px] text-[#8b1a1a]">{data.schoolName}</h1>
-              {data.schoolAddress && data.schoolAddress.split("\n").map((line, i) => (
-                <p key={i} className="text-[13px] text-gray-700 leading-relaxed">{line}</p>
-              ))}
-            </div>
+            <h1 className="text-2xl font-bold uppercase tracking-[3px] text-[#c41e1e]">{data.schoolName}</h1>
+            {data.schoolAddress && data.schoolAddress.split("\n").map((line, i) => (
+              <p key={i} className="text-[13px] text-gray-700 leading-relaxed">{line}</p>
+            ))}
           </div>
 
           {/* Title */}
@@ -164,7 +162,7 @@ export function CertificateView({ data }: { data: CertificateData }) {
             <p className="text-base leading-[2.4] indent-14 relative z-10 mx-4">
               This is to certify that{" "}
               <strong className="uppercase">{data.studentName}</strong>, a student of{" "}
-              <strong>Class {data.className} - {data.sectionName}</strong>, Adm No. <strong>{data.admissionNumber ?? "—"}</strong>,{" "}
+              <strong>{data.className} - {data.sectionName}</strong>, Adm No. <strong>{data.admissionNumber ?? "—"}</strong>,{" "}
               {relation} of{" "}
               <strong>{salutation} {(data.parentName ?? "—").toUpperCase()}</strong>{" "}
               is a bonafide student of our school for the academic year{" "}
