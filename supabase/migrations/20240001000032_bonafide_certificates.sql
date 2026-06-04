@@ -21,17 +21,17 @@ CREATE INDEX idx_bonafide_student ON public.bonafide_certificates(student_profil
 -- Enable Row Level Security
 ALTER TABLE public.bonafide_certificates ENABLE ROW LEVEL SECURITY;
 
--- RLS Policy: Read access for school admins, principals, and super admins
+-- RLS Policy: Read access (super_admin bypasses school check since their school_id is NULL)
 CREATE POLICY "bonafide_read" ON public.bonafide_certificates FOR SELECT
   USING (
-    public.get_my_role() IN ('school_admin', 'principal', 'super_admin')
-    AND school_id = public.get_my_school_id()
+    public.get_my_role() = 'super_admin'
+    OR (public.get_my_role() IN ('school_admin', 'principal') AND school_id = public.get_my_school_id())
   );
 
--- RLS Policy: Insert access for school admins, principals, and super admins
+-- RLS Policy: Insert access
 CREATE POLICY "bonafide_insert" ON public.bonafide_certificates FOR INSERT
   WITH CHECK (
-    public.get_my_role() IN ('school_admin', 'principal', 'super_admin')
-    AND school_id = public.get_my_school_id()
+    public.get_my_role() = 'super_admin'
+    OR (public.get_my_role() IN ('school_admin', 'principal') AND school_id = public.get_my_school_id())
   );
 
