@@ -67,7 +67,7 @@ export function CertificateView({ data }: { data: CertificateData }) {
             @page { size: A4 portrait; margin: 0; }
             body { font-family: 'Times New Roman', Times, serif; color: #1a1a1a; width: 210mm; min-height: 297mm; padding: 40px 60px 60px; position: relative; }
             .header { display: flex; align-items: center; gap: 20px; padding-bottom: 16px; border-bottom: 3px solid #1a3a7a; }
-            .header img { width: 110px; height: 110px; object-fit: contain; flex-shrink: 0; }
+            .header img { width: 90px; height: 90px; object-fit: contain; flex-shrink: 0; }
             .header-text { flex: 1; text-align: center; }
             .header-text h1 { font-size: 28px; font-weight: bold; text-transform: uppercase; letter-spacing: 3px; color: #c41e1e; margin-bottom: 6px; font-family: 'Times New Roman', Times, serif; }
             .header-text p { font-size: 13px; color: #333; line-height: 1.6; }
@@ -139,7 +139,7 @@ export function CertificateView({ data }: { data: CertificateData }) {
           <div className="flex items-center gap-5 border-b-[3px] border-[#1a3a7a] pb-4">
             {data.schoolLogoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={data.schoolLogoUrl} alt="Logo" className="h-[110px] w-[110px] object-contain shrink-0" />
+              <img src={data.schoolLogoUrl} alt="Logo" className="h-[90px] w-[90px] object-contain shrink-0" />
             )}
             <div className="flex-1 text-center">
               <h1 className="text-2xl font-bold uppercase tracking-[3px] text-[#c41e1e]">{data.schoolName}</h1>
