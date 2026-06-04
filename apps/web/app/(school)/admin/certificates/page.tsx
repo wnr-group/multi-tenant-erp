@@ -26,7 +26,7 @@ export default async function CertificatesPage() {
       .order("order"),
     supabase
       .from("bonafide_certificates")
-      .select("id, generated_at, generated_by, student_profile:student_profiles(full_name), academic_year:academic_years(name)")
+      .select("id, generated_at, generated_by, student_profile_id, student_profile:student_profiles(full_name), academic_year:academic_years(name)")
       .eq("school_id", schoolId)
       .order("generated_at", { ascending: false })
       .limit(200),
@@ -57,6 +57,7 @@ export default async function CertificatesPage() {
     const ay = h.academic_year as unknown as { name: string | null } | null;
     return {
       id: h.id,
+      student_profile_id: (h as any).student_profile_id ?? "",
       student_name: sp?.full_name ?? "—",
       class_name: "—",
       academic_year: ay?.name ?? "—",

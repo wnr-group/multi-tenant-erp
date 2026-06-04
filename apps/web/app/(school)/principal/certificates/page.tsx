@@ -26,7 +26,7 @@ export default async function PrincipalCertificatesPage() {
       .order("order"),
     supabase
       .from("bonafide_certificates")
-      .select("id, generated_at, generated_by, student_profile:student_profiles(full_name), academic_year:academic_years(name)")
+      .select("id, generated_at, generated_by, student_profile_id, student_profile:student_profiles(full_name), academic_year:academic_years(name)")
       .eq("school_id", schoolId)
       .order("generated_at", { ascending: false })
       .limit(200),
@@ -48,7 +48,7 @@ export default async function PrincipalCertificatesPage() {
   const historyRows = (history ?? []).map((h) => {
     const sp = h.student_profile as unknown as { full_name: string | null } | null;
     const ay = h.academic_year as unknown as { name: string | null } | null;
-    return { id: h.id, student_name: sp?.full_name ?? "—", class_name: "—", academic_year: ay?.name ?? "—", generated_by_name: generatorMap.get((h as any).generated_by) ?? "—", generated_at: new Date(h.generated_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) };
+    return { id: h.id, student_profile_id: (h as any).student_profile_id ?? "", student_name: sp?.full_name ?? "—", class_name: "—", academic_year: ay?.name ?? "—", generated_by_name: generatorMap.get((h as any).generated_by) ?? "—", generated_at: new Date(h.generated_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) };
   });
 
   const classOptions = (classes ?? []).map((c) => ({ label: c.name, value: c.name }));
