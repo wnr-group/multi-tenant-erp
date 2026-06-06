@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "da337643-058b-45d7-b53f-a1fd6fc528fd"
+      }
+    },
+    "owner": "connect-my-skool",
+    "slug": "connectmyskool",
+    "android": {
+      "package": "com.connectmyskool.connectmyskool"
+    }
+  }
+}
