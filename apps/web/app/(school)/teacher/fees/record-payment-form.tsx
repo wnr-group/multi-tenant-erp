@@ -2,189 +2,125 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase";
-import { NativeSelect } from "@/components/ui/native-select";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-
-const PAYMENT_METHODS = [
-  { value: "cash", label: "Cash" },
-  { value: "upi", label: "UPI" },
-  { value: "bank_transfer", label: "Bank Transfer" },
-  { value: "cheque", label: "Cheque" },
-];
 
 interface Props {
   schoolId: string;
   studentId: string;
   studentName: string;
-  feeStructureId: string;
-  amountDue: number;
+  lineItemId: string;
+  feeTypeName: string;
+  totalAmount: number;
   amountPaid: number;
-  concessionTotal: number;
   onClose: () => void;
 }
 
+const PAYMENT_METHODS = ["cash", "upi", "bank_transfer", "cheque"] as const;
+const METHOD_LABELS: Record<string, string> = {
+  cash: "Cash", upi: "UPI", bank_transfer: "Bank Transfer", cheque: "Cheque",
+};
+
 export function RecordPaymentForm({
-  schoolId,
   studentId,
   studentName,
-  feeStructureId,
-  amountDue,
+  lineItemId,
+  feeTypeName,
+  totalAmount,
   amountPaid,
-  concessionTotal,
   onClose,
 }: Props) {
   const router = useRouter();
-  const remaining = amountDue - amountPaid - concessionTotal;
-  const [amount, setAmount] = useState(String(remaining > 0 ? remaining : 0));
-  const [concession, setConcession] = useState("0");
+  const pending = totalAmount - amountPaid;
+  const [amount, setAmount] = useState(String(pending));
   const [method, setMethod] = useState("cash");
-  const [receiptNo, setReceiptNo] = useState("");
+  const [txId, setTxId] = useState("");
+  const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const parsedAmount = parseFloat(amount);
-    const parsedConcession = parseFloat(concession) || 0;
-    if (parsedAmount <= 0 && parsedConcession <= 0) {
-      toast.error("Enter a payment amount or concession.");
-      return;
-    }
-    if (parsedAmount < 0 || parsedConcession < 0) {
-      toast.error("Amounts cannot be negative.");
-      return;
-    }
+    const amountNum = parseFloat(amount);
+    if (isNaN(amountNum) || amountNum <= 0) { toast.error("Enter a valid amount."); return; }
+    if (amountNum > pending) { toast.error(`Amount cannot exceed outstanding ₹${pending.toLocaleString("en-IN")}.`); return; }
+
     setLoading(true);
-    const supabase = createClient();
-    const totalEffective = amountPaid + concessionTotal + parsedAmount + parsedConcession;
-    const status = totalEffective >= amountDue ? "paid" : "partial";
-    const today = new Date().toISOString().split("T")[0];
-
-    // Find the oldest pending/partial billing row to update rather than inserting a new row,
-    // which would inflate the installment count and amountDue.
-    const { data: existingRow } = await supabase
-      .from("fee_payments")
-      .select("id, amount_paid, concession_amount")
-      .eq("school_id", schoolId)
-      .eq("student_id", studentId)
-      .eq("fee_structure_id", feeStructureId)
-      .in("status", ["pending", "partial"])
-      .order("payment_date", { ascending: true, nullsFirst: true })
-      .limit(1)
-      .single();
-
-    let error;
-    if (existingRow) {
-      ({ error } = await supabase.from("fee_payments").update({
-        amount_paid: (existingRow.amount_paid ?? 0) + parsedAmount,
-        concession_amount: (existingRow.concession_amount ?? 0) + parsedConcession,
-        payment_date: today,
-        payment_method: method,
-        receipt_number: receiptNo || null,
-        status,
-      }).eq("id", existingRow.id));
-    } else {
-      ({ error } = await supabase.from("fee_payments").insert({
-        school_id: schoolId,
+    const res = await fetch("/api/fees/record-offline-payment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         student_id: studentId,
-        fee_structure_id: feeStructureId,
-        amount_paid: parsedAmount,
-        concession_amount: parsedConcession,
-        payment_date: today,
         payment_method: method,
-        receipt_number: receiptNo || null,
-        status,
-      }));
-    }
-
+        transaction_id: txId || undefined,
+        notes: notes || undefined,
+        allocations: [{ line_item_id: lineItemId, amount_applied: amountNum }],
+      }),
+    });
     setLoading(false);
-
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-
-    const parts = [];
-    if (parsedAmount > 0) parts.push(`₹${parsedAmount.toLocaleString("en-IN")} payment`);
-    if (parsedConcession > 0) parts.push(`₹${parsedConcession.toLocaleString("en-IN")} concession`);
-    toast.success(`${parts.join(" + ")} recorded for ${studentName}.`);
-    onClose();
+    const data = await res.json();
+    if (!res.ok) { toast.error(data.error ?? "Failed to record payment."); return; }
+    toast.success("Payment recorded.");
     router.refresh();
+    onClose();
   }
 
   return (
-    <div className="mb-6 rounded-lg border border-border bg-card p-6 shadow-sm">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-800">
-          Record Payment — {studentName}
-        </h2>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
-          Cancel
-        </button>
-      </div>
-      <p className="mb-4 text-sm text-muted-foreground">
-        Due: ₹{amountDue.toLocaleString("en-IN")} · Paid: ₹{amountPaid.toLocaleString("en-IN")}
-        {concessionTotal > 0 && <> · Concession: ₹{concessionTotal.toLocaleString("en-IN")}</>}
-        {" · "}Remaining: ₹{(remaining > 0 ? remaining : 0).toLocaleString("en-IN")}
+    <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
+      <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-blue-600">
+        Record Payment — {studentName}
       </p>
-      <form
-        onSubmit={handleSubmit}
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2"
-      >
+      <p className="mb-3 text-xs text-muted-foreground">
+        {feeTypeName} · Outstanding ₹{pending.toLocaleString("en-IN")}
+      </p>
+      <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3">
         <div>
-          <Label>Amount (₹)</Label>
-          <Input
-            type="number"
-            min={0}
-            step={0.01}
+          <label className="text-xs text-muted-foreground">Amount (₹) *</label>
+          <input
+            type="number" min={1} max={pending}
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
+            className="mt-0.5 block w-28 rounded-md border border-input bg-white px-3 py-1.5 text-sm"
           />
         </div>
-
         <div>
-          <Label>Concession (₹)</Label>
-          <Input
-            type="number"
-            min={0}
-            step={0.01}
-            value={concession}
-            onChange={(e) => setConcession(e.target.value)}
-            placeholder="0"
-          />
-        </div>
-
-        <div>
-          <Label>Payment Method</Label>
-          <NativeSelect
-            options={PAYMENT_METHODS}
+          <label className="text-xs text-muted-foreground">Method</label>
+          <select
             value={method}
             onChange={(e) => setMethod(e.target.value)}
-            className="w-full"
-          />
+            className="mt-0.5 block rounded-md border border-input bg-white px-3 py-1.5 text-sm"
+          >
+            {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{METHOD_LABELS[m]}</option>)}
+          </select>
         </div>
-
         <div>
-          <Label>Receipt # (optional)</Label>
-          <Input
-            value={receiptNo}
-            onChange={(e) => setReceiptNo(e.target.value)}
-            placeholder="e.g., RCP-2024-001"
+          <label className="text-xs text-muted-foreground">Receipt / Txn ID</label>
+          <input
+            type="text"
+            value={txId}
+            onChange={(e) => setTxId(e.target.value)}
+            placeholder="Optional"
+            className="mt-0.5 block w-36 rounded-md border border-input bg-white px-3 py-1.5 text-sm"
           />
         </div>
-
-        <div className="flex items-end sm:col-span-2">
-          <Button type="submit" disabled={loading || !amount}>
-            {loading ? "Saving…" : "Save Payment"}
-          </Button>
+        <div>
+          <label className="text-xs text-muted-foreground">Notes</label>
+          <input
+            type="text"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Optional"
+            className="mt-0.5 block w-36 rounded-md border border-input bg-white px-3 py-1.5 text-sm"
+          />
         </div>
+        <button
+          type="submit"
+          disabled={loading}
+          className="rounded-md bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+        >
+          {loading ? "Saving…" : "Save"}
+        </button>
+        <button type="button" onClick={onClose} className="text-sm text-muted-foreground hover:text-foreground">
+          Cancel
+        </button>
       </form>
     </div>
   );
