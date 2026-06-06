@@ -29,14 +29,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  let body: { class_id: string; academic_year_id: string; fee_type: string; total_amount: number; due_date?: string };
+  let body: { class_id: string; academic_year_id: string; fee_type_id: string; total_amount: number; due_date?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  if (!body.class_id || !body.fee_type || typeof body.total_amount !== "number" || body.total_amount <= 0 || !isFinite(body.total_amount)) {
+  if (!body.class_id || !body.fee_type_id || typeof body.total_amount !== "number" || body.total_amount <= 0 || !isFinite(body.total_amount)) {
     return NextResponse.json({ error: "Missing or invalid required fields" }, { status: 400 });
   }
 
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
   const lineItems = students.map((s) => ({
     school_id: schoolId,
     student_id: s.id,
-    fee_type: body.fee_type,
+    fee_type_id: body.fee_type_id,
     total_amount: body.total_amount,
     due_date: body.due_date ?? null,
     added_by: user.id,

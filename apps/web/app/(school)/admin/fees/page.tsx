@@ -3,26 +3,33 @@ import { getSchoolId } from "@/lib/school";
 import { DataTable } from "@/components/data-table";
 import { Badge } from "@/components/ui/badge";
 import { PushFeeForm } from "./push-fee-form";
+import type { FeeType } from "@/components/fee-type-select";
 
 export default async function FeesPage() {
   const supabase = await createServerSupabaseClient();
   const schoolId = (await getSchoolId())!;
 
-  const [classesRes, academicYearsRes, lineItemsRes] = await Promise.all([
+  const [classesRes, academicYearsRes, lineItemsRes, feeTypesRes] = await Promise.all([
     supabase.from("classes").select("id, name").eq("school_id", schoolId).order("name"),
     supabase.from("academic_years").select("id, name").eq("school_id", schoolId).order("start_date", { ascending: false }),
     supabase
       .from("fee_line_items")
-      .select("id, fee_type, total_amount, due_date, status, student:student_profiles(full_name), class:classes(name), academic_year:academic_years(name)")
+      .select("id, fee_type:fee_types(name), total_amount, due_date, status, student:student_profiles(full_name), class:classes(name), academic_year:academic_years(name)")
       .eq("school_id", schoolId)
       .order("created_at", { ascending: false })
       .limit(100),
+    supabase
+      .from("fee_types")
+      .select("id, name, category, is_predefined")
+      .or(`school_id.eq.${schoolId},school_id.is.null`)
+      .order("is_predefined", { ascending: false })
+      .order("name"),
   ]);
 
   const lineItemRows = (lineItemsRes.data ?? []).map((li) => ({
     id: li.id as string,
     student: (li.student as { full_name?: string } | null)?.full_name ?? "—",
-    fee_type: li.fee_type as string,
+    fee_type: (li.fee_type as { name?: string } | null)?.name ?? "—",
     amount: `₹${Number(li.total_amount).toLocaleString("en-IN")}`,
     class_name: (li.class as { name?: string } | null)?.name ?? "—",
     academic_year: (li.academic_year as { name?: string } | null)?.name ?? "—",
@@ -40,6 +47,7 @@ export default async function FeesPage() {
         <PushFeeForm
           classes={(classesRes.data ?? []).map((c) => ({ id: c.id, name: c.name }))}
           academicYears={(academicYearsRes.data ?? []).map((y) => ({ id: y.id, name: y.name }))}
+          feeTypes={(feeTypesRes.data ?? []) as FeeType[]}
         />
       </div>
 

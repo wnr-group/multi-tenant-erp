@@ -5,15 +5,17 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FeeTypeSelect, type FeeType } from "@/components/fee-type-select";
 
 interface Props {
   classes: { id: string; name: string }[];
   academicYears: { id: string; name: string }[];
+  feeTypes: FeeType[];
 }
 
-export function PushFeeForm({ classes, academicYears }: Props) {
+export function PushFeeForm({ classes, academicYears, feeTypes }: Props) {
   const router = useRouter();
-  const [feeType, setFeeType] = useState("");
+  const [feeTypeId, setFeeTypeId] = useState("");
   const [amount, setAmount] = useState("");
   const [classId, setClassId] = useState("");
   const [academicYearId, setAcademicYearId] = useState("");
@@ -27,7 +29,7 @@ export function PushFeeForm({ classes, academicYears }: Props) {
     setError("");
     setResult(null);
     if (!classId) { setError("Please select a class."); return; }
-    if (!feeType.trim()) { setError("Fee type is required."); return; }
+    if (!feeTypeId) { setError("Please select a fee type."); return; }
     const amountNum = parseFloat(amount);
     if (isNaN(amountNum) || amountNum <= 0) { setError("Enter a valid amount."); return; }
 
@@ -39,7 +41,7 @@ export function PushFeeForm({ classes, academicYears }: Props) {
         body: JSON.stringify({
           class_id: classId,
           academic_year_id: academicYearId || null,
-          fee_type: feeType.trim(),
+          fee_type_id: feeTypeId,
           total_amount: amountNum,
           due_date: dueDate || undefined,
         }),
@@ -47,7 +49,7 @@ export function PushFeeForm({ classes, academicYears }: Props) {
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Failed to push fees."); return; }
       setResult({ created: data.created });
-      setFeeType(""); setAmount(""); setClassId(""); setAcademicYearId(""); setDueDate("");
+      setFeeTypeId(""); setAmount(""); setClassId(""); setAcademicYearId(""); setDueDate("");
       router.refresh();
     } catch {
       setError("Unexpected error. Please try again.");
@@ -59,9 +61,14 @@ export function PushFeeForm({ classes, academicYears }: Props) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="flex flex-wrap items-end gap-3">
-        <div className="flex-1 min-w-36">
+        <div className="flex-1 min-w-48">
           <Label>Fee Type</Label>
-          <Input value={feeType} onChange={(e) => setFeeType(e.target.value)} placeholder="e.g., Tuition Fee" required />
+          <FeeTypeSelect
+            feeTypes={feeTypes}
+            value={feeTypeId}
+            onChange={setFeeTypeId}
+            required
+          />
         </div>
         <div className="w-36">
           <Label>Amount (₹)</Label>
@@ -75,9 +82,7 @@ export function PushFeeForm({ classes, academicYears }: Props) {
             className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           >
             <option value="">Select class</option>
-            {classes.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
+            {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
         <div className="w-44">
@@ -88,9 +93,7 @@ export function PushFeeForm({ classes, academicYears }: Props) {
             className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           >
             <option value="">Select year</option>
-            {academicYears.map((y) => (
-              <option key={y.id} value={y.id}>{y.name}</option>
-            ))}
+            {academicYears.map((y) => <option key={y.id} value={y.id}>{y.name}</option>)}
           </select>
         </div>
         <div>
