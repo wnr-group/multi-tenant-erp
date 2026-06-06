@@ -203,7 +203,7 @@ export default function ParentFees() {
         .order("due_date", { ascending: true, nullsFirst: false }),
       supabase
         .from("payments")
-        .select("id, payment_date, total_amount, payment_method, mode, transaction_id, razorpay_payment_id, line_item_payments(amount_applied, line_item_id, fee_line_items!line_item_id(fee_type))")
+        .select("id, payment_date, total_amount, payment_method, mode, transaction_id, razorpay_payment_id, line_item_payments(amount_applied, line_item_id, fee_line_items!line_item_id(fee_type:fee_types(name)))")
         .eq("student_id", sp.id)
         .order("payment_date", { ascending: false }),
     ]);
@@ -240,7 +240,7 @@ export default function ParentFees() {
         mode: p.mode ?? "",
         transaction_id: p.transaction_id ?? p.razorpay_payment_id ?? null,
         line_items_covered: ((p.line_item_payments ?? []) as any[]).map((lip: any) => ({
-          fee_type: (lip.fee_line_items as { fee_type?: string } | null)?.fee_type ?? "—",
+          fee_type: (lip.fee_line_items as { fee_type?: { name?: string } } | null)?.fee_type?.name ?? "—",
           amount_applied: lip.amount_applied ?? 0,
         })),
       }))
