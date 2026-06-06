@@ -89,6 +89,5 @@ INSERT INTO public.fee_types (name, category, is_predefined, is_one_time, is_ref
 
 -- Migrate fee_line_items: replace free-text fee_type with FK
 ALTER TABLE public.fee_line_items DROP COLUMN fee_type;
-ALTER TABLE public.fee_line_items ADD COLUMN fee_type_id UUID REFERENCES public.fee_types(id);
-ALTER TABLE public.fee_line_items ALTER COLUMN fee_type_id SET NOT NULL;
+ALTER TABLE public.fee_line_items ADD COLUMN fee_type_id UUID NOT NULL REFERENCES public.fee_types(id);
 CREATE INDEX idx_fee_line_items_fee_type ON public.fee_line_items(fee_type_id);
