@@ -198,7 +198,7 @@ export default function ParentFees() {
     const [{ data: lineItemsData }, { data: paymentsData }] = await Promise.all([
       supabase
         .from("fee_line_items")
-        .select("id, fee_type, total_amount, due_date, status")
+        .select("id, fee_type:fee_types(name), total_amount, due_date, status")
         .eq("student_id", sp.id)
         .order("due_date", { ascending: true, nullsFirst: false }),
       supabase
@@ -221,7 +221,7 @@ export default function ParentFees() {
       const outstanding = Math.max(0, li.total_amount - paid);
       return {
         id: li.id,
-        fee_type: li.fee_type ?? "",
+        fee_type: (li.fee_type as { name?: string } | null)?.name ?? "Unknown",
         total_amount: li.total_amount ?? 0,
         amount_paid: paid,
         outstanding,
