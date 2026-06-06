@@ -25,6 +25,7 @@ const NAV_ITEMS: Record<string, { label: string; href: string }[]> = {
     { label: "Timetable",      href: "/admin/timetable" },
     { label: "Academics",      href: "/admin/academics" },
     { label: "Fees",           href: "/admin/fees" },
+    { label: "Fee Types",      href: "/admin/settings/fee-types" },
     { label: "Syllabus",       href: "/admin/syllabus" },
     { label: "Announcements",  href: "/admin/announcements" },
     { label: "Gallery",        href: "/admin/gallery" },
