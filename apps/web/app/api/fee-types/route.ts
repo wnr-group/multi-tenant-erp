@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
   const { data, error } = await supabase
     .from("fee_types")
     .insert({ name: body.name.trim(), category: body.category, is_predefined: false, school_id: schoolId })
-    .select("id, name, category, is_predefined")
+    .select("id, name, category, is_predefined, is_one_time, is_refundable, is_optional")
     .single();
 
   if (error) {
