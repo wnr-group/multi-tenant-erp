@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
 import { FeesPieChart } from "./student-fees-pie-chart";
+import { FeeTypeSelect, type FeeType } from "@/components/fee-type-select";
 
 interface LineItem {
   id: string;
@@ -37,6 +38,7 @@ interface Props {
   schoolId: string;
   studentId: string;
   studentName: string;
+  feeTypes: FeeType[];
 }
 
 const PAYMENT_METHODS = ["cash", "upi", "bank_transfer", "cheque"] as const;
@@ -65,12 +67,12 @@ function InlineFormRow({ colSpan, color, title, children }: {
   );
 }
 
-export function StudentFeesClient({ lineItems, payments, schoolId, studentId }: Props) {
+export function StudentFeesClient({ lineItems, payments, schoolId, studentId, feeTypes }: Props) {
   const router = useRouter();
 
   // Add Fee form
   const [addingFee, setAddingFee] = useState(false);
-  const [feeForm, setFeeForm] = useState({ fee_type: "", total_amount: "", due_date: "" });
+  const [feeForm, setFeeForm] = useState({ fee_type_id: "", total_amount: "", due_date: "" });
   const [feeLoading, setFeeLoading] = useState(false);
 
   // Record Payment form (per line item)
@@ -97,14 +99,14 @@ export function StudentFeesClient({ lineItems, payments, schoolId, studentId }: 
   // --- Add Fee ---
   async function handleAddFee() {
     const amount = parseFloat(feeForm.total_amount);
-    if (!feeForm.fee_type.trim()) { toast.error("Fee type is required."); return; }
+    if (!feeForm.fee_type_id) { toast.error("Fee type is required."); return; }
     if (isNaN(amount) || amount <= 0) { toast.error("Enter a valid amount."); return; }
     setFeeLoading(true);
     const supabase = createClient();
     const { error } = await supabase.from("fee_line_items").insert({
       school_id: schoolId,
       student_id: studentId,
-      fee_type: feeForm.fee_type.trim(),
+      fee_type_id: feeForm.fee_type_id,
       total_amount: amount,
       due_date: feeForm.due_date || null,
       status: "pending",
@@ -112,7 +114,7 @@ export function StudentFeesClient({ lineItems, payments, schoolId, studentId }: 
     setFeeLoading(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Fee added.");
-    setFeeForm({ fee_type: "", total_amount: "", due_date: "" });
+    setFeeForm({ fee_type_id: "", total_amount: "", due_date: "" });
     setAddingFee(false);
     router.refresh();
   }
@@ -202,7 +204,7 @@ export function StudentFeesClient({ lineItems, payments, schoolId, studentId }: 
         <div className="mb-2 flex items-center justify-between">
           <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Fee Line Items</h3>
           <button
-            onClick={() => { setAddingFee(!addingFee); setFeeForm({ fee_type: "", total_amount: "", due_date: "" }); }}
+            onClick={() => { setAddingFee(!addingFee); setFeeForm({ fee_type_id: "", total_amount: "", due_date: "" }); }}
             className="flex items-center gap-1 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
           >
             <Plus className="h-3.5 w-3.5" /> Add Fee
@@ -216,12 +218,12 @@ export function StudentFeesClient({ lineItems, payments, schoolId, studentId }: 
             <div className="flex flex-wrap items-end gap-3">
               <div>
                 <label className="text-xs text-muted-foreground">Fee Type *</label>
-                <input
-                  type="text"
-                  value={feeForm.fee_type}
-                  onChange={(e) => setFeeForm((f) => ({ ...f, fee_type: e.target.value }))}
-                  placeholder="e.g. Tuition, Transport…"
-                  className="mt-0.5 block w-44 rounded-md border border-input bg-white px-3 py-1.5 text-sm"
+                <FeeTypeSelect
+                  feeTypes={feeTypes}
+                  value={feeForm.fee_type_id}
+                  onChange={(v) => setFeeForm((f) => ({ ...f, fee_type_id: v }))}
+                  required
+                  className="mt-0.5 block w-56 rounded-md border border-input bg-white px-3 py-1.5 text-sm"
                 />
               </div>
               <div>
