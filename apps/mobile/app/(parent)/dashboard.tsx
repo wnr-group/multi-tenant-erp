@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Image, FlatList, Dimensions, RefreshControl } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import Animated, { FadeInDown, FadeInRight } from "react-native-reanimated";
 import { supabase, fixStorageUrl } from "../../lib/supabase";
 import { useTheme } from "../../lib/theme";
-import { StatCard } from "../../components/StatCard";
-import { SectionHeader } from "../../components/SectionHeader";
 import { Skeleton, SkeletonCard } from "../../components/Skeleton";
 import { Avatar } from "../../components/Avatar";
 
@@ -51,6 +49,7 @@ export default function ParentDashboard() {
   }, []);
 
   async function loadDashboard() {
+    setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
@@ -76,17 +75,20 @@ export default function ParentDashboard() {
         ? supabase.from("fee_line_items").select("total_amount, status").eq("student_id", studentId).neq("status", "paid")
         : Promise.resolve({ data: [] }),
       activeEnrollment?.sections?.id
-        ? supabase.from("homework").select("id").eq("section_id", activeEnrollment.sections.id).eq("due_date", new Date().toISOString().split("T")[0])
+        ? supabase.from("homework").select("id").eq("section_id", activeEnrollment.sections.id).gte("due_date", new Date().toISOString().split("T")[0])
         : Promise.resolve({ data: [] }),
-      supabase.from("announcements").select("id, title, created_at").order("created_at", { ascending: false }).limit(3),
       schoolId
-        ? supabase.from("school_gallery").select("id, image_url, caption").eq("school_id", schoolId).order("display_order").order("created_at", { ascending: false }).limit(10)
+        ? supabase.from("announcements").select("id, title, created_at").eq("school_id", schoolId).order("created_at", { ascending: false }).limit(5)
+        : Promise.resolve({ data: [] }),
+      schoolId
+        ? supabase.from("school_gallery").select("id, image_url, caption").eq("school_id", schoolId).order("created_at", { ascending: false }).limit(5)
         : Promise.resolve({ data: [] }),
     ]);
 
-    const totalDays = attendanceRes.data?.length ?? 0;
-    const presentDays = attendanceRes.data?.filter((r: any) => r.status === "present").length ?? 0;
-    const pendingFees = (feesRes.data ?? []).reduce((sum: number, r: any) => sum + (r.total_amount ?? 0), 0);
+    const attendanceData = attendanceRes.data ?? [];
+    const totalDays = attendanceData.length;
+    const presentDays = attendanceData.filter((r: any) => r.status === "present" || r.status === "late").length;
+    const pendingFees = (feesRes.data ?? []).reduce((s: number, f: any) => s + Number(f.total_amount ?? 0), 0);
 
     const student: StudentInfo | null = sp ? {
       id: sp.id,
@@ -114,52 +116,132 @@ export default function ParentDashboard() {
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
   const quickActions = [
-    { icon: "wallet-outline" as const, label: "Pay Fees", route: "/(parent)/fees" },
-    { icon: "trophy-outline" as const, label: "Results", route: "/(parent)/academics" },
-    { icon: "book-outline" as const, label: "Homework", route: "/(parent)/academics" },
-    { icon: "megaphone-outline" as const, label: "News", route: "/(parent)/more" },
+    { icon: "wallet-outline" as const, label: "Pay Fees", route: "/(parent)/fees", color: "#4f46e5" },
+    { icon: "trophy-outline" as const, label: "Results", route: "/(parent)/academics", color: "#059669" },
+    { icon: "book-outline" as const, label: "Homework", route: "/(parent)/academics", color: "#d97706" },
+    { icon: "megaphone-outline" as const, label: "News", route: "/(parent)/more", color: "#dc2626" },
   ];
 
   return (
-    <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: theme.background }}>
+    <View style={{ flex: 1, backgroundColor: "#ffffff" }}>
       <ScrollView
         contentContainerStyle={{ paddingBottom: 32 }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
       >
-        {/* ── Header ── */}
-        <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16 }}>
-          {loading ? <Skeleton height={28} width="60%" /> : (
-            <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>
-              {greeting}, {data?.parentName?.split(" ")[0]} 👋
-            </Text>
-          )}
+        {/* ── Greeting ── */}
+        <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 }}>
+          <Animated.View entering={FadeInDown.duration(500).delay(100)}>
+            {loading ? <Skeleton height={28} width="60%" /> : (
+              <Text style={{ fontSize: 24, fontFamily: "Inter_700Bold", color: "#111827" }}>
+                {greeting}, {data?.parentName?.split(" ")[0]} 👋
+              </Text>
+            )}
+          </Animated.View>
         </View>
+
+        {/* ── Student card ── */}
+        {!loading && data?.student && (
+          <Animated.View
+            entering={FadeInDown.duration(500).delay(200)}
+            style={{
+              marginHorizontal: 20,
+              backgroundColor: "#f8fafc",
+              borderRadius: 16,
+              padding: 14,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 12,
+              borderWidth: 1,
+              borderColor: "#e5e7eb",
+            }}
+          >
+            {data.student.photoUrl ? (
+              <Image source={{ uri: data.student.photoUrl }} style={{ width: 44, height: 44, borderRadius: 12 }} resizeMode="cover" />
+            ) : (
+              <Avatar name={data.student.name} size={44} />
+            )}
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#111827" }}>{data.student.name}</Text>
+              <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: "#4f46e5", marginTop: 1 }}>
+                {data.student.className} {data.student.sectionName}
+              </Text>
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#ecfdf5", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: "#10b981" }} />
+              <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#059669" }}>Active</Text>
+            </View>
+          </Animated.View>
+        )}
+
+        {/* ── Stats strip ── */}
+        <Animated.View entering={FadeInDown.duration(500).delay(300)} style={{ flexDirection: "row", gap: 10, paddingHorizontal: 20, marginTop: 20 }}>
+          {loading ? (
+            [0,1,2].map(i => <View key={i} style={{ flex: 1 }}><SkeletonCard /></View>)
+          ) : (
+            <>
+              <View style={{ flex: 1, backgroundColor: "#f0fdf4", borderRadius: 14, padding: 14, alignItems: "center" }}>
+                <Ionicons name="checkmark-circle" size={22} color="#059669" />
+                <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: "#111827", marginTop: 6 }}>{data?.attendancePct}%</Text>
+                <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: "#6b7280", marginTop: 2 }}>Attendance</Text>
+              </View>
+              <View style={{ flex: 1, backgroundColor: (data?.pendingFees ?? 0) > 0 ? "#fef3c7" : "#f0fdf4", borderRadius: 14, padding: 14, alignItems: "center" }}>
+                <Ionicons name="wallet" size={22} color={(data?.pendingFees ?? 0) > 0 ? "#d97706" : "#059669"} />
+                <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: "#111827", marginTop: 6 }}>₹{((data?.pendingFees ?? 0) / 1000).toFixed(0)}k</Text>
+                <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: "#6b7280", marginTop: 2 }}>Pending</Text>
+              </View>
+              <View style={{ flex: 1, backgroundColor: (data?.homeworkDue ?? 0) > 0 ? "#fef2f2" : "#f0fdf4", borderRadius: 14, padding: 14, alignItems: "center" }}>
+                <Ionicons name="book" size={22} color={(data?.homeworkDue ?? 0) > 0 ? "#dc2626" : "#059669"} />
+                <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: "#111827", marginTop: 6 }}>{data?.homeworkDue}</Text>
+                <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: "#6b7280", marginTop: 2 }}>Due Today</Text>
+              </View>
+            </>
+          )}
+        </Animated.View>
+
+        {/* ── Quick actions ── */}
+        <Animated.View entering={FadeInDown.duration(500).delay(400)} style={{ paddingHorizontal: 20, marginTop: 24 }}>
+          <Text style={{ fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#111827", marginBottom: 12 }}>Quick Actions</Text>
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            {quickActions.map((action, i) => (
+              <Animated.View key={action.label} entering={FadeInRight.duration(400).delay(450 + i * 80)} style={{ flex: 1 }}>
+                <TouchableOpacity
+                  onPress={() => router.push(action.route as any)}
+                  style={{ backgroundColor: "#ffffff", borderRadius: 14, padding: 14, alignItems: "center", gap: 8, borderWidth: 1, borderColor: "#f3f4f6" }}
+                  activeOpacity={0.7}
+                >
+                  <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: `${action.color}12`, alignItems: "center", justifyContent: "center" }}>
+                    <Ionicons name={action.icon} size={20} color={action.color} />
+                  </View>
+                  <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: "#374151", textAlign: "center" }}>{action.label}</Text>
+                </TouchableOpacity>
+              </Animated.View>
+            ))}
+          </View>
+        </Animated.View>
 
         {/* ── Gallery carousel ── */}
         {!loading && (data?.gallery?.length ?? 0) > 0 && (
-          <View style={{ marginBottom: 20 }}>
+          <Animated.View entering={FadeInDown.duration(500).delay(500)} style={{ marginTop: 24 }}>
+            <Text style={{ fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#111827", paddingHorizontal: 20, marginBottom: 12 }}>School Gallery</Text>
             <FlatList
               ref={carouselRef}
               data={data!.gallery}
               horizontal
               pagingEnabled
               showsHorizontalScrollIndicator={false}
-              snapToInterval={SCREEN_WIDTH}
+              snapToInterval={SCREEN_WIDTH - 40}
+              contentContainerStyle={{ paddingHorizontal: 20 }}
               decelerationRate="fast"
               keyExtractor={(item) => item.id}
               onMomentumScrollEnd={(e) => {
-                setActiveSlide(Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH));
+                setActiveSlide(Math.round(e.nativeEvent.contentOffset.x / (SCREEN_WIDTH - 40)));
               }}
               renderItem={({ item }) => (
-                <View style={{ width: SCREEN_WIDTH, height: CAROUSEL_HEIGHT }}>
-                  <Image
-                    source={{ uri: item.image_url }}
-                    style={{ width: SCREEN_WIDTH, height: CAROUSEL_HEIGHT }}
-                    resizeMode="cover"
-                  />
+                <View style={{ width: SCREEN_WIDTH - 40, height: CAROUSEL_HEIGHT, borderRadius: 16, overflow: "hidden", marginRight: 12 }}>
+                  <Image source={{ uri: item.image_url }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
                   {item.caption && (
-                    <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, paddingHorizontal: 20, paddingVertical: 10, backgroundColor: "rgba(0,0,0,0.4)" }}>
+                    <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: "rgba(0,0,0,0.5)", borderBottomLeftRadius: 16, borderBottomRightRadius: 16 }}>
                       <Text style={{ color: "#fff", fontSize: 13, fontFamily: "Inter_500Medium" }}>{item.caption}</Text>
                     </View>
                   )}
@@ -167,121 +249,46 @@ export default function ParentDashboard() {
               )}
             />
             {data!.gallery.length > 1 && (
-              <View style={{ flexDirection: "row", justifyContent: "center", gap: 5, marginTop: 8 }}>
+              <View style={{ flexDirection: "row", justifyContent: "center", gap: 5, marginTop: 10 }}>
                 {data!.gallery.map((_, i) => (
-                  <View
-                    key={i}
-                    style={{
-                      width: i === activeSlide ? 16 : 6,
-                      height: 6,
-                      borderRadius: 3,
-                      backgroundColor: i === activeSlide ? theme.primary : theme.border,
-                    }}
-                  />
+                  <View key={i} style={{ width: i === activeSlide ? 18 : 6, height: 6, borderRadius: 3, backgroundColor: i === activeSlide ? "#4f46e5" : "#e5e7eb" }} />
                 ))}
               </View>
             )}
-          </View>
+          </Animated.View>
         )}
 
-        <View style={{ paddingHorizontal: 20, gap: 24 }}>
-          {/* ── Student card ── */}
-          {!loading && data?.student && (
-            <View style={{
-              backgroundColor: theme.surface,
-              borderRadius: 20,
-              padding: 16,
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 14,
-              borderWidth: 1,
-              borderColor: theme.border,
-            }}>
-              {data.student.photoUrl ? (
-                <Image
-                  source={{ uri: data.student.photoUrl }}
-                  style={{ width: 56, height: 56, borderRadius: 14 }}
-                  resizeMode="cover"
-                />
-              ) : (
-                <Avatar name={data.student.name} size={56} />
-              )}
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>
-                  {data.student.name}
-                </Text>
-                <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: theme.primary }}>
-                  {data.student.className} {data.student.sectionName}
-                </Text>
-                <View style={{ flexDirection: "row", gap: 12, marginTop: 2 }}>
-                  {data.student.rollNumber ? (
-                    <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: theme.textMuted }}>
-                      Roll #{data.student.rollNumber}
-                    </Text>
-                  ) : null}
-                  {data.student.admissionNumber ? (
-                    <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: theme.textMuted }}>
-                      Adm #{data.student.admissionNumber}
-                    </Text>
-                  ) : null}
-                </View>
-              </View>
-              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#10B981" }} />
-            </View>
-          )}
-          {loading && <SkeletonCard />}
-
-          {/* ── Stats strip ── */}
-          {loading ? (
-            <View style={{ flexDirection: "row", gap: 12 }}>
-              {[0,1,2].map(i => <View key={i} style={{ flex: 1 }}><SkeletonCard /></View>)}
-            </View>
-          ) : (
-            <View style={{ flexDirection: "row", gap: 12 }}>
-              <StatCard icon="checkmark-circle-outline" value={`${data?.attendancePct}%`} label="Attendance" />
-              <StatCard icon="wallet-outline" value={`₹${((data?.pendingFees ?? 0) / 1000).toFixed(0)}k`} label="Pending" variant={(data?.pendingFees ?? 0) > 0 ? "warning" : "default"} />
-              <StatCard icon="book-outline" value={`${data?.homeworkDue}`} label="Due Today" variant={(data?.homeworkDue ?? 0) > 0 ? "danger" : "default"} />
-            </View>
-          )}
-
-          {/* ── Quick actions ── */}
-          <View>
-            <SectionHeader title="Quick Actions" />
-            <View style={{ flexDirection: "row", gap: 12 }}>
-              {quickActions.map((action) => (
-                <TouchableOpacity
-                  key={action.label}
-                  onPress={() => router.push(action.route as any)}
-                  style={{ flex: 1, backgroundColor: theme.surface, borderRadius: 16, padding: 14, alignItems: "center", gap: 8, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 2 }}
-                  activeOpacity={0.7}
-                >
-                  <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: theme.primaryLight, alignItems: "center", justifyContent: "center" }}>
-                    <Ionicons name={action.icon} size={20} color={theme.primary} />
-                  </View>
-                  <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: theme.textSecondary, textAlign: "center" }}>{action.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+        {/* ── Latest news ── */}
+        <Animated.View entering={FadeInDown.duration(500).delay(600)} style={{ paddingHorizontal: 20, marginTop: 24 }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <Text style={{ fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#111827" }}>Latest News</Text>
+            <TouchableOpacity onPress={() => router.push("/(parent)/more")} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: "#4f46e5" }}>See all</Text>
+            </TouchableOpacity>
           </View>
-
-          {/* ── Latest news ── */}
-          <View>
-            <SectionHeader title="Latest News" onSeeAll={() => router.push("/(parent)/more")} />
-            {loading ? (
-              <View style={{ gap: 8 }}><SkeletonCard /><SkeletonCard /></View>
-            ) : (data?.announcements ?? []).length === 0 ? (
-              <Text style={{ color: theme.textMuted, fontFamily: "Inter_400Regular", fontSize: 13, textAlign: "center", paddingVertical: 16 }}>No announcements yet</Text>
-            ) : data!.announcements.map((a) => (
-              <View key={a.id} style={{ backgroundColor: theme.surface, borderRadius: 12, padding: 14, marginBottom: 8 }}>
-                <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: theme.textPrimary }}>{a.title}</Text>
-                <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: theme.textMuted, marginTop: 4 }}>
+          {loading ? (
+            <View style={{ gap: 8 }}><SkeletonCard /><SkeletonCard /></View>
+          ) : (data?.announcements ?? []).length === 0 ? (
+            <View style={{ backgroundColor: "#f9fafb", borderRadius: 12, padding: 20, alignItems: "center" }}>
+              <Ionicons name="megaphone-outline" size={24} color="#9ca3af" />
+              <Text style={{ color: "#6b7280", fontFamily: "Inter_400Regular", fontSize: 13, marginTop: 8 }}>No announcements yet</Text>
+            </View>
+          ) : data!.announcements.map((a) => (
+            <View key={a.id} style={{ backgroundColor: "#f9fafb", borderRadius: 12, padding: 14, marginBottom: 8, flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "#ede9fe", alignItems: "center", justifyContent: "center" }}>
+                <Ionicons name="megaphone" size={16} color="#7c3aed" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: "#111827" }} numberOfLines={1}>{a.title}</Text>
+                <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: "#9ca3af", marginTop: 2 }}>
                   {new Date(a.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                 </Text>
               </View>
-            ))}
-          </View>
-        </View>
+              <Ionicons name="chevron-forward" size={16} color="#9ca3af" />
+            </View>
+          ))}
+        </Animated.View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }

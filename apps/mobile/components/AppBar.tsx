@@ -1,54 +1,35 @@
-import { View, Text } from "react-native";
+import { View, Text, Image, StatusBar } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../lib/theme";
+
+const logoMark = require("../assets/logo-mark.png");
 
 export function AppBar() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const name = theme.schoolName || "School ERP";
-
-  // Derive initials from school name (up to 2 words)
-  const initials = name
-    .split(" ")
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? "")
-    .join("");
 
   return (
     <View
       style={{
-        backgroundColor: theme.surface,
-        paddingTop: insets.top,
-        paddingHorizontal: 20,
-        paddingBottom: 12,
+        backgroundColor: "#ffffff",
+        paddingTop: insets.top + 6,
+        paddingHorizontal: 16,
+        paddingBottom: 10,
         flexDirection: "row",
         alignItems: "center",
-        gap: 10,
+        gap: 8,
         borderBottomWidth: 1,
-        borderBottomColor: theme.border,
+        borderBottomColor: "#f0f0f0",
       }}
     >
-      {/* Logo pill */}
-      <View
-        style={{
-          width: 34,
-          height: 34,
-          borderRadius: 10,
-          backgroundColor: theme.primary,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 0.5 }}>
-          {initials}
-        </Text>
-      </View>
-
-      <Text
-        style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: theme.textPrimary, flex: 1 }}
-        numberOfLines={1}
-      >
-        {name}
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" translucent={false} />
+      <Image
+        source={logoMark}
+        style={{ width: 32, height: 32 }}
+        resizeMode="contain"
+      />
+      <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: "#1a8fb5" }}>
+        ConnectMySkool
       </Text>
     </View>
   );

@@ -1,13 +1,16 @@
 import { useState, useEffect } from "react";
-import { View, Text, TextInput, KeyboardAvoidingView, Platform, ScrollView, Alert, TouchableOpacity } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { View, Text, TextInput, KeyboardAvoidingView, Platform, ScrollView, Alert, TouchableOpacity, Image, Linking, Dimensions, StatusBar as RNStatusBar } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import Animated, { FadeInDown, FadeInUp, FadeIn, SlideInRight, SlideOutLeft } from "react-native-reanimated";
 import { supabase } from "../../lib/supabase";
-import { useTheme } from "../../lib/theme";
-import { PrimaryButton } from "../../components/PrimaryButton";
+
+const schoolLogo = require("../../assets/logo-header.png");
+const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+
+const BRAND = "#4f46e5";
 
 export default function LoginScreen() {
-  const theme = useTheme();
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
@@ -52,7 +55,6 @@ export default function LoginScreen() {
     if (error) {
       Alert.alert("Login failed", "Invalid or expired OTP. Please try again.");
     }
-    // On success, _layout.tsx session listener triggers role-based navigation automatically
   }
 
   async function handleResend() {
@@ -64,75 +66,192 @@ export default function LoginScreen() {
     else setResendCooldown(30);
   }
 
+  const phoneReady = phone.replace(/\D/g, "").length === 10;
+  const otpReady = otp.length === 6;
+  const insets = useSafeAreaInsets();
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+    <View style={{ flex: 1, backgroundColor: "#ffffff" }}>
+      <RNStatusBar barStyle="dark-content" backgroundColor="#f0f4ff" translucent={false} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 24, justifyContent: "center" }} keyboardShouldPersistTaps="handled">
-          <View style={{ alignItems: "center", marginBottom: 40 }}>
-            <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: theme.primaryLight, alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-              <Ionicons name="school" size={36} color={theme.primary} />
-            </View>
-            <Text style={{ fontSize: 28, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>Welcome back</Text>
-            <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: theme.textSecondary, marginTop: 4 }}>Sign in to continue</Text>
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+          bounces={false}
+        >
+          {/* Top branded section */}
+          <View style={{
+            backgroundColor: "#f0f4ff",
+            paddingTop: insets.top + 16,
+            paddingBottom: 44,
+            alignItems: "center",
+            borderBottomLeftRadius: 32,
+            borderBottomRightRadius: 32,
+          }}>
+            <Animated.View entering={FadeInDown.duration(600).delay(100)}>
+              <Image
+                source={schoolLogo}
+                style={{ width: 300, height: 190 }}
+                resizeMode="contain"
+              />
+            </Animated.View>
           </View>
 
-          {step === "phone" ? (
-            <>
-              <View style={{ marginBottom: 24 }}>
-                <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: theme.textSecondary, marginBottom: 6 }}>Mobile Number</Text>
-                <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: theme.surface, borderRadius: 10, borderWidth: 1, borderColor: theme.border, overflow: "hidden" }}>
-                  <View style={{ paddingHorizontal: 14, height: 48, alignItems: "center", justifyContent: "center", backgroundColor: theme.surfaceRaised, borderRightWidth: 1, borderRightColor: theme.border }}>
-                    <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: theme.textSecondary }}>+91</Text>
+          {/* Form section */}
+          <Animated.View
+            entering={FadeInUp.duration(500).delay(300)}
+            style={{ flex: 1, paddingHorizontal: 24, paddingTop: 36 }}
+          >
+            {step === "phone" ? (
+              <Animated.View key="phone-step" entering={SlideInRight.duration(300)} exiting={SlideOutLeft.duration(200)}>
+                <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: "#111827", marginBottom: 6 }}>
+                  Welcome
+                </Text>
+                <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: "#6b7280", marginBottom: 28, lineHeight: 20 }}>
+                  Enter your registered mobile number to get started
+                </Text>
+
+                <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: "#374151", marginBottom: 8 }}>
+                  Mobile Number
+                </Text>
+                <View style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  backgroundColor: "#f9fafb",
+                  borderRadius: 12,
+                  borderWidth: 1.5,
+                  borderColor: phone.length > 0 ? BRAND : "#e5e7eb",
+                  overflow: "hidden",
+                  marginBottom: 24,
+                }}>
+                  <View style={{ paddingHorizontal: 16, height: 52, alignItems: "center", justifyContent: "center", borderRightWidth: 1, borderRightColor: "#e5e7eb", backgroundColor: "#f3f4f6" }}>
+                    <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#374151" }}>+91</Text>
                   </View>
                   <TextInput
-                    style={{ flex: 1, height: 48, fontSize: 14, fontFamily: "Inter_400Regular", color: theme.textPrimary, paddingHorizontal: 14 }}
-                    placeholder="9876543210"
-                    placeholderTextColor={theme.textMuted}
+                    style={{ flex: 1, height: 52, fontSize: 17, fontFamily: "Inter_500Medium", color: "#111827", paddingHorizontal: 14, letterSpacing: 0.5 }}
+                    placeholder="9876 543 210"
+                    placeholderTextColor="#c4c9d4"
                     value={phone}
                     onChangeText={(t) => setPhone(t.replace(/\D/g, ""))}
                     keyboardType="phone-pad"
                     maxLength={10}
+                    autoFocus
                   />
+                  {phoneReady && (
+                    <View style={{ paddingRight: 14 }}>
+                      <Ionicons name="checkmark-circle" size={22} color="#10b981" />
+                    </View>
+                  )}
                 </View>
-              </View>
-              <PrimaryButton label="Send OTP" onPress={handleSendOtp} loading={loading} />
-            </>
-          ) : (
-            <>
-              <View style={{ marginBottom: 8 }}>
-                <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: theme.textSecondary }}>
-                  OTP sent to{" "}
-                  <Text style={{ fontFamily: "Inter_500Medium", color: theme.textPrimary }}>+91 {phone}</Text>
-                </Text>
-                <TouchableOpacity onPress={() => { setStep("phone"); setOtp(""); setLoading(false); }}>
-                  <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: theme.primary, marginTop: 2 }}>Change number</Text>
+
+                <TouchableOpacity
+                  onPress={handleSendOtp}
+                  disabled={loading || !phoneReady}
+                  activeOpacity={0.8}
+                  style={{
+                    backgroundColor: phoneReady ? BRAND : "#c7d2fe",
+                    borderRadius: 12,
+                    height: 52,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexDirection: "row",
+                    gap: 8,
+                  }}
+                >
+                  <Text style={{ fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#ffffff" }}>
+                    {loading ? "Sending..." : "Send OTP"}
+                  </Text>
+                  {!loading && <Ionicons name="arrow-forward" size={18} color="#ffffff" />}
                 </TouchableOpacity>
-              </View>
-              <View style={{ marginBottom: 24, marginTop: 12 }}>
-                <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: theme.textSecondary, marginBottom: 6 }}>Enter OTP</Text>
-                <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: theme.surface, borderRadius: 10, borderWidth: 1, borderColor: theme.border, paddingHorizontal: 14, gap: 10 }}>
-                  <Ionicons name="keypad-outline" size={18} color={theme.textMuted} />
+
+              </Animated.View>
+            ) : (
+              <Animated.View key="otp-step" entering={SlideInRight.duration(300)}>
+                <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: "#111827", marginBottom: 6 }}>
+                  Verify OTP
+                </Text>
+                <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: "#6b7280", marginBottom: 4, lineHeight: 20 }}>
+                  We sent a 6-digit code to{" "}
+                  <Text style={{ fontFamily: "Inter_600SemiBold", color: "#111827" }}>+91 {phone}</Text>
+                </Text>
+                <TouchableOpacity
+                  onPress={() => { setStep("phone"); setOtp(""); setLoading(false); }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={{ marginBottom: 28 }}
+                >
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: BRAND }}>Change number</Text>
+                </TouchableOpacity>
+
+                <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: "#374151", marginBottom: 8 }}>
+                  Enter OTP
+                </Text>
+                <View style={{
+                  backgroundColor: "#f9fafb",
+                  borderRadius: 12,
+                  borderWidth: 1.5,
+                  borderColor: otp.length > 0 ? BRAND : "#e5e7eb",
+                  marginBottom: 24,
+                }}>
                   <TextInput
-                    style={{ flex: 1, height: 48, fontSize: 20, fontFamily: "Inter_700Bold", color: theme.textPrimary, letterSpacing: 8 }}
-                    placeholder="------"
-                    placeholderTextColor={theme.textMuted}
+                    style={{ height: 52, fontSize: 22, fontFamily: "Inter_700Bold", color: "#111827", letterSpacing: 10, textAlign: "center" }}
+                    placeholder="• • • • • •"
+                    placeholderTextColor="#d1d5db"
                     value={otp}
                     onChangeText={(t) => setOtp(t.replace(/\D/g, ""))}
                     keyboardType="number-pad"
                     maxLength={6}
+                    autoFocus
                   />
                 </View>
-              </View>
-              <PrimaryButton label="Verify OTP" onPress={handleVerifyOtp} loading={loading} />
-              <TouchableOpacity onPress={handleResend} disabled={resendCooldown > 0} style={{ marginTop: 16, alignItems: "center" }}>
-                <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: resendCooldown > 0 ? theme.textMuted : theme.primary }}>
-                  {resendCooldown > 0 ? `Resend OTP in ${resendCooldown}s` : "Resend OTP"}
-                </Text>
-              </TouchableOpacity>
-            </>
-          )}
+
+                <TouchableOpacity
+                  onPress={handleVerifyOtp}
+                  disabled={loading || !otpReady}
+                  activeOpacity={0.8}
+                  style={{
+                    backgroundColor: otpReady ? BRAND : "#c7d2fe",
+                    borderRadius: 12,
+                    height: 52,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexDirection: "row",
+                    gap: 8,
+                  }}
+                >
+                  <Text style={{ fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#ffffff" }}>
+                    {loading ? "Verifying..." : "Verify & Login"}
+                  </Text>
+                  {!loading && <Ionicons name="shield-checkmark" size={18} color="#ffffff" />}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={handleResend}
+                  disabled={resendCooldown > 0}
+                  style={{ marginTop: 20, alignItems: "center", paddingVertical: 8 }}
+                  hitSlop={{ top: 8, bottom: 8, left: 16, right: 16 }}
+                >
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: resendCooldown > 0 ? "#9ca3af" : BRAND }}>
+                    {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Didn't receive? Resend OTP"}
+                  </Text>
+                </TouchableOpacity>
+              </Animated.View>
+            )}
+          </Animated.View>
+
+          {/* Footer */}
+          <SafeAreaView edges={["bottom"]} style={{ paddingBottom: 8 }}>
+            <TouchableOpacity
+              onPress={() => Linking.openURL("mailto:support@connectmyskool.com")}
+              style={{ alignItems: "center", paddingVertical: 12 }}
+              hitSlop={{ top: 8, bottom: 8, left: 16, right: 16 }}
+            >
+              <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: "#9ca3af" }}>
+                Need help? Contact support
+              </Text>
+            </TouchableOpacity>
+          </SafeAreaView>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
