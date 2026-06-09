@@ -16,50 +16,72 @@ serve(async (req) => {
   }
 
   try {
-    const { feeStructureId, studentId } = (await req.json()) as {
-      feeStructureId: string;
-      studentId: string;
-    };
-
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
-
-    const { data: feeStructure, error: fsError } = await supabase
-      .from("fee_structures")
-      .select("id, amount, school_id, fee_type")
-      .eq("id", feeStructureId)
-      .single();
-
-    if (fsError || !feeStructure) {
+    const authHeader = req.headers.get("Authorization") ?? "";
+    if (!authHeader.startsWith("Bearer ")) {
       return new Response(
-        JSON.stringify({ error: "Fee structure not found" }),
-        { status: 404, headers: { "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    const { data: existingPayments } = await supabase
-      .from("fee_payments")
-      .select("amount_paid")
-      .eq("student_id", studentId)
-      .eq("fee_structure_id", feeStructureId)
-      .in("status", ["paid", "partial"]);
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    const alreadyPaid = (existingPayments ?? []).reduce(
-      (sum, p) => sum + Number(p.amount_paid),
-      0
-    );
-    const remaining = Math.max(0, Number(feeStructure.amount) - alreadyPaid);
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
 
-    if (remaining <= 0) {
+    const { data: { user } } = await userClient.auth.getUser();
+    if (!user) {
       return new Response(
-        JSON.stringify({ error: "Fee already fully paid" }),
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    const { data: roleRow } = await userClient
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .single();
+
+    if (!roleRow || roleRow.role !== "parent") {
+      return new Response(
+        JSON.stringify({ error: "Forbidden" }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    const { amount_paise, student_id, line_item_ids } = await req.json();
+
+    if (
+      typeof amount_paise !== "number" ||
+      amount_paise <= 0 ||
+      !student_id ||
+      !line_item_ids?.length
+    ) {
+      return new Response(
+        JSON.stringify({ error: "Missing or invalid required fields" }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    const amountInPaise = Math.round(remaining * 100);
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    const { data: sp } = await adminClient
+      .from("student_profiles")
+      .select("parent_profile_id")
+      .eq("id", student_id)
+      .single();
+
+    if (!sp || sp.parent_profile_id !== user.id) {
+      return new Response(
+        JSON.stringify({ error: "Forbidden" }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     const razorpayRes = await fetch("https://api.razorpay.com/v1/orders", {
       method: "POST",
       headers: {
@@ -67,53 +89,31 @@ serve(async (req) => {
         Authorization: "Basic " + btoa(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`),
       },
       body: JSON.stringify({
-        amount: amountInPaise,
+        amount: Math.round(amount_paise),
         currency: "INR",
-        receipt: `fee_${feeStructureId}_${studentId}`.slice(0, 40),
+        receipt: `rcpt_${Date.now()}`,
+        notes: {
+          student_id,
+          line_item_ids: line_item_ids.join(","),
+        },
       }),
     });
 
     if (!razorpayRes.ok) {
       const errBody = await razorpayRes.text();
       return new Response(
-        JSON.stringify({ error: "Razorpay order failed", detail: errBody }),
+        JSON.stringify({ error: "Failed to create payment order", detail: errBody }),
         { status: 502, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    const razorpayOrder = (await razorpayRes.json()) as {
-      id: string;
-      amount: number;
-      currency: string;
-    };
-
-    const { data: feePayment, error: insertError } = await supabase
-      .from("fee_payments")
-      .insert({
-        school_id: feeStructure.school_id,
-        student_id: studentId,
-        fee_structure_id: feeStructureId,
-        amount_paid: 0,
-        status: "overdue",
-        razorpay_order_id: razorpayOrder.id,
-      })
-      .select("id")
-      .single();
-
-    if (insertError) {
-      return new Response(
-        JSON.stringify({ error: insertError.message }),
-        { status: 500, headers: { "Content-Type": "application/json" } }
-      );
-    }
+    const order = await razorpayRes.json();
 
     return new Response(
       JSON.stringify({
-        orderId: razorpayOrder.id,
-        amount: razorpayOrder.amount,
-        currency: razorpayOrder.currency,
-        feePaymentId: feePayment?.id,
-        feeType: feeStructure.fee_type,
+        order_id: order.id,
+        amount: order.amount,
+        currency: order.currency,
       }),
       {
         headers: {

@@ -17,10 +17,11 @@ interface Section {
   class_id: string;
 }
 
-interface FeeStructure {
+interface FeeLineItem {
   id: string;
-  fee_type: string;
-  amount: number;
+  fee_type_name: string;
+  fee_type_id: string;
+  total_amount: number;
   class_id: string;
   class_name: string;
 }
@@ -51,7 +52,7 @@ export function NewYearWizard({ schoolId, activeYearId, onClose }: Props) {
   const [sections, setSections] = useState<Section[]>([]);
   const [selectedSectionIds, setSelectedSectionIds] = useState<Set<string>>(new Set());
 
-  const [feeStructures, setFeeStructures] = useState<FeeStructure[]>([]);
+  const [feeLineItems, setFeeLineItems] = useState<FeeLineItem[]>([]);
   const [feeAmounts, setFeeAmounts] = useState<Record<string, number>>({});
 
   async function handleCreateYear() {
@@ -101,22 +102,111 @@ export function NewYearWizard({ schoolId, activeYearId, onClose }: Props) {
       if (error) { toast.error("Failed to copy sections: " + error.message); setLoading(false); return; }
     }
 
-    if (activeYearId) {
-      const { data: prevFees } = await supabase
-        .from("fee_structures")
-        .select("id, fee_type, amount, class_id, class:classes(name)")
+    // Copy section_assignments (teacher→section mappings) from the previous year to the new year
+    if (activeYearId && newYearId) {
+      const { data: prevAssignments } = await supabase
+        .from("section_assignments")
+        .select("section_id, class_teacher_id")
         .eq("school_id", schoolId)
         .eq("academic_year_id", activeYearId);
-      const mapped = (prevFees ?? []).map((f) => ({
-        id: f.id,
-        fee_type: f.fee_type,
-        amount: Number(f.amount),
-        class_id: f.class_id,
-        class_name: (f.class as unknown as { name: string } | null)?.name ?? "",
-      }));
-      setFeeStructures(mapped);
+
+      if (prevAssignments?.length) {
+        // Map old section IDs to new ones by matching class_id + section name
+        const { data: newSections } = await supabase
+          .from("sections")
+          .select("id, name, class_id")
+          .eq("school_id", schoolId)
+          .eq("academic_year_id", newYearId);
+
+        const { data: oldSections } = await supabase
+          .from("sections")
+          .select("id, name, class_id")
+          .eq("school_id", schoolId)
+          .eq("academic_year_id", activeYearId);
+
+        const oldSectionMap = new Map((oldSections ?? []).map((s) => [s.id, s]));
+        const newAssignments = prevAssignments
+          .map((a) => {
+            const oldSec = oldSectionMap.get(a.section_id);
+            if (!oldSec) return null;
+            const matchingNew = (newSections ?? []).find(
+              (ns) => ns.class_id === oldSec.class_id && ns.name === oldSec.name
+            );
+            if (!matchingNew) return null;
+            return {
+              school_id: schoolId,
+              section_id: matchingNew.id,
+              class_teacher_id: a.class_teacher_id,
+              academic_year_id: newYearId,
+            };
+          })
+          .filter(Boolean);
+
+        if (newAssignments.length > 0) {
+          await supabase.from("section_assignments").insert(newAssignments);
+        }
+
+        // Copy timetable entries, mapping old section IDs to new ones
+        const { data: prevTimetable } = await supabase
+          .from("timetable")
+          .select("section_id, day_of_week, period, subject_id, teacher_id")
+          .eq("school_id", schoolId)
+          .eq("academic_year_id", activeYearId);
+
+        if (prevTimetable?.length) {
+          const newTimetable = prevTimetable
+            .map((t) => {
+              const oldSec = oldSectionMap.get(t.section_id);
+              if (!oldSec) return null;
+              const matchingNew = (newSections ?? []).find(
+                (ns) => ns.class_id === oldSec.class_id && ns.name === oldSec.name
+              );
+              if (!matchingNew) return null;
+              return {
+                school_id: schoolId,
+                section_id: matchingNew.id,
+                day_of_week: t.day_of_week,
+                period: t.period,
+                subject_id: t.subject_id,
+                teacher_id: t.teacher_id,
+                academic_year_id: newYearId,
+              };
+            })
+            .filter(Boolean);
+
+          if (newTimetable.length > 0) {
+            await supabase.from("timetable").insert(newTimetable);
+          }
+        }
+      }
+    }
+
+    if (activeYearId) {
+      // Fetch distinct fee_type + class combinations from previous year's line items
+      const { data: prevFees } = await supabase
+        .from("fee_line_items")
+        .select("id, total_amount, class_id, fee_type_id, fee_types(name), class:classes(name)")
+        .eq("school_id", schoolId)
+        .eq("academic_year_id", activeYearId);
+      // Deduplicate by fee_type_id + class_id to get one representative per combo
+      const seen = new Set<string>();
+      const mapped: FeeLineItem[] = [];
+      for (const f of prevFees ?? []) {
+        const key = `${f.fee_type_id}__${f.class_id}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        mapped.push({
+          id: f.id,
+          fee_type_name: (f.fee_types as unknown as { name: string } | null)?.name ?? "",
+          fee_type_id: f.fee_type_id,
+          total_amount: Number(f.total_amount),
+          class_id: f.class_id,
+          class_name: (f.class as unknown as { name: string } | null)?.name ?? "",
+        });
+      }
+      setFeeLineItems(mapped);
       const amounts: Record<string, number> = {};
-      mapped.forEach((f) => { amounts[f.id] = f.amount; });
+      mapped.forEach((f) => { amounts[f.id] = f.total_amount; });
       setFeeAmounts(amounts);
     }
     setLoading(false);
@@ -127,17 +217,20 @@ export function NewYearWizard({ schoolId, activeYearId, onClose }: Props) {
     if (!newYearId) return;
     setLoading(true);
     const supabase = createClient();
-    if (feeStructures.length > 0) {
-      const { error } = await supabase.from("fee_structures").insert(
-        feeStructures.map((f) => ({
+    // Fee types are school-wide — no need to copy them.
+    // Create template fee_line_items for the new academic year (one per fee_type+class combo).
+    if (feeLineItems.length > 0) {
+      const { error } = await supabase.from("fee_line_items").insert(
+        feeLineItems.map((f) => ({
           school_id: schoolId,
           class_id: f.class_id,
           academic_year_id: newYearId,
-          fee_type: f.fee_type,
-          amount: feeAmounts[f.id] ?? f.amount,
+          fee_type_id: f.fee_type_id,
+          total_amount: feeAmounts[f.id] ?? f.total_amount,
+          status: "pending",
         }))
       );
-      if (error) { toast.error("Failed to copy fee structures: " + error.message); setLoading(false); return; }
+      if (error) { toast.error("Failed to copy fee line items: " + error.message); setLoading(false); return; }
     }
     setLoading(false);
     toast.success(`Draft year "${yearName}" created. Review timetable and teacher assignments, then activate when ready.`);
@@ -236,14 +329,14 @@ export function NewYearWizard({ schoolId, activeYearId, onClose }: Props) {
             <p className="text-sm text-muted-foreground">
               Edit fee amounts for the new year. All fee types are copied from the previous year.
             </p>
-            {feeStructures.length === 0 && (
-              <p className="text-sm text-muted-foreground italic">No fee structures found. They can be added from the Fees page.</p>
+            {feeLineItems.length === 0 && (
+              <p className="text-sm text-muted-foreground italic">No fee line items found. They can be added from the Fees page.</p>
             )}
             <div className="max-h-64 overflow-y-auto space-y-2">
-              {feeStructures.map((f) => (
+              {feeLineItems.map((f) => (
                 <div key={f.id} className="flex items-center justify-between gap-4 rounded border px-3 py-2">
                   <div>
-                    <p className="text-sm font-medium">{f.fee_type}</p>
+                    <p className="text-sm font-medium">{f.fee_type_name}</p>
                     <p className="text-xs text-muted-foreground">{f.class_name}</p>
                   </div>
                   <div className="flex items-center gap-1">
@@ -251,7 +344,7 @@ export function NewYearWizard({ schoolId, activeYearId, onClose }: Props) {
                     <Input
                       type="number"
                       className="w-28"
-                      value={feeAmounts[f.id] ?? f.amount}
+                      value={feeAmounts[f.id] ?? f.total_amount}
                       onChange={(e) => setFeeAmounts((prev) => ({ ...prev, [f.id]: Number(e.target.value) }))}
                     />
                   </div>

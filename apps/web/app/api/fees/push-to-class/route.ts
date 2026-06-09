@@ -45,24 +45,25 @@ export async function POST(request: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  // Fetch all students in this class
-  const { data: students, error: studentsError } = await adminClient
-    .from("student_profiles")
-    .select("id")
+  // Fetch all students enrolled in this class
+  const { data: enrollments, error: studentsError } = await adminClient
+    .from("student_enrollments")
+    .select("student_profile_id")
     .eq("school_id", schoolId)
-    .eq("class_id", body.class_id);
+    .eq("class_id", body.class_id)
+    .eq("is_active", true);
 
   if (studentsError) {
     return NextResponse.json({ error: studentsError.message }, { status: 500 });
   }
 
-  if (!students || students.length === 0) {
+  if (!enrollments || enrollments.length === 0) {
     return NextResponse.json({ created: 0, message: "No students in this class." });
   }
 
-  const lineItems = students.map((s) => ({
+  const lineItems = enrollments.map((s) => ({
     school_id: schoolId,
-    student_id: s.id,
+    student_id: s.student_profile_id,
     fee_type_id: body.fee_type_id,
     total_amount: body.total_amount,
     due_date: body.due_date ?? null,

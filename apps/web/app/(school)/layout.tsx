@@ -146,16 +146,18 @@ export default async function SchoolLayout({
   let sections: SectionOption[] = [];
   if (schoolId) {
     if (realRole === "teacher") {
+      let ttQuery = supabase
+        .from("timetable")
+        .select("section:sections(id, name, class:classes(name, order))")
+        .eq("teacher_id", user.id);
+      if (currentYearId) ttQuery = ttQuery.eq("academic_year_id", currentYearId);
       const [, { data: timetableRows }] = await Promise.all([
         supabase
           .from("teacher_profiles")
           .select("profile_id")
           .eq("profile_id", user.id)
           .maybeSingle(),
-        supabase
-          .from("timetable")
-          .select("section:sections(id, name, class:classes(name, order))")
-          .eq("teacher_id", user.id),
+        ttQuery,
       ]);
 
       const seen = new Set<string>();
@@ -168,10 +170,12 @@ export default async function SchoolLayout({
         }
       }
     } else {
-      const { data: allSections } = await supabase
+      let secQuery = supabase
         .from("sections")
         .select("id, name, class:classes(name, order)")
         .eq("school_id", schoolId);
+      if (currentYearId) secQuery = secQuery.eq("academic_year_id", currentYearId);
+      const { data: allSections } = await secQuery;
 
       for (const sec of allSections ?? []) {
         const cls = sec.class as unknown as { name: string; order: number } | null;

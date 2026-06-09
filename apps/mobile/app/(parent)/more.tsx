@@ -45,30 +45,33 @@ export default function ParentMore() {
       supabase.from("profiles").select("full_name").eq("id", user.id).single(),
       supabase
         .from("student_profiles")
-        .select("full_name, roll_number, admission_number, photo_url, sections(id, name, classes(name))")
+        .select("id, full_name, admission_number, photo_url, student_enrollments(roll_number, sections(id, name, classes(name)))")
         .eq("parent_profile_id", user.id)
         .single(),
     ]);
     setProfile({ full_name: prof?.full_name ?? "User", email: user.email ?? "" });
     if (sp) {
       const s = sp as any;
+      const activeEnrollment = Array.isArray(s.student_enrollments)
+        ? s.student_enrollments.find((e: any) => e.sections) ?? s.student_enrollments[0]
+        : s.student_enrollments;
       setStudent({
         name: s.full_name ?? "Student",
-        className: s.sections?.classes?.name ?? "",
-        sectionName: s.sections?.name ?? "",
-        rollNumber: s.roll_number ?? "",
+        className: activeEnrollment?.sections?.classes?.name ?? "",
+        sectionName: activeEnrollment?.sections?.name ?? "",
+        rollNumber: activeEnrollment?.roll_number ?? "",
         admissionNumber: s.admission_number ?? "",
         photoUrl: s.photo_url ? fixStorageUrl(s.photo_url) : null,
       });
       // Fetch class teacher for feedback routing
-      const sectionId = s.sections?.id ?? null;
+      const sectionId = activeEnrollment?.sections?.id ?? null;
       if (sectionId) {
-        const { data: tp } = await supabase
-          .from("teacher_profiles")
-          .select("profile_id")
-          .eq("class_teacher_of", sectionId)
+        const { data: sa } = await supabase
+          .from("section_assignments")
+          .select("class_teacher_id")
+          .eq("section_id", sectionId)
           .maybeSingle();
-        setClassteacherId(tp?.profile_id ?? null);
+        setClassteacherId(sa?.class_teacher_id ?? null);
       }
     }
   }

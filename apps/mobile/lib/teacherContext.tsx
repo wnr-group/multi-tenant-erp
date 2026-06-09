@@ -41,21 +41,44 @@ export function TeacherContextProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     setUserId(user.id);
 
-    const [roleRes, tpRes] = await Promise.all([
-      supabase.from("user_roles").select("school_id").eq("user_id", user.id).eq("is_active", true).single(),
-      supabase.from("teacher_profiles").select("class_teacher_of").eq("profile_id", user.id).single(),
-    ]);
+    const roleRes = await supabase
+      .from("user_roles")
+      .select("school_id")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .single();
 
     const sid = roleRes.data?.school_id ?? "";
     setSchoolId(sid);
-    const homeroomId = tpRes.data?.class_teacher_of ?? null;
 
-    // All distinct sections this teacher has timetable entries for
-    const { data: ttRows } = await supabase
+    // Resolve the active academic year
+    const { data: activeYear } = await supabase
+      .from("academic_years")
+      .select("id")
+      .eq("school_id", sid)
+      .eq("status", "active")
+      .maybeSingle();
+    const activeYearId = activeYear?.id;
+
+    // Fetch homeroom sections from section_assignments for the active year
+    let saQuery = supabase
+      .from("section_assignments")
+      .select("section_id")
+      .eq("class_teacher_id", user.id)
+      .eq("school_id", sid);
+    if (activeYearId) saQuery = saQuery.eq("academic_year_id", activeYearId);
+    const { data: saRows } = await saQuery;
+
+    const homeroomIds = new Set<string>((saRows ?? []).map((r: any) => r.section_id));
+
+    // All distinct sections this teacher has timetable entries for (current year)
+    let ttQuery = supabase
       .from("timetable")
       .select("section_id, sections(id, name, class_id, classes(name))")
       .eq("teacher_id", user.id)
       .eq("school_id", sid);
+    if (activeYearId) ttQuery = ttQuery.eq("academic_year_id", activeYearId);
+    const { data: ttRows } = await ttQuery;
 
     // Deduplicate by section_id
     const seen = new Set<string>();
@@ -73,18 +96,20 @@ export function TeacherContextProvider({ children }: { children: ReactNode }) {
         label: `${className} ${sec.name}`.trim(),
         shortLabel: classNum ? `${classNum}${sec.name}` : `${className}${sec.name}`,
         classId: sec.class_id,
-        isHomeroom: sec.id === homeroomId,
+        isHomeroom: homeroomIds.has(sec.id),
       });
     });
 
-    // If homeroom is not in timetable, add it separately
-    if (homeroomId && !seen.has(homeroomId)) {
+    // If any homeroom section is not in timetable, add it separately
+    for (const homeroomId of homeroomIds) {
+      if (seen.has(homeroomId)) continue;
       const { data: sec } = await supabase
         .from("sections")
         .select("id, name, class_id, classes(name)")
         .eq("id", homeroomId)
         .single();
       if (sec) {
+        seen.add(sec.id);
         const className = (sec as any).classes?.name ?? "";
         const classNum = className.replace(/[^0-9]/g, "");
         built.unshift({
@@ -105,10 +130,8 @@ export function TeacherContextProvider({ children }: { children: ReactNode }) {
     });
 
     setSections(built);
-    // Default to homeroom if available, else first section
-    const defaultId = homeroomId && seen.has(homeroomId)
-      ? homeroomId
-      : built[0]?.id ?? "";
+    // Default to first homeroom if available, else first section
+    const defaultId = built.find((s) => s.isHomeroom)?.id ?? built[0]?.id ?? "";
     setActiveSectionId(defaultId);
     setReady(true);
   }

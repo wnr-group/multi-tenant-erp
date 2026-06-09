@@ -24,11 +24,16 @@ export default async function TeacherFeesPage() {
   } | null;
   const sectionLabel = sec ? `${sec.class?.name ?? ""} – Section ${sec.name}` : "";
 
-  const { data: students } = await supabase
-    .from("student_profiles")
-    .select("id, full_name")
+  const { data: enrollments } = await supabase
+    .from("student_enrollments")
+    .select("student_profile_id, student_profiles(id, full_name)")
     .eq("section_id", sectionId)
-    .order("full_name");
+    .eq("is_active", true);
+
+  const students = (enrollments ?? []).map((e) => {
+    const sp = e.student_profiles as unknown as { id: string; full_name: string | null };
+    return { id: sp.id, full_name: sp.full_name };
+  });
 
   const studentIds = (students ?? []).map((s) => s.id);
   const studentMap = new Map((students ?? []).map((s) => [s.id, s.full_name ?? "—"]));

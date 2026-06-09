@@ -52,40 +52,47 @@ export default async function AdminDashboard() {
       .eq("academic_year_id", academicYearId ?? ""),
   ]);
 
-  // Fee collected this academic year
-  const { data: feePayments } = await supabase
-    .from("fee_payments")
-    .select("amount_paid, payment_date, fee_structures(amount, class_id)")
-    .eq("school_id", schoolId!);
+  // Fee data for this academic year
+  const [{ data: feeLineItems }, { data: payments }] = await Promise.all([
+    supabase
+      .from("fee_line_items")
+      .select("total_amount")
+      .eq("school_id", schoolId!)
+      .eq("academic_year_id", academicYearId ?? ""),
+    supabase
+      .from("payments")
+      .select("total_amount, payment_date, status")
+      .eq("school_id", schoolId!)
+      .eq("status", "success"),
+  ]);
 
-  // Compute total collected this year
-  const totalCollected = (feePayments ?? []).reduce(
-    (sum, p) => sum + Number(p.amount_paid), 0
+  // Total due = sum of all fee line item amounts for the year
+  const totalDue = (feeLineItems ?? []).reduce(
+    (sum, item) => sum + Number(item.total_amount), 0
+  );
+
+  // Total collected = sum of successful payments
+  const totalCollected = (payments ?? []).reduce(
+    (sum, p) => sum + Number(p.total_amount), 0
   );
 
   // Compute fee chart: last 6 months collected vs due
   const now = new Date();
+  const monthlyDue = totalDue > 0 ? Math.round(totalDue / 12) : 0;
   const feeChartData: FeeMonth[] = [];
   for (let i = 5; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     const label = MONTHS[d.getMonth()];
 
-    const monthPayments = (feePayments ?? []).filter((p) => {
+    const monthPayments = (payments ?? []).filter((p) => {
       if (!p.payment_date) return false;
       return p.payment_date.slice(0, 7) === monthKey;
     });
 
-    const collected = monthPayments.reduce((s, p) => s + Number(p.amount_paid), 0);
-    // Due = total fee structure amounts for all students (constant per month)
-    const due = (feePayments ?? []).length > 0
-      ? (feePayments ?? []).reduce((s, p) => {
-          const fs = p.fee_structures as unknown as { amount: number } | null;
-          return s + (fs?.amount ? Number(fs.amount) : 0);
-        }, 0) / 6  // divide total annual due by 6 months as approximation
-      : 0;
+    const collected = monthPayments.reduce((s, p) => s + Number(p.total_amount), 0);
 
-    feeChartData.push({ month: label, collected, due: Math.round(due) });
+    feeChartData.push({ month: label, collected, due: monthlyDue });
   }
 
   // Attendance donut (today)

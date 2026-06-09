@@ -10,17 +10,18 @@ export async function StudentAcademicsTab({ studentId }: Props) {
   const supabase = await createServerSupabaseClient();
   const schoolId = (await getSchoolId())!;
 
-  const [{ data: results }, { data: student }] = await Promise.all([
+  const [{ data: results }, { data: enrollment }] = await Promise.all([
     supabase
       .from("exam_results")
       .select("id, marks_obtained, max_marks, grade, subject:subjects(name), exam:exams(name, start_date)")
       .eq("student_id", studentId)
       .order("created_at", { ascending: false }),
     supabase
-      .from("student_profiles")
+      .from("student_enrollments")
       .select("class_id")
-      .eq("id", studentId)
-      .single(),
+      .eq("student_profile_id", studentId)
+      .eq("is_active", true)
+      .maybeSingle(),
   ]);
 
   const examMap = new Map<string, { examName: string; date: string; results: { id: string; subjectName: string; marksObtained: number | null; maxMarks: number; grade: string | null }[] }>();
@@ -48,7 +49,7 @@ export async function StudentAcademicsTab({ studentId }: Props) {
     <StudentAcademicsClient
       groups={groups}
       studentId={studentId}
-      classId={student?.class_id ?? null}
+      classId={enrollment?.class_id ?? null}
       schoolId={schoolId}
     />
   );

@@ -27,11 +27,27 @@ export async function POST(request: NextRequest) {
   }
 
   // Archive current active year
-  await supabase
+  const { data: currentActive } = await supabase
     .from("academic_years")
-    .update({ status: "archived" })
+    .select("id")
     .eq("school_id", schoolId)
-    .eq("status", "active");
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (currentActive) {
+    await supabase
+      .from("academic_years")
+      .update({ status: "archived" })
+      .eq("id", currentActive.id);
+
+    // Deactivate all enrollments from the archived year
+    await supabase
+      .from("student_enrollments")
+      .update({ is_active: false })
+      .eq("school_id", schoolId)
+      .eq("academic_year_id", currentActive.id)
+      .eq("is_active", true);
+  }
 
   // Activate draft year
   const { error } = await supabase

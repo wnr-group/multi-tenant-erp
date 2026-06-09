@@ -32,6 +32,16 @@ export async function POST(request: NextRequest) {
     is_active: true,
   }));
 
+  // Deactivate old enrollments for these students (any year)
+  const studentIds = promotions.map((p) => p.studentProfileId);
+  await supabase
+    .from("student_enrollments")
+    .update({ is_active: false })
+    .eq("school_id", schoolId)
+    .in("student_profile_id", studentIds)
+    .neq("academic_year_id", draftYearId);
+
+  // Create new enrollments for the draft year
   const { error } = await supabase
     .from("student_enrollments")
     .upsert(rows, { onConflict: "student_profile_id,academic_year_id" });

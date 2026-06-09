@@ -46,10 +46,11 @@ export default function TeacherAttendance() {
 
     const [studentRes, existingRes] = await Promise.all([
       supabase
-        .from("student_profiles")
-        .select("id, roll_number, full_name, admission_number")
+        .from("student_enrollments")
+        .select("roll_number, student_profile_id, student_profiles(id, full_name, admission_number)")
         .eq("section_id", homeroomSection.id)
-        .order("full_name"),
+        .eq("is_active", true)
+        .order("roll_number"),
       supabase
         .from("attendance_records")
         .select("student_id, status")
@@ -57,11 +58,14 @@ export default function TeacherAttendance() {
         .eq("date", today),
     ]);
 
-    const list: Student[] = (studentRes.data ?? []).map((s: any, idx: number) => ({
-      id: s.id,
-      full_name: s.full_name ?? "Student",
-      roll_number: s.roll_number || s.admission_number || String(idx + 1),
-    }));
+    const list: Student[] = (studentRes.data ?? []).map((s: any, idx: number) => {
+      const profile = s.student_profiles;
+      return {
+        id: profile?.id ?? s.student_profile_id,
+        full_name: profile?.full_name ?? "Student",
+        roll_number: s.roll_number || profile?.admission_number || String(idx + 1),
+      };
+    });
 
     const existingMap = Object.fromEntries(
       (existingRes.data ?? []).map((r: any) => [r.student_id, r.status as AttendanceStatus])

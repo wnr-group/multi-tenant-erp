@@ -91,8 +91,9 @@ export default function TeacherDashboard() {
     const allSectionIds = sections.map((s) => s.id);
     const totalStudentsRes = allSectionIds.length > 0
       ? await supabase
-          .from("student_profiles")
+          .from("student_enrollments")
           .select("id", { count: "exact", head: true })
+          .eq("is_active", true)
           .in("section_id", allSectionIds)
       : { count: 0 };
 

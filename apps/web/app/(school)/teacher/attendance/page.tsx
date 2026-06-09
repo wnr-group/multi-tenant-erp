@@ -13,7 +13,7 @@ export default async function AttendancePage() {
   const supabase = await createServerSupabaseClient();
   const today = new Date().toISOString().slice(0, 10);
 
-  const [{ data: sectionRow }, { data: students }, { data: existing }] =
+  const [{ data: sectionRow }, { data: enrollments }, { data: existing }] =
     await Promise.all([
       supabase
         .from("sections")
@@ -21,16 +21,30 @@ export default async function AttendancePage() {
         .eq("id", sectionId)
         .single(),
       supabase
-        .from("student_profiles")
-        .select("id, full_name")
+        .from("student_enrollments")
+        .select("student_profile_id, student_profiles(id, full_name)")
         .eq("section_id", sectionId)
-        .order("full_name"),
+        .eq("is_active", true),
       supabase
         .from("attendance_records")
         .select("student_id, status")
         .eq("section_id", sectionId)
         .eq("date", today),
     ]);
+
+  const students = (enrollments ?? [])
+    .map((e) => {
+      const sp = e.student_profiles as unknown as {
+        id: string;
+        full_name: string;
+      } | null;
+      return sp ? { id: sp.id, full_name: sp.full_name } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => (a!.full_name ?? "").localeCompare(b!.full_name ?? "")) as {
+    id: string;
+    full_name: string;
+  }[];
 
   const sec = sectionRow as unknown as {
     name: string;

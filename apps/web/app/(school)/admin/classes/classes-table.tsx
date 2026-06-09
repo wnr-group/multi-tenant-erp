@@ -138,7 +138,7 @@ export function ClassesDataTable({
 
   async function deleteClass(row: ClassRow) {
     if (!confirm(
-      `Delete "${row.name}"?\n\nThis will also delete all associated:\n• Sections\n• Subjects\n• Student assignments\n• Timetable entries\n• Syllabus entries\n• Fee structures\n\nThis cannot be undone.`
+      `Delete "${row.name}"?\n\nThis will also delete all associated:\n• Sections\n• Subjects\n• Student assignments\n• Timetable entries\n• Syllabus entries\n• Fee line items\n\nThis cannot be undone.`
     )) return;
 
     const supabase = createClient();
@@ -154,7 +154,7 @@ export function ClassesDataTable({
     const cleanups = [
       supabase.from("student_enrollments").delete().eq("class_id", row.id),
       supabase.from("syllabus").delete().eq("class_id", row.id),
-      supabase.from("fee_structures").delete().eq("class_id", row.id),
+      supabase.from("fee_line_items").delete().eq("class_id", row.id),
     ];
     // Timetable references section_id, not class_id
     if (sectionIds.length > 0) {

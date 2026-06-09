@@ -58,7 +58,7 @@ export default function ParentDashboard() {
       supabase.from("profiles").select("full_name, school_id").eq("id", user.id).single(),
       supabase
         .from("student_profiles")
-        .select("id, full_name, admission_number, roll_number, photo_url, sections(id, name, classes(name))")
+        .select("id, full_name, admission_number, photo_url, student_enrollments(roll_number, section_id, sections(id, name, classes(name)))")
         .eq("parent_profile_id", user.id)
         .single(),
     ]);
@@ -66,6 +66,7 @@ export default function ParentDashboard() {
     const schoolId = profileRes.data?.school_id;
     const sp = spRes.data as any;
     const studentId = sp?.id;
+    const activeEnrollment = (sp?.student_enrollments ?? []).find((e: any) => e.sections);
 
     const [attendanceRes, feesRes, homeworkRes, announcementsRes, galleryRes] = await Promise.all([
       studentId
@@ -74,8 +75,8 @@ export default function ParentDashboard() {
       studentId
         ? supabase.from("fee_line_items").select("total_amount, status").eq("student_id", studentId).neq("status", "paid")
         : Promise.resolve({ data: [] }),
-      sp?.sections?.id
-        ? supabase.from("homework").select("id").eq("section_id", sp.sections.id).eq("due_date", new Date().toISOString().split("T")[0])
+      activeEnrollment?.sections?.id
+        ? supabase.from("homework").select("id").eq("section_id", activeEnrollment.sections.id).eq("due_date", new Date().toISOString().split("T")[0])
         : Promise.resolve({ data: [] }),
       supabase.from("announcements").select("id, title, created_at").order("created_at", { ascending: false }).limit(3),
       schoolId
@@ -90,9 +91,9 @@ export default function ParentDashboard() {
     const student: StudentInfo | null = sp ? {
       id: sp.id,
       name: sp.full_name ?? "Student",
-      className: sp.sections?.classes?.name ?? "",
-      sectionName: sp.sections?.name ?? "",
-      rollNumber: sp.roll_number ?? "",
+      className: activeEnrollment?.sections?.classes?.name ?? "",
+      sectionName: activeEnrollment?.sections?.name ?? "",
+      rollNumber: activeEnrollment?.roll_number ?? "",
       admissionNumber: sp.admission_number ?? "",
       photoUrl: sp.photo_url ? fixStorageUrl(sp.photo_url) : null,
     } : null;

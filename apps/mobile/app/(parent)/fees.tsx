@@ -281,13 +281,13 @@ export default function ParentFees() {
 
     setPayingId("selected");
     try {
-      const apiBase = process.env.EXPO_PUBLIC_WEB_API_URL ?? "";
-      if (!apiBase) throw new Error("EXPO_PUBLIC_WEB_API_URL is not set");
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
+      if (!supabaseUrl) throw new Error("EXPO_PUBLIC_SUPABASE_URL is not set");
 
       let orderData: any;
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        const orderRes = await fetch(`${apiBase}/api/fees/create-razorpay-order`, {
+        const orderRes = await fetch(`${supabaseUrl}/functions/v1/create-razorpay-order`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

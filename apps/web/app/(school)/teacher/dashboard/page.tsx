@@ -49,9 +49,10 @@ export default async function TeacherDashboard() {
       .single(),
 
     supabase
-      .from("student_profiles")
+      .from("student_enrollments")
       .select("*", { count: "exact", head: true })
-      .eq("section_id", sectionId),
+      .eq("section_id", sectionId)
+      .eq("is_active", true),
 
     supabase
       .from("attendance_records")
@@ -60,9 +61,9 @@ export default async function TeacherDashboard() {
       .eq("date", today),
 
     supabase
-      .from("teacher_profiles")
-      .select("profile_id, profiles(full_name)")
-      .eq("class_teacher_of", sectionId)
+      .from("section_assignments")
+      .select("class_teacher_id, profiles!class_teacher_id(full_name)")
+      .eq("section_id", sectionId)
       .maybeSingle(),
   ]);
 
@@ -73,8 +74,8 @@ export default async function TeacherDashboard() {
   const sectionLabel = `${className} – Section ${sectionName}`;
 
   // Class teacher name
-  const teacherProfiles = classTeacher?.profiles as unknown as { full_name: string } | null;
-  const classTeacherName = teacherProfiles?.full_name ?? null;
+  const ctProfiles = classTeacher?.profiles as unknown as { full_name: string } | null;
+  const classTeacherName = ctProfiles?.full_name ?? null;
 
   // Today's attendance numbers
   const totalToday = todayAttRows?.length ?? 0;
@@ -115,11 +116,17 @@ export default async function TeacherDashboard() {
     .limit(5);
 
   // --- Recent discipline incidents (last 3) ---
-  // Step 1: get student IDs in this section
-  const { data: sectionStudents } = await supabase
-    .from("student_profiles")
-    .select("id, full_name")
-    .eq("section_id", sectionId);
+  // Step 1: get student IDs in this section via enrollments
+  const { data: sectionEnrollments } = await supabase
+    .from("student_enrollments")
+    .select("student_profile_id, student_profiles(id, full_name)")
+    .eq("section_id", sectionId)
+    .eq("is_active", true);
+
+  const sectionStudents = (sectionEnrollments ?? []).map((e) => {
+    const profile = e.student_profiles as unknown as { id: string; full_name: string } | null;
+    return { id: profile?.id ?? e.student_profile_id, full_name: profile?.full_name ?? "Unknown Student" };
+  });
 
   const studentIds = (sectionStudents ?? []).map((s) => s.id);
 

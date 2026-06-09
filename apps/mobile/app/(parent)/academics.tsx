@@ -134,11 +134,15 @@ export default function ParentAcademics() {
 
     const { data: sp } = await supabase
       .from("student_profiles")
-      .select("id, section_id")
+      .select("id, student_enrollments(section_id)")
       .eq("parent_profile_id", user.id)
+      .eq("student_enrollments.is_active", true)
       .single();
     const studentId = sp?.id;
-    const sectionId = sp?.section_id;
+    const enrollments = (sp as any)?.student_enrollments;
+    const sectionId: string | undefined = Array.isArray(enrollments)
+      ? enrollments[0]?.section_id
+      : enrollments?.section_id;
     setStudentProfileId(studentId ?? null);
     setStudentSectionId(sectionId ?? null);
 
