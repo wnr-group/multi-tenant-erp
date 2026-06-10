@@ -12,7 +12,7 @@ export async function middleware(request: NextRequest) {
     PLATFORM_ADMIN_DOMAINS.includes(domain) ||
     pathname.startsWith("/platform-admin");
 
-  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
+  if (pathname === "/" || PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }
 
