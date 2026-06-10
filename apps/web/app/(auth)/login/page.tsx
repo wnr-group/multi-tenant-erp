@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { createServiceSupabaseClient } from "../../../lib/supabase/server";
 import { LoginForm } from "./login-form";
+
+export const metadata: Metadata = {
+  title: "Login",
+  robots: { index: false, follow: false },
+};
 
 export default async function LoginPage() {
   const headersList = await headers();

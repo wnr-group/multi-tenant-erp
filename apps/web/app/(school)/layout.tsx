@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { cookies, headers } from "next/headers";
 import { createServerSupabaseClient } from "../../lib/supabase/server";
@@ -7,6 +8,10 @@ import { TopBar } from "@/components/top-bar";
 import { SectionSwitcher } from "@/components/section-switcher";
 import type { SectionOption } from "@/components/section-switcher";
 import { AcademicYearSwitcher } from "@/components/academic-year-switcher";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 const SCHOOL_ROLES = [
   "super_admin",

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import {
   CheckCircle,
@@ -15,14 +16,60 @@ import {
 import { AnimateOnScroll, StaggerChildren } from "@/components/animate-on-scroll";
 import { HeroReveal, HeroFloat } from "@/components/hero-animations";
 
+export const metadata: Metadata = {
+  title: "ConnectMySkool — The School ERP That Connects Everyone",
+  description:
+    "ConnectMySkool gives your school a powerful web portal for staff and a branded mobile app for parents. Attendance, fees, report cards — setup in 48 hours.",
+  alternates: {
+    canonical: "https://connectmyskool.com",
+  },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      name: "ConnectMySkool",
+      url: "https://connectmyskool.com",
+      logo: "https://connectmyskool.com/logo-mark.png",
+      contactPoint: {
+        "@type": "ContactPoint",
+        email: "balaji.p2prhel@gmail.com",
+        contactType: "sales",
+        availableLanguage: ["English", "Tamil"],
+      },
+    },
+    {
+      "@type": "SoftwareApplication",
+      name: "ConnectMySkool",
+      applicationCategory: "EducationalApplication",
+      operatingSystem: "Web, Android, iOS",
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "INR",
+        description: "Free demo available",
+      },
+      description:
+        "School ERP platform with web portal for admins/teachers and mobile app for parents. Covers attendance, fees, report cards, timetable, and more.",
+    },
+  ],
+};
+
 export default function MarketingPage() {
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#0D1B2A] text-white" style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif" }}>
+    <div className="min-h-screen overflow-x-hidden bg-[#0D1B2A] font-[family-name:var(--font-display)] text-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
       {/* ── NAVBAR ── */}
       <nav className="sticky top-0 z-50 border-b border-white/5 bg-[#0D1B2A]/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
-            <Image src="/logo-mark.png" alt="ConnectMySkool" width={36} height={36} className="rounded-lg" />
+            <Image src="/logo-mark.webp" alt="ConnectMySkool logo" width={36} height={36} className="rounded-lg" />
             <span className="text-lg font-bold tracking-tight">ConnectMySkool</span>
           </div>
           <div className="hidden items-center gap-8 md:flex">
@@ -38,7 +85,7 @@ export default function MarketingPage() {
             >
               Book a Demo
             </a>
-            <button className="md:hidden text-slate-400">
+            <button className="md:hidden text-slate-400" aria-label="Open menu">
               <Menu className="h-5 w-5" />
             </button>
           </div>
@@ -83,7 +130,7 @@ export default function MarketingPage() {
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white transition-all hover:border-white/40 hover:bg-white/5 hover:scale-[1.03] active:scale-[0.97]"
                 >
-                  <svg className="h-4 w-4 text-[#25D366]" fill="currentColor" viewBox="0 0 24 24">
+                  <svg className="h-4 w-4 text-[#25D366]" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
                   </svg>
                   Chat on WhatsApp
@@ -122,10 +169,11 @@ export default function MarketingPage() {
                   </div>
                 </div>
                 <Image
-                  src="/screenshots/01-dashboard.png"
-                  alt="Admin Dashboard"
+                  src="/screenshots/01-dashboard.webp"
+                  alt="ConnectMySkool admin dashboard showing attendance, fees, and student overview"
                   width={720}
                   height={540}
+                  priority
                   className="w-full"
                 />
               </div>
@@ -145,7 +193,7 @@ export default function MarketingPage() {
       {/* ── MARQUEE STRIP ── */}
       <div className="overflow-hidden border-y border-white/5 bg-[#0A1520] py-4">
         <div
-          className="flex gap-6 whitespace-nowrap"
+          className="flex gap-6 whitespace-nowrap motion-reduce:animate-none"
           style={{ animation: "marquee 30s linear infinite", display: "flex", width: "max-content" }}
         >
           {Array.from({ length: 2 }).flatMap(() =>
@@ -211,7 +259,7 @@ export default function MarketingPage() {
                     <span className="text-[10px] font-medium text-white">Attendance marked in 30 seconds</span>
                   </div>
                   <div className="overflow-hidden rounded-[28px] border-2 border-white/20 shadow-2xl shadow-black/50">
-                    <Image src="/screenshots/mobile-11-attendance.png" alt="Teacher Attendance App" width={540} height={1170} className="w-full" />
+                    <Image src="/screenshots/mobile-11-attendance.webp" alt="Teacher marking attendance on ConnectMySkool mobile app" width={540} height={1170} className="w-full" />
                   </div>
                 </div>
 
@@ -227,7 +275,7 @@ export default function MarketingPage() {
                       school.connectmyskool.com/admin/dashboard
                     </div>
                   </div>
-                  <Image src="/screenshots/01-dashboard.png" alt="Admin Dashboard" width={1440} height={900} className="w-full" />
+                  <Image src="/screenshots/01-dashboard.webp" alt="Full admin dashboard with student and fee overview" width={1440} height={900} className="w-full" />
                 </div>
 
                 {/* Parent phone */}
@@ -237,7 +285,7 @@ export default function MarketingPage() {
                     <span className="text-[10px] font-medium text-white">Fee reminders sent automatically</span>
                   </div>
                   <div className="overflow-hidden rounded-[28px] border-2 border-white/20 shadow-2xl shadow-black/50">
-                    <Image src="/screenshots/mobile-parent-01-dashboard.png" alt="Parent Dashboard App" width={540} height={1170} className="w-full" />
+                    <Image src="/screenshots/mobile-parent-01-dashboard.webp" alt="Parent mobile app showing child attendance and homework" width={540} height={1170} className="w-full" />
                   </div>
                 </div>
               </div>
@@ -383,7 +431,7 @@ export default function MarketingPage() {
               rel="noopener noreferrer"
               className="flex items-center gap-2 rounded-full border border-white/20 px-8 py-3 text-sm font-semibold text-white transition-all hover:border-white/40 hover:bg-white/5 hover:scale-[1.03] active:scale-[0.97]"
             >
-              <svg className="h-4 w-4 text-[#25D366]" fill="currentColor" viewBox="0 0 24 24">
+              <svg className="h-4 w-4 text-[#25D366]" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
               </svg>
               Chat on WhatsApp
@@ -396,12 +444,12 @@ export default function MarketingPage() {
       <footer className="border-t border-white/5 px-6 py-8">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 text-xs text-slate-500 md:flex-row">
           <div className="flex items-center gap-2">
-            <Image src="/logo-mark.png" alt="ConnectMySkool" width={20} height={20} />
-            <span>© 2026 ConnectMySkool. All rights reserved.</span>
+            <Image src="/logo-mark.webp" alt="ConnectMySkool" width={20} height={20} />
+            <span>© {new Date().getFullYear()} ConnectMySkool. All rights reserved.</span>
           </div>
           <div className="flex gap-6">
             <a href="#features" className="hover:text-white transition-colors">Features</a>
-            <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
+            <a href="/privacy" className="hover:text-white transition-colors">Privacy Policy</a>
             <a href="#contact" className="hover:text-white transition-colors">Contact</a>
           </div>
         </div>
@@ -411,6 +459,11 @@ export default function MarketingPage() {
         @keyframes marquee {
           0% { transform: translateX(0); }
           100% { transform: translateX(-50%); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .motion-reduce\\:animate-none {
+            animation: none !important;
+          }
         }
       `}</style>
     </div>

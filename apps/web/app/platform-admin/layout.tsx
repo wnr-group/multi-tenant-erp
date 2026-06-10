@@ -1,6 +1,11 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { Sidebar } from "@/components/sidebar";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 const NAV = [
   { label: "Dashboard", href: "/platform-admin/dashboard" },
