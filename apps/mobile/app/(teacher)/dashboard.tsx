@@ -55,14 +55,25 @@ export default function TeacherDashboard() {
 
     const homeroom = sections.find((s) => s.isHomeroom) ?? sections[0] ?? null;
 
+    // Get active academic year
+    const { data: activeYear } = await supabase
+      .from("academic_years")
+      .select("id")
+      .eq("school_id", schoolId)
+      .eq("status", "active")
+      .maybeSingle();
+
+    let scheduleQuery = supabase
+      .from("timetable")
+      .select("id, period, subjects(name), sections(id, name, classes(name))")
+      .eq("teacher_id", userId)
+      .eq("day_of_week", dbDay)
+      .order("period");
+    if (activeYear?.id) scheduleQuery = scheduleQuery.eq("academic_year_id", activeYear.id);
+
     const [profileRes, scheduleRes] = await Promise.all([
       supabase.from("profiles").select("full_name").eq("id", userId).single(),
-      supabase
-        .from("timetable")
-        .select("id, period, subjects(name), sections(id, name, classes(name))")
-        .eq("teacher_id", userId)
-        .eq("day_of_week", dbDay)
-        .order("period"),
+      scheduleQuery,
     ]);
 
     const name = profileRes.data?.full_name ?? "Teacher";

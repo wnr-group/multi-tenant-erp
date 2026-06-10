@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { View } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from "@expo-google-fonts/inter";
 import * as SplashScreen from "expo-splash-screen";
 import { supabase } from "../lib/supabase";
 import { ThemeProvider } from "../lib/theme";
+import { AnimatedSplash } from "../components/AnimatedSplash";
 import type { Session } from "@supabase/supabase-js";
 import "../global.css";
 
@@ -89,12 +91,17 @@ export default function RootLayout() {
     }
   }, [session, initialized, segments]);
 
+  const [splashDone, setSplashDone] = useState(false);
+
   if (!fontsLoaded || !initialized) return null;
 
   return (
     <ThemeProvider schoolId={schoolId}>
       <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false }} />
+      <View style={{ flex: 1 }}>
+        <Stack screenOptions={{ headerShown: false }} />
+        {!splashDone && <AnimatedSplash onFinish={() => setSplashDone(true)} />}
+      </View>
     </ThemeProvider>
   );
 }
