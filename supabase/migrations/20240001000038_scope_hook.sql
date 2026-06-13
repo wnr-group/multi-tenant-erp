@@ -44,31 +44,38 @@ BEGIN
   END IF;
 
   -- School path: validate the claimed school is one the user belongs to.
-  -- If x-active-role present, require an active matching (user, school, role) row;
-  -- else pick highest-precedence active role at that school.
-  IF hdr_role IS NOT NULL AND hdr_role <> '' THEN
-    SELECT ur.school_id, ur.role INTO valid_school, valid_role
-    FROM public.user_roles ur
-    WHERE ur.user_id = uid
-      AND ur.school_id = hdr_school::uuid
-      AND ur.role = hdr_role::public.app_role
-      AND ur.is_active = true
-    LIMIT 1;
-  ELSE
-    SELECT ur.school_id, ur.role INTO valid_school, valid_role
-    FROM public.user_roles ur
-    WHERE ur.user_id = uid
-      AND ur.school_id = hdr_school::uuid
-      AND ur.is_active = true
-    ORDER BY CASE ur.role
-      WHEN 'school_admin' THEN 1
-      WHEN 'principal'    THEN 2
-      WHEN 'teacher'      THEN 3
-      WHEN 'parent'       THEN 4
-      WHEN 'student'      THEN 5
-      ELSE 6 END
-    LIMIT 1;
-  END IF;
+  -- Malformed header values fail closed (empty GUCs => deny).
+  PERFORM set_config('app.school_id', '', true);
+  PERFORM set_config('app.role', '', true);
+
+  BEGIN
+    IF hdr_role IS NOT NULL AND hdr_role <> '' THEN
+      SELECT ur.school_id, ur.role INTO valid_school, valid_role
+      FROM public.user_roles ur
+      WHERE ur.user_id = uid
+        AND ur.school_id = hdr_school::uuid
+        AND ur.role = hdr_role::public.app_role
+        AND ur.is_active = true
+      LIMIT 1;
+    ELSE
+      SELECT ur.school_id, ur.role INTO valid_school, valid_role
+      FROM public.user_roles ur
+      WHERE ur.user_id = uid
+        AND ur.school_id = hdr_school::uuid
+        AND ur.is_active = true
+      ORDER BY CASE ur.role
+        WHEN 'school_admin' THEN 1
+        WHEN 'principal'    THEN 2
+        WHEN 'teacher'      THEN 3
+        WHEN 'parent'       THEN 4
+        WHEN 'student'      THEN 5
+        ELSE 6 END
+      LIMIT 1;
+    END IF;
+  EXCEPTION WHEN invalid_text_representation THEN
+    -- Malformed uuid/role header: deny (GUCs already empty).
+    RETURN;
+  END;
 
   -- Invalid/forbidden scope: deny by leaving GUCs empty (helpers return NULL).
   PERFORM set_config('app.school_id', COALESCE(valid_school::text, ''), true);
@@ -93,3 +100,9 @@ $$;
 -- (role-level setting) and applies in both local and hosted environments.
 ALTER ROLE authenticator SET pgrst.db_pre_request = 'public.scope_pre_request';
 NOTIFY pgrst, 'reload config';
+
+-- The platform-admin path of scope_pre_request runs on every school-less request;
+-- a partial index keeps that lookup fast as user_roles grows.
+CREATE INDEX IF NOT EXISTS idx_user_roles_super_admin
+  ON public.user_roles (user_id)
+  WHERE school_id IS NULL AND role = 'super_admin' AND is_active = true;
