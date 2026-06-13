@@ -4,8 +4,9 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from "@expo-google-fonts/inter";
 import * as SplashScreen from "expo-splash-screen";
-import { supabase } from "../lib/supabase";
+import { supabase, SCHOOL_ID } from "../lib/supabase";
 import { ThemeProvider } from "../lib/theme";
+import { ActiveContextProvider, useActiveContext } from "../lib/active-context";
 import { AnimatedSplash } from "../components/AnimatedSplash";
 import type { Session } from "@supabase/supabase-js";
 import "../global.css";
@@ -19,12 +20,47 @@ async function tryRegisterPush(userId: string) {
   } catch {}
 }
 
-export default function RootLayout() {
+function Gate({
+  session,
+  initialized,
+  children,
+}: {
+  session: Session | null;
+  initialized: boolean;
+  children: React.ReactNode;
+}) {
   const router = useRouter();
   const segments = useSegments();
+  const { loading, hasAccess, role } = useActiveContext();
+
+  useEffect(() => {
+    if (!initialized) return;
+    const inAuthGroup = segments[0] === "(auth)";
+
+    if (!session && !inAuthGroup) {
+      router.replace("/(auth)/login");
+      return;
+    }
+    if (!session) return;
+    if (loading) return;
+
+    if (!hasAccess) {
+      if (segments[0] !== "no-access") router.replace("/no-access");
+      return;
+    }
+
+    if (inAuthGroup || segments[0] === "no-access") {
+      router.replace(role === "teacher" ? "/(teacher)/dashboard" : "/(parent)/dashboard");
+    }
+  }, [session, initialized, loading, hasAccess, role, segments, router]);
+
+  return <>{children}</>;
+}
+
+export default function RootLayout() {
   const [session, setSession] = useState<Session | null>(null);
   const [initialized, setInitialized] = useState(false);
-  const [schoolId, setSchoolId] = useState<string | undefined>();
+  const [splashDone, setSplashDone] = useState(false);
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -40,68 +76,31 @@ export default function RootLayout() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session?.user) {
-        tryRegisterPush(session.user.id);
-        fetchSchoolId(session.user.id);
-      }
+      if (session?.user) tryRegisterPush(session.user.id);
       setInitialized(true);
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (session?.user) {
-        tryRegisterPush(session.user.id);
-        fetchSchoolId(session.user.id);
-      } else {
-        setSchoolId(undefined);
-      }
+      if (session?.user) tryRegisterPush(session.user.id);
     });
 
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  async function fetchSchoolId(userId: string) {
-    const { data } = await supabase
-      .from("profiles")
-      .select("school_id")
-      .eq("id", userId)
-      .single();
-    if (data?.school_id) setSchoolId(data.school_id);
-  }
-
-  useEffect(() => {
-    if (!initialized) return;
-    const inAuthGroup = segments[0] === "(auth)";
-    if (!session && !inAuthGroup) {
-      router.replace("/(auth)/login");
-    } else if (session && inAuthGroup) {
-      supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", session.user.id)
-        .eq("is_active", true)
-        .single()
-        .then(({ data }) => {
-          if (data?.role === "teacher") {
-            router.replace("/(teacher)/dashboard");
-          } else {
-            router.replace("/(parent)/dashboard");
-          }
-        });
-    }
-  }, [session, initialized, segments]);
-
-  const [splashDone, setSplashDone] = useState(false);
-
   if (!fontsLoaded || !initialized) return null;
 
   return (
-    <ThemeProvider schoolId={schoolId}>
+    <ThemeProvider schoolId={SCHOOL_ID}>
       <StatusBar style="dark" />
-      <View style={{ flex: 1 }}>
-        <Stack screenOptions={{ headerShown: false }} />
-        {!splashDone && <AnimatedSplash onFinish={() => setSplashDone(true)} />}
-      </View>
+      <ActiveContextProvider userId={session?.user.id ?? null}>
+        <Gate session={session} initialized={initialized}>
+          <View style={{ flex: 1 }}>
+            <Stack screenOptions={{ headerShown: false }} />
+            {!splashDone && <AnimatedSplash onFinish={() => setSplashDone(true)} />}
+          </View>
+        </Gate>
+      </ActiveContextProvider>
     </ThemeProvider>
   );
 }
