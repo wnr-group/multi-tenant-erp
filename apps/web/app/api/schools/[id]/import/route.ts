@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { findOrCreateUserByPhone, attachRole } from "@/lib/provisioning/find-or-create-user";
 
 interface ImportRow {
   full_name: string;
@@ -8,6 +9,8 @@ interface ImportRow {
   roll_number?: string;
   class_name?: string;
   section_name?: string;
+  parent_phone?: string;
+  parent_name?: string;
 }
 
 interface ImportBody {
@@ -119,6 +122,20 @@ export async function POST(
           ? sectionMap.get(`${classId}:${sectionName}`)
           : undefined;
 
+        let parentProfileId: string | null = null;
+        if (row.parent_phone) {
+          const parentPhone = `+91${row.parent_phone.replace(/\D/g, "").slice(-10)}`;
+          if (/^\+91\d{10}$/.test(parentPhone)) {
+            const { userId: parentId } = await findOrCreateUserByPhone(
+              adminClient,
+              parentPhone,
+              row.parent_name ?? "",
+            );
+            await attachRole(adminClient, parentId, schoolId, "parent");
+            parentProfileId = parentId;
+          }
+        }
+
         const { error: studentError } = await adminClient
           .from("student_profiles")
           .insert({
@@ -127,6 +144,7 @@ export async function POST(
             class_id: classId ?? null,
             section_id: sectionId ?? null,
             roll_number: row.roll_number ?? null,
+            parent_profile_id: parentProfileId,
           });
         if (studentError) throw new Error(studentError.message);
       } else {
@@ -134,42 +152,14 @@ export async function POST(
         if (!/^\+91\d{10}$/.test(row.phone)) {
           throw new Error(`Invalid phone number: ${row.phone}. Must be +91 followed by 10 digits.`);
         }
-
-        const { data: userData, error: createError } = await adminClient.auth.admin.createUser({
-          phone: row.phone,
-          phone_confirm: true,
-          user_metadata: { full_name: row.full_name },
-        });
-
-        if (createError || !userData?.user) {
-          throw new Error(createError?.message ?? "Failed to create user");
-        }
-
-        const userId = userData.user.id;
-
-        const { error: roleError } = await adminClient
-          .from("user_roles")
-          .insert({ user_id: userId, school_id: schoolId, role });
-        if (roleError) {
-          await adminClient.auth.admin.deleteUser(userId);
-          throw new Error(`user_roles: ${roleError.message}`);
-        }
-
-        const { error: profileError } = await adminClient
-          .from("profiles")
-          .update({ school_id: schoolId, full_name: row.full_name, phone: row.phone })
-          .eq("id", userId);
-        if (profileError) {
-          await adminClient.auth.admin.deleteUser(userId);
-          throw new Error(`profiles: ${profileError.message}`);
-        }
+        const { userId } = await findOrCreateUserByPhone(adminClient, row.phone, row.full_name);
+        await attachRole(adminClient, userId, schoolId, role);
 
         if (role === "teacher") {
           const { error: teacherError } = await adminClient
             .from("teacher_profiles")
             .insert({ profile_id: userId, school_id: schoolId });
-          if (teacherError) {
-            await adminClient.auth.admin.deleteUser(userId);
+          if (teacherError && teacherError.code !== "23505") {
             throw new Error(`teacher_profiles: ${teacherError.message}`);
           }
         }
