@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { findOrCreateUserByPhone, attachRole } from "@/lib/provisioning/find-or-create-user";
 
 export async function POST(
   request: NextRequest,
@@ -44,36 +45,23 @@ export async function POST(
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const { data: userData, error: createError } = await adminClient.auth.admin.createUser({
-    phone,
-    phone_confirm: true,
-    user_metadata: { full_name: fullName },
-  });
-
-  if (createError || !userData.user) {
+  let userId: string;
+  try {
+    const result = await findOrCreateUserByPhone(adminClient, phone, fullName);
+    userId = result.userId;
+    await attachRole(adminClient, userId, schoolId, role);
+  } catch (e) {
     return NextResponse.json(
-      { error: createError?.message ?? "Failed to create user" },
-      { status: 400 }
+      { error: e instanceof Error ? e.message : "Provisioning failed" },
+      { status: 400 },
     );
   }
 
-  const userId = userData.user.id;
-
-  const { error: roleError } = await adminClient.from("user_roles").insert({ user_id: userId, school_id: schoolId, role });
-  if (roleError) {
-    await adminClient.auth.admin.deleteUser(userId);
-    return NextResponse.json({ error: `Failed to assign role: ${roleError.message}` }, { status: 500 });
-  }
-  const { error: profileError } = await adminClient.from("profiles").update({ school_id: schoolId, full_name: fullName, phone }).eq("id", userId);
-  if (profileError) {
-    await adminClient.auth.admin.deleteUser(userId);
-    return NextResponse.json({ error: `Failed to update profile: ${profileError.message}` }, { status: 500 });
-  }
-
   if (role === "teacher") {
-    const { error: teacherError } = await adminClient.from("teacher_profiles").insert({ profile_id: userId, school_id: schoolId });
-    if (teacherError) {
-      await adminClient.auth.admin.deleteUser(userId);
+    const { error: teacherError } = await adminClient
+      .from("teacher_profiles")
+      .insert({ profile_id: userId, school_id: schoolId });
+    if (teacherError && teacherError.code !== "23505") {
       return NextResponse.json({ error: `Failed to create teacher profile: ${teacherError.message}` }, { status: 500 });
     }
   }
