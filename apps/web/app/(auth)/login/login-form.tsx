@@ -18,6 +18,7 @@ export function LoginForm({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [noAccess, setNoAccess] = useState(false);
   const initialized = useRef(false);
 
   useEffect(() => {
@@ -25,6 +26,7 @@ export function LoginForm({
     initialized.current = true;
     const params = new URLSearchParams(window.location.search);
     const reason = params.get("reason");
+    if (reason === "no_access") setNoAccess(true);
     const supabase = createClient();
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session && reason === "no_access") {
@@ -117,6 +119,12 @@ export function LoginForm({
             <p className="mt-1 text-sm text-muted-foreground">Sign in to continue</p>
           </div>
         </div>
+
+        {noAccess && (
+          <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            You don&apos;t have access to this school. Please contact your school administrator.
+          </div>
+        )}
 
         {error && (
           <p className="mb-4 rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-600">
