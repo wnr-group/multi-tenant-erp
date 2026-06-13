@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import RazorpayCheckout from "react-native-razorpay";
 import Svg, { Circle, G, Text as SvgText } from "react-native-svg";
 import { supabase } from "../../lib/supabase";
+import { useActiveContext } from "../../lib/active-context";
 import { useTheme } from "../../lib/theme";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { StatusBadge } from "../../components/StatusBadge";
@@ -167,6 +168,7 @@ interface PaymentHistoryRow {
 
 export default function ParentFees() {
   const theme = useTheme();
+  const { studentId: activeStudentId } = useActiveContext();
   const [lineItems, setLineItems] = useState<FeeLineItem[]>([]);
   const [history, setHistory] = useState<PaymentHistoryRow[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -175,25 +177,26 @@ export default function ParentFees() {
   const [receipt, setReceipt] = useState<PaymentHistoryRow | null>(null);
   const [payingId, setPayingId] = useState<string | null>(null);
 
-  useEffect(() => { loadFees(); }, []);
+  useEffect(() => { loadFees(); }, [activeStudentId]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadFees();
     setRefreshing(false);
-  }, []);
+  }, [activeStudentId]);
 
   async function loadFees() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
+    if (!activeStudentId) { setLineItems([]); setHistory([]); setLoading(false); return; }
 
     const { data: sp } = await supabase
       .from("student_profiles")
       .select("id, school_id")
-      .eq("parent_profile_id", user.id)
-      .single();
+      .eq("id", activeStudentId)
+      .maybeSingle();
 
-    if (!sp) { setLoading(false); return; }
+    if (!sp) { setLineItems([]); setHistory([]); setLoading(false); return; }
 
     const [{ data: lineItemsData }, { data: paymentsData }] = await Promise.all([
       supabase
@@ -271,12 +274,13 @@ export default function ParentFees() {
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+    if (!activeStudentId) return;
 
     const { data: sp } = await supabase
       .from("student_profiles")
       .select("id")
-      .eq("parent_profile_id", user.id)
-      .single();
+      .eq("id", activeStudentId)
+      .maybeSingle();
     if (!sp) return;
 
     setPayingId("selected");

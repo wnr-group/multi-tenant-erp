@@ -8,6 +8,7 @@ import { StorageAccessFramework, EncodingType, readAsStringAsync, writeAsStringA
 import * as Sharing from "expo-sharing";
 import { Platform } from "react-native";
 import { supabase, supabaseUrl } from "../../lib/supabase";
+import { useActiveContext } from "../../lib/active-context";
 import { useTheme } from "../../lib/theme";
 import { StatusBadge } from "../../components/StatusBadge";
 import { SectionHeader } from "../../components/SectionHeader";
@@ -37,6 +38,7 @@ interface Homework { id: string; title: string; subject: string; due_date: strin
 
 export default function ParentAcademics() {
   const theme = useTheme();
+  const { studentId: activeStudentId } = useActiveContext();
   const [tab, setTab] = useState<"results" | "homework">("results");
   const [groupedResults, setGroupedResults] = useState<Record<string, ExamResult[]>>({});
   const [expandedExamId, setExpandedExamId] = useState<string | null>(null);
@@ -94,7 +96,7 @@ export default function ParentAcademics() {
     }
   }
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [activeStudentId]);
 
   useEffect(() => {
     if (studentSectionId) {
@@ -106,7 +108,7 @@ export default function ParentAcademics() {
     setRefreshing(true);
     await loadData();
     setRefreshing(false);
-  }, []);
+  }, [activeStudentId]);
 
   async function loadHomeworkForMonth(sectionId: string, year: number, month: number) {
     const firstDay = `${year}-${String(month).padStart(2, "0")}-01`;
@@ -132,12 +134,21 @@ export default function ParentAcademics() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    if (!activeStudentId) {
+      setStudentProfileId(null);
+      setStudentSectionId(null);
+      setGroupedResults({});
+      setHomework([]);
+      setLoading(false);
+      return;
+    }
+
     const { data: sp } = await supabase
       .from("student_profiles")
       .select("id, student_enrollments(section_id)")
-      .eq("parent_profile_id", user.id)
+      .eq("id", activeStudentId)
       .eq("student_enrollments.is_active", true)
-      .single();
+      .maybeSingle();
     const studentId = sp?.id;
     const enrollments = (sp as any)?.student_enrollments;
     const sectionId: string | undefined = Array.isArray(enrollments)

@@ -1,6 +1,7 @@
 import { View, Text, Image, StatusBar } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../lib/theme";
+import { ContextSwitcher } from "./ContextSwitcher";
 
 const logoMark = require("../assets/logo-mark.png");
 
@@ -31,6 +32,8 @@ export function AppBar() {
       <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: "#1a8fb5" }}>
         ConnectMySkool
       </Text>
+      <View style={{ flex: 1 }} />
+      <ContextSwitcher />
     </View>
   );
 }

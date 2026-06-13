@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../../lib/supabase";
+import { useActiveContext } from "../../lib/active-context";
 import { useTheme } from "../../lib/theme";
 import { Skeleton } from "../../components/Skeleton";
 
@@ -12,27 +13,29 @@ interface AttendanceRecord { date: string; status: "present" | "absent" | "late"
 
 export default function ParentAttendance() {
   const theme = useTheme();
+  const { studentId: activeStudentId } = useActiveContext();
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const selectedYear = new Date().getFullYear();
 
-  useEffect(() => { loadAttendance(); }, []);
+  useEffect(() => { loadAttendance(); }, [activeStudentId]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadAttendance();
     setRefreshing(false);
-  }, []);
+  }, [activeStudentId]);
 
   async function loadAttendance() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    // Look up parent's student
-    const { data: sp } = await supabase.from("student_profiles").select("id").eq("parent_profile_id", user.id).single();
+    if (!activeStudentId) { setRecords([]); setLoading(false); return; }
+    // Look up the active student
+    const { data: sp } = await supabase.from("student_profiles").select("id").eq("id", activeStudentId).maybeSingle();
     const studentId = sp?.id;
-    if (!studentId) { setLoading(false); return; }
+    if (!studentId) { setRecords([]); setLoading(false); return; }
     const { data } = await supabase.from("attendance_records").select("date, status").eq("student_id", studentId).order("date");
     setRecords((data as AttendanceRecord[]) ?? []);
     setLoading(false);

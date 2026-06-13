@@ -3,7 +3,8 @@ import { View, Text, ScrollView, TouchableOpacity, Alert, TextInput, Image, Refr
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { supabase, fixStorageUrl } from "../../lib/supabase";
+import { supabase, fixStorageUrl, SCHOOL_ID } from "../../lib/supabase";
+import { useActiveContext } from "../../lib/active-context";
 import { useTheme } from "../../lib/theme";
 import { ListItem } from "../../components/ListItem";
 import { Avatar } from "../../components/Avatar";
@@ -15,6 +16,7 @@ type Section = "menu" | "announcements" | "discipline" | "feedback-teacher" | "f
 
 export default function ParentMore() {
   const theme = useTheme();
+  const { studentId: activeStudentId } = useActiveContext();
   const [section, setSection] = useState<Section>("menu");
   const [profile, setProfile] = useState<{ full_name: string; email: string } | null>(null);
   const [student, setStudent] = useState<{ name: string; className: string; sectionName: string; rollNumber: string; admissionNumber: string; photoUrl: string | null } | null>(null);
@@ -28,7 +30,7 @@ export default function ParentMore() {
   const [submitting, setSubmitting] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
-  useEffect(() => { loadProfile(); }, []);
+  useEffect(() => { loadProfile(); }, [activeStudentId]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -43,11 +45,13 @@ export default function ParentMore() {
     if (!user) return;
     const [{ data: prof }, { data: sp }] = await Promise.all([
       supabase.from("profiles").select("full_name").eq("id", user.id).single(),
-      supabase
-        .from("student_profiles")
-        .select("id, full_name, admission_number, photo_url, student_enrollments(roll_number, sections(id, name, classes(name)))")
-        .eq("parent_profile_id", user.id)
-        .single(),
+      activeStudentId
+        ? supabase
+            .from("student_profiles")
+            .select("id, full_name, admission_number, photo_url, student_enrollments(roll_number, sections(id, name, classes(name)))")
+            .eq("id", activeStudentId)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
     ]);
     setProfile({ full_name: prof?.full_name ?? "User", email: user.email ?? "" });
     if (sp) {
@@ -87,8 +91,9 @@ export default function ParentMore() {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
-    // Look up parent's student
-    const { data: sp } = await supabase.from("student_profiles").select("id").eq("parent_profile_id", user.id).single();
+    if (!activeStudentId) { setDiscipline([]); setLoading(false); return; }
+    // Look up the active student
+    const { data: sp } = await supabase.from("student_profiles").select("id").eq("id", activeStudentId).maybeSingle();
     const studentId = sp?.id;
     if (!studentId) { setDiscipline([]); setLoading(false); return; }
     const { data } = await supabase.from("discipline_records").select("id, created_at, description, severity").eq("student_id", studentId).order("created_at", { ascending: false });
@@ -107,9 +112,8 @@ export default function ParentMore() {
     }
     setSubmitting(true);
     const { data: { user } } = await supabase.auth.getUser();
-    const { data: prof } = await supabase.from("profiles").select("school_id").eq("id", user!.id).single();
     await supabase.from("feedback").insert({
-      school_id: prof?.school_id,
+      school_id: SCHOOL_ID,
       from_user_id: user?.id,
       to_role: "teacher",
       to_user_id: classteacherId,
@@ -129,10 +133,9 @@ export default function ParentMore() {
     }
     setSubmitting(true);
     const { data: { user } } = await supabase.auth.getUser();
-    const { data: prof } = await supabase.from("profiles").select("school_id").eq("id", user!.id).single();
     await supabase.from("feedback").insert([
       {
-        school_id: prof?.school_id,
+        school_id: SCHOOL_ID,
         from_user_id: user?.id,
         to_role: "principal",
         to_user_id: null,
@@ -141,7 +144,7 @@ export default function ParentMore() {
         status: "open",
       },
       {
-        school_id: prof?.school_id,
+        school_id: SCHOOL_ID,
         from_user_id: user?.id,
         to_role: "school_admin",
         to_user_id: null,
@@ -179,12 +182,13 @@ export default function ParentMore() {
 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      if (!activeStudentId) return;
 
       const { data: sp } = await supabase
         .from("student_profiles")
         .select("id, school_id")
-        .eq("parent_profile_id", user.id)
-        .single();
+        .eq("id", activeStudentId)
+        .maybeSingle();
       if (!sp) return;
 
       const arrayBuffer = await fetch(uri).then((r) => r.arrayBuffer());

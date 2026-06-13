@@ -3,7 +3,8 @@ import { View, Text, ScrollView, TouchableOpacity, Image, FlatList, Dimensions, 
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import Animated, { FadeInDown, FadeInRight } from "react-native-reanimated";
-import { supabase, fixStorageUrl } from "../../lib/supabase";
+import { supabase, fixStorageUrl, SCHOOL_ID } from "../../lib/supabase";
+import { useActiveContext } from "../../lib/active-context";
 import { useTheme } from "../../lib/theme";
 import { Skeleton, SkeletonCard } from "../../components/Skeleton";
 import { Avatar } from "../../components/Avatar";
@@ -34,35 +35,50 @@ interface DashboardData {
 export default function ParentDashboard() {
   const theme = useTheme();
   const router = useRouter();
+  const { studentId: activeStudentId } = useActiveContext();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
   const carouselRef = useRef<FlatList>(null);
 
-  useEffect(() => { loadDashboard(); }, []);
+  useEffect(() => { loadDashboard(); }, [activeStudentId]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadDashboard();
     setRefreshing(false);
-  }, []);
+  }, [activeStudentId]);
 
   async function loadDashboard() {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+    if (!activeStudentId) {
+      const { data: profileData } = await supabase.from("profiles").select("full_name").eq("id", user.id).single();
+      setData({
+        parentName: profileData?.full_name ?? "Parent",
+        student: null,
+        attendancePct: 0,
+        pendingFees: 0,
+        homeworkDue: 0,
+        announcements: [],
+        gallery: [],
+      });
+      setLoading(false);
+      return;
+    }
 
     const [profileRes, spRes] = await Promise.all([
-      supabase.from("profiles").select("full_name, school_id").eq("id", user.id).single(),
+      supabase.from("profiles").select("full_name").eq("id", user.id).single(),
       supabase
         .from("student_profiles")
         .select("id, full_name, admission_number, photo_url, student_enrollments(roll_number, section_id, sections(id, name, classes(name)))")
-        .eq("parent_profile_id", user.id)
-        .single(),
+        .eq("id", activeStudentId)
+        .maybeSingle(),
     ]);
 
-    const schoolId = profileRes.data?.school_id;
+    const schoolId = SCHOOL_ID;
     const sp = spRes.data as any;
     const studentId = sp?.id;
     const activeEnrollment = (sp?.student_enrollments ?? []).find((e: any) => e.sections);
