@@ -85,19 +85,31 @@ export async function middleware(request: NextRequest) {
     response.headers.set("x-school-id", school.id);
   }
 
-  // Resolve user's real role
+  // Resolve user's role at this school by fixed precedence.
+  const ROLE_PRECEDENCE: Record<string, number> = {
+    school_admin: 1,
+    principal: 2,
+    teacher: 3,
+    parent: 4,
+    student: 5,
+  };
+
   let role: string | null = null;
   if (schoolId) {
-    const { data } = await supabase
+    const { data: rows } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
       .eq("school_id", schoolId)
-      .eq("is_active", true)
-      .maybeSingle();
-    role = data?.role ?? null;
+      .eq("is_active", true);
+    if (rows && rows.length > 0) {
+      role = rows
+        .map((r) => r.role as string)
+        .sort((a, b) => (ROLE_PRECEDENCE[a] ?? 99) - (ROLE_PRECEDENCE[b] ?? 99))[0];
+    }
   }
   if (!role) {
+    // Platform admin fallback (NULL school_id, super_admin).
     const { data } = await supabase
       .from("user_roles")
       .select("role")
@@ -109,6 +121,16 @@ export async function middleware(request: NextRequest) {
   }
   if (!role) {
     return NextResponse.redirect(new URL("/login?reason=no_access", request.url));
+  }
+
+  // Pass the resolved school role to PostgREST so scope_pre_request validates
+  // the exact (user, school, role) triple. Only set when we resolved a real
+  // school-level role (platform super_admin uses the NULL-school DB path).
+  if (schoolId && ROLE_PRECEDENCE[role]) {
+    request.headers.set("x-active-role", role);
+    response = NextResponse.next({ request });
+    response.headers.set("x-active-role", role);
+    response.headers.set("x-school-id", schoolId);
   }
 
   // Platform admin routing
