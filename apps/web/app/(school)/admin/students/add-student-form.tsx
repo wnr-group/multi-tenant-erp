@@ -59,6 +59,20 @@ export function AddStudentForm({
     try {
       const supabase = createClient();
 
+      // Resolve parent identity (creates auth user + parent role if needed) server-side.
+      let parentProfileId: string | null = null;
+      const resp = await fetch("/api/students/resolve-parent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: parentPhone, schoolId }),
+      });
+      const resolveJson = await resp.json();
+      if (!resp.ok) {
+        toast.error(resolveJson.error ?? "Failed to resolve parent.");
+        return;
+      }
+      parentProfileId = resolveJson.parentProfileId;
+
       const { data: sp, error: spErr } = await supabase
         .from("student_profiles")
         .insert({
@@ -66,6 +80,7 @@ export function AddStudentForm({
           full_name: name,
           admission_number: admissionNumber || null,
           parent_phone: parentPhone || null,
+          parent_profile_id: parentProfileId,
         })
         .select("id")
         .single();
