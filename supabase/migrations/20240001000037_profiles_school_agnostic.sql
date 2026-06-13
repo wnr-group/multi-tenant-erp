@@ -4,6 +4,8 @@
 -- Drop the RLS policy that references profiles.school_id before dropping the column.
 DROP POLICY IF EXISTS "profiles_select" ON public.profiles;
 
+DROP INDEX IF EXISTS public.idx_profiles_school_id;
+
 ALTER TABLE public.profiles DROP COLUMN IF EXISTS school_id;
 
 -- Recreate profiles_select without the school_id clause.
@@ -15,6 +17,14 @@ CREATE POLICY "profiles_select" ON public.profiles FOR SELECT
     id = auth.uid()
     OR public.get_my_role() = 'super_admin'
   );
+
+-- Profiles are person-owned and school-agnostic: a school_admin must not edit a
+-- shared human's profile (the person may belong to multiple schools). Only the
+-- user themselves or a platform super_admin may update. Provisioning uses the
+-- service-role client which bypasses RLS, so onboarding is unaffected.
+DROP POLICY IF EXISTS "profiles_update" ON public.profiles;
+CREATE POLICY "profiles_update" ON public.profiles FOR UPDATE
+  USING (id = auth.uid() OR public.get_my_role() = 'super_admin');
 
 -- handle_new_user no longer references school_id (it never set it, but keep it
 -- canonical and phone-aware to match 20240001000027).
