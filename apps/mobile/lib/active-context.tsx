@@ -1,0 +1,124 @@
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { supabase, SCHOOL_ID, setActiveRoleHeader } from "./supabase";
+
+export type MobileRole = "teacher" | "parent";
+
+export interface StudentRef {
+  id: string;
+  fullName: string;
+  className?: string | null;
+}
+
+interface ActiveContextValue {
+  loading: boolean;
+  roles: MobileRole[];
+  students: StudentRef[];
+  role: MobileRole | null;
+  studentId: string | null;
+  setRole: (r: MobileRole) => void;
+  setStudent: (id: string) => void;
+  hasAccess: boolean;
+}
+
+const Ctx = createContext<ActiveContextValue | null>(null);
+const STORAGE_KEY = "active_context_v1";
+
+export function ActiveContextProvider({
+  userId,
+  children,
+}: {
+  userId: string | null;
+  children: React.ReactNode;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [roles, setRoles] = useState<MobileRole[]>([]);
+  const [students, setStudents] = useState<StudentRef[]>([]);
+  const [role, setRoleState] = useState<MobileRole | null>(null);
+  const [studentId, setStudentId] = useState<string | null>(null);
+
+  const persist = useCallback(async (r: MobileRole | null, s: string | null) => {
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ role: r, studentId: s }));
+  }, []);
+
+  const setRole = useCallback((r: MobileRole) => {
+    setRoleState(r);
+    setActiveRoleHeader(r);
+    persist(r, r === "parent" ? studentId : null);
+  }, [studentId, persist]);
+
+  const setStudent = useCallback((id: string) => {
+    setStudentId(id);
+    persist(role, id);
+  }, [role, persist]);
+
+  useEffect(() => {
+    if (!userId) { setLoading(false); return; }
+    let cancelled = false;
+
+    (async () => {
+      const { data: roleRows } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .eq("school_id", SCHOOL_ID)
+        .eq("is_active", true);
+
+      const mobileRoles = (roleRows ?? [])
+        .map((r) => r.role as string)
+        .filter((r): r is MobileRole => r === "teacher" || r === "parent");
+
+      const { data: kids } = await supabase
+        .from("student_profiles")
+        .select("id, full_name")
+        .eq("parent_profile_id", userId)
+        .eq("school_id", SCHOOL_ID);
+
+      if (cancelled) return;
+
+      const studentRefs: StudentRef[] = (kids ?? []).map((k) => ({
+        id: k.id as string,
+        fullName: k.full_name as string,
+      }));
+      setRoles(mobileRoles);
+      setStudents(studentRefs);
+
+      const stored = await AsyncStorage.getItem(STORAGE_KEY);
+      const parsed = stored ? (JSON.parse(stored) as { role: MobileRole | null; studentId: string | null }) : null;
+
+      let nextRole: MobileRole | null = null;
+      if (parsed?.role && mobileRoles.includes(parsed.role)) nextRole = parsed.role;
+      else if (mobileRoles.includes("teacher")) nextRole = "teacher";
+      else if (mobileRoles.includes("parent")) nextRole = "parent";
+
+      let nextStudent: string | null = null;
+      if (nextRole === "parent") {
+        const validStored = parsed?.studentId && studentRefs.some((s) => s.id === parsed.studentId);
+        nextStudent = validStored ? parsed!.studentId : (studentRefs[0]?.id ?? null);
+      }
+
+      setRoleState(nextRole);
+      setStudentId(nextStudent);
+      if (nextRole) setActiveRoleHeader(nextRole);
+      setLoading(false);
+    })();
+
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  const hasAccess = roles.length > 0;
+
+  return (
+    <Ctx.Provider
+      value={{ loading, roles, students, role, studentId, setRole, setStudent, hasAccess }}
+    >
+      {children}
+    </Ctx.Provider>
+  );
+}
+
+export function useActiveContext() {
+  const v = useContext(Ctx);
+  if (!v) throw new Error("useActiveContext must be used within ActiveContextProvider");
+  return v;
+}
