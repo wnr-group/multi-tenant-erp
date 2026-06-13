@@ -125,3 +125,36 @@ CREATE POLICY "section_assignments_read" ON public.section_assignments FOR SELEC
       AND school_id = public.get_my_school_id()
     )
   );
+
+-- ---------------------------------------------------------------------------
+-- Additional super_admin-bypass fixes for policies that AND super_admin with school scope
+-- ---------------------------------------------------------------------------
+
+-- discipline_select (20240001000010)
+DROP POLICY IF EXISTS "discipline_select" ON public.discipline_records;
+CREATE POLICY "discipline_select" ON public.discipline_records FOR SELECT
+  USING (
+    public.get_my_role() = 'super_admin'
+    OR (
+      public.get_my_role() IN ('super_admin', 'school_admin', 'principal', 'teacher')
+      AND school_id = public.get_my_school_id()
+    )
+  );
+
+-- student_profiles_write (20240001000021)
+DROP POLICY IF EXISTS "student_profiles_write" ON public.student_profiles;
+CREATE POLICY "student_profiles_write" ON public.student_profiles FOR ALL
+  USING (
+    public.get_my_role() = 'super_admin'
+    OR (
+      public.get_my_role() IN ('super_admin', 'school_admin', 'teacher')
+      AND school_id = public.get_my_school_id()
+    )
+  )
+  WITH CHECK (
+    public.get_my_role() = 'super_admin'
+    OR (
+      public.get_my_role() IN ('super_admin', 'school_admin', 'teacher')
+      AND school_id = public.get_my_school_id()
+    )
+  );
