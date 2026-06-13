@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient, createServiceSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
+import { findOrCreateUserByPhone, attachRole } from "@/lib/provisioning/find-or-create-user";
 
 interface TeacherInput {
   fullName: string;
@@ -35,31 +36,17 @@ export async function POST(request: NextRequest) {
 
   for (const t of teachers) {
     const phone = `+91${t.phone.replace(/\D/g, "").slice(-10)}`;
-
-    const { data: authUser, error: authError } = await svc.auth.admin.createUser({
-      phone,
-      phone_confirm: true,
-      user_metadata: { full_name: t.fullName },
-    });
-
-    if (authError || !authUser.user) { failed.push(t.fullName); continue; }
-
-    const userId = authUser.user.id;
-
-    const [{ error: profileErr }, { error: tpErr }, { error: roleErr }] = await Promise.all([
-      svc.from("profiles").update({ full_name: t.fullName, school_id: schoolId, phone }).eq("id", userId),
-      svc.from("teacher_profiles").insert({ profile_id: userId, school_id: schoolId }),
-      svc.from("user_roles").insert({ user_id: userId, school_id: schoolId, role: "teacher", is_active: true }),
-    ]);
-
-    if (profileErr || tpErr || roleErr) {
+    try {
+      const { userId } = await findOrCreateUserByPhone(svc, phone, t.fullName);
+      await attachRole(svc, userId, schoolId, "teacher");
+      const { error: tpErr } = await svc
+        .from("teacher_profiles")
+        .insert({ profile_id: userId, school_id: schoolId });
+      if (tpErr && tpErr.code !== "23505") { failed.push(t.fullName); continue; }
+      created.push(userId);
+    } catch {
       failed.push(t.fullName);
-      // Clean up the orphaned auth user
-      await svc.auth.admin.deleteUser(userId);
-      continue;
     }
-
-    created.push(userId);
   }
 
   return NextResponse.json({ created: created.length, failed: failed.length > 0 ? failed : undefined });
