@@ -196,3 +196,106 @@ export async function notifyReviewed(homeworkId: string, studentId: string): Pro
     // best-effort
   }
 }
+
+export type ParentHomeworkState = "new" | "viewed" | "done" | "reviewed";
+
+export interface ParentHomeworkItem {
+  id: string;
+  title: string;
+  subject: string;
+  description: string;
+  due_date: string;
+  state: ParentHomeworkState;
+  rating: HomeworkRating | null;
+  teacherComment: string | null;
+}
+
+function deriveParentState(s: any): ParentHomeworkState {
+  if (!s) return "new";
+  if (s.reviewed_at) return "reviewed";
+  if (s.state === "done") return "done";
+  return "viewed";
+}
+
+// Homework for a child's section in a month, merged with that child's status.
+export async function loadParentHomework(
+  sectionId: string, studentId: string, year: number, month: number,
+): Promise<ParentHomeworkItem[]> {
+  const firstDay = `${year}-${String(month).padStart(2, "0")}-01`;
+  const lastDay = new Date(year, month, 0).toISOString().split("T")[0];
+
+  const { data: hw } = await supabase
+    .from("homework")
+    .select("id, title, description, due_date, subjects(name)")
+    .eq("section_id", sectionId)
+    .gte("due_date", firstDay)
+    .lte("due_date", lastDay)
+    .order("due_date", { ascending: true });
+
+  const ids = (hw ?? []).map((h: any) => h.id);
+  const statusByHw: Record<string, any> = {};
+  if (ids.length > 0) {
+    const { data: statuses } = await supabase
+      .from("homework_status")
+      .select("homework_id, state, rating, teacher_comment, reviewed_at")
+      .in("homework_id", ids)
+      .eq("student_id", studentId);
+    for (const s of statuses ?? []) statusByHw[(s as any).homework_id] = s;
+  }
+
+  return (hw ?? []).map((h: any): ParentHomeworkItem => {
+    const s = statusByHw[h.id];
+    return {
+      id: h.id,
+      title: h.title,
+      description: h.description ?? "",
+      subject: h.subjects?.name ?? "",
+      due_date: h.due_date,
+      state: deriveParentState(s),
+      rating: s?.rating ?? null,
+      teacherComment: s?.teacher_comment ?? null,
+    };
+  });
+}
+
+// One homework's status for a child (for the detail screen).
+export async function loadStudentStatus(homeworkId: string, studentId: string): Promise<{
+  state: ParentHomeworkState; rating: HomeworkRating | null; teacherComment: string | null;
+  title: string; description: string; subject: string; dueDate: string;
+} | null> {
+  const { data: hw } = await supabase
+    .from("homework")
+    .select("id, title, description, due_date, subjects(name)")
+    .eq("id", homeworkId)
+    .maybeSingle();
+  if (!hw) return null;
+
+  const { data: s } = await supabase
+    .from("homework_status")
+    .select("state, rating, teacher_comment, reviewed_at")
+    .eq("homework_id", homeworkId)
+    .eq("student_id", studentId)
+    .maybeSingle();
+
+  return {
+    state: deriveParentState(s),
+    rating: (s as any)?.rating ?? null,
+    teacherComment: (s as any)?.teacher_comment ?? null,
+    title: (hw as any).title,
+    description: (hw as any).description ?? "",
+    subject: (hw as any).subjects?.name ?? "",
+    dueDate: (hw as any).due_date,
+  };
+}
+
+export async function markViewed(homeworkId: string, studentId: string): Promise<void> {
+  await supabase.rpc("mark_homework_viewed", { p_homework_id: homeworkId, p_student_id: studentId });
+}
+export async function markDone(homeworkId: string, studentId: string): Promise<{ error: string | null }> {
+  const { error } = await supabase.rpc("mark_homework_done", { p_homework_id: homeworkId, p_student_id: studentId });
+  return { error: error?.message ?? null };
+}
+export async function unmarkDone(homeworkId: string, studentId: string): Promise<{ error: string | null }> {
+  const { error } = await supabase.rpc("unmark_homework_done", { p_homework_id: homeworkId, p_student_id: studentId });
+  return { error: error?.message ?? null };
+}
