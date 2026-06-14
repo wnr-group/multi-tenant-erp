@@ -33,6 +33,18 @@ export default async function HomeworkPage() {
       .single(),
   ]);
 
+  const homeworkIds = (homework ?? []).map((h) => h.id);
+  const [{ count: totalStudents }, { data: doneStatuses }] = await Promise.all([
+    supabase.from("student_enrollments").select("id", { count: "exact", head: true })
+      .eq("section_id", sectionId).eq("is_active", true),
+    homeworkIds.length > 0
+      ? supabase.from("homework_status").select("homework_id, state")
+          .in("homework_id", homeworkIds).eq("state", "done")
+      : Promise.resolve({ data: [] as { homework_id: string; state: string }[] }),
+  ]);
+  const doneByHw: Record<string, number> = {};
+  for (const s of (doneStatuses ?? []) as any[]) doneByHw[s.homework_id] = (doneByHw[s.homework_id] ?? 0) + 1;
+
   const rows = (homework ?? []).map((h) => {
     const subject = h.subject as unknown as { name: string } | null;
     const section = h.section as unknown as {
@@ -45,6 +57,7 @@ export default async function HomeworkPage() {
       subject: subject?.name ?? "—",
       section: section ? `${section.class?.name ?? ""} – ${section.name}` : "—",
       due_date: h.due_date ? new Date(h.due_date).toLocaleDateString() : "—",
+      done: `${doneByHw[h.id] ?? 0}/${totalStudents ?? 0}`,
       description: h.description ?? "—",
     };
   });
@@ -69,10 +82,13 @@ export default async function HomeworkPage() {
       <DataTable
         data={rows}
         columns={[
-          { header: "Title", accessor: "title" },
+          { header: "Title", accessor: (row) => (
+              <a href={`/teacher/homework/${row.id}`} className="font-medium text-primary hover:underline">{row.title}</a>
+          ) },
           { header: "Subject", accessor: "subject" },
           { header: "Section", accessor: "section" },
           { header: "Due Date", accessor: "due_date" },
+          { header: "Done", accessor: "done" },
           { header: "Description", accessor: "description" },
         ]}
         emptyMessage="No homework assigned yet."
