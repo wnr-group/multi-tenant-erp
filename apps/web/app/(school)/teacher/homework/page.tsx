@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
 import { getActiveSection } from "@/lib/section-context";
+import { getAcademicYearId } from "@/lib/academic-year";
 import { DataTable } from "@/components/data-table";
 import { CreateHomeworkForm } from "./create-homework-form";
 import { NoSectionPrompt } from "../no-section-prompt";
@@ -12,8 +13,33 @@ export default async function HomeworkPage() {
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   const schoolId = (await getSchoolId())!;
+  const yearId = await getAcademicYearId(schoolId);
 
-  const [{ data: homework }, { data: classes }, { data: activeSection }, { data: allSections }, { data: allSubjects }] = await Promise.all([
+  // A teacher may only assign homework to sections they actually teach
+  // (homeroom via section_assignments, or subject via timetable, in the active
+  // year) — this mirrors the mobile app and the send-homework-notification
+  // authorization, so the create form can't offer a section the notification
+  // would then reject.
+  const [{ data: homeroomRows }, { data: timetableRows }] = await Promise.all([
+    supabase
+      .from("section_assignments")
+      .select("section_id")
+      .eq("class_teacher_id", user!.id)
+      .eq("academic_year_id", yearId ?? ""),
+    supabase
+      .from("timetable")
+      .select("section_id")
+      .eq("teacher_id", user!.id)
+      .eq("academic_year_id", yearId ?? ""),
+  ]);
+  const taughtSectionIds = Array.from(
+    new Set([
+      ...(homeroomRows ?? []).map((r) => r.section_id as string),
+      ...(timetableRows ?? []).map((r) => r.section_id as string),
+    ])
+  );
+
+  const [{ data: homework }, { data: activeSection }, { data: taughtSections }] = await Promise.all([
     supabase
       .from("homework")
       .select(
@@ -22,26 +48,30 @@ export default async function HomeworkPage() {
       .eq("section_id", sectionId)
       .order("due_date", { ascending: false }),
     supabase
-      .from("classes")
-      .select("id, name")
-      .eq("school_id", schoolId)
-      .order("name"),
-    supabase
       .from("sections")
       .select("class_id")
       .eq("id", sectionId)
       .single(),
-    supabase
-      .from("sections")
-      .select("id, name, class_id")
-      .eq("school_id", schoolId)
-      .order("name"),
-    supabase
-      .from("subjects")
-      .select("id, name, class_id")
-      .eq("school_id", schoolId)
-      .order("name"),
+    taughtSectionIds.length > 0
+      ? supabase
+          .from("sections")
+          .select("id, name, class_id")
+          .in("id", taughtSectionIds)
+          .order("name")
+      : Promise.resolve({ data: [] as { id: string; name: string; class_id: string }[] }),
   ]);
+
+  // Classes + subjects are derived from the taught sections' classes only.
+  const taughtClassIds = Array.from(new Set((taughtSections ?? []).map((s) => s.class_id)));
+  const [{ data: classes }, { data: allSubjects }] = await Promise.all([
+    taughtClassIds.length > 0
+      ? supabase.from("classes").select("id, name").in("id", taughtClassIds).order("name")
+      : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+    taughtClassIds.length > 0
+      ? supabase.from("subjects").select("id, name, class_id").in("class_id", taughtClassIds).order("name")
+      : Promise.resolve({ data: [] as { id: string; name: string; class_id: string }[] }),
+  ]);
+  const allSections = taughtSections;
 
   const homeworkIds = (homework ?? []).map((h) => h.id);
   const [{ count: totalStudents }, { data: doneStatuses }] = await Promise.all([
