@@ -15,7 +15,7 @@ export default function TeacherAttendanceOverview() {
   const theme = useTheme();
   const router = useRouter();
   const { sections, ready } = useTeacherContext();
-  const mySections = sections.filter((s) => s.isHomeroom);
+  const mySections = sections;
   const [session, setSession] = useState<AttendanceSession>("FULL_DAY");
   const [counts, setCounts] = useState<Record<string, MarkedCount>>({});
   const [loading, setLoading] = useState(true);
