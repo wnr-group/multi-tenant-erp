@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
+import { uploadAttachment, notifyAssigned } from "@/lib/homework";
 
 interface ClassOption {
   id: string;
@@ -47,6 +48,7 @@ export function CreateHomeworkForm({
   const [subjects, setSubjects] = useState<SubjectOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
 
   useEffect(() => {
     if (!classId) {
@@ -91,7 +93,7 @@ export function CreateHomeworkForm({
     setError(null);
     setLoading(true);
     const supabase = createClient();
-    const { error: err } = await supabase.from("homework").insert({
+    const { data: created, error: err } = await supabase.from("homework").insert({
       school_id: schoolId,
       class_id: classId,
       teacher_id: teacherId,
@@ -100,18 +102,22 @@ export function CreateHomeworkForm({
       title,
       description: description || null,
       due_date: dueDate || null,
-    });
-    setLoading(false);
-    if (err) {
-      setError(err.message);
+    }).select("id").single();
+    if (err || !created) {
+      setError(err?.message ?? "Could not save");
+      setLoading(false);
       return;
     }
-    setTitle("");
-    setDescription("");
-    setDueDate("");
-    setClassId("");
-    setSectionId("");
-    setSubjectId("");
+
+    for (const f of files) {
+      const up = await uploadAttachment(schoolId, created.id, f);
+      if (up.error) setError(`${f.name}: ${up.error}`);
+    }
+    notifyAssigned(created.id);
+
+    setLoading(false);
+    setTitle(""); setDescription(""); setDueDate("");
+    setClassId(""); setSectionId(""); setSubjectId(""); setFiles([]);
     router.refresh();
   }
 
@@ -183,6 +189,28 @@ export function CreateHomeworkForm({
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Instructions or additional details…"
         />
+      </div>
+
+      <div className="col-span-2">
+        <Label>Attachments (optional, ≤2MB each — DOC, PDF, images)</Label>
+        <input
+          type="file"
+          multiple
+          accept=".doc,.docx,.pdf,image/png,image/jpeg"
+          onChange={(e) => {
+            const picked = Array.from(e.target.files ?? []);
+            const tooBig = picked.find((f) => f.size > 2 * 1024 * 1024);
+            if (tooBig) { setError(`${tooBig.name} exceeds 2MB`); return; }
+            setError(null);
+            setFiles(picked);
+          }}
+          className="mt-1 block w-full text-sm"
+        />
+        {files.length > 0 && (
+          <ul className="mt-2 text-sm text-gray-600">
+            {files.map((f, i) => <li key={i}>{f.name}</li>)}
+          </ul>
+        )}
       </div>
 
       <div className="col-span-2">
