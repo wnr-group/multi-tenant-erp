@@ -4,6 +4,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown, FadeInUp, FadeIn, SlideInRight, SlideOutLeft } from "react-native-reanimated";
 import { supabase, SCHOOL_ID } from "../../lib/supabase";
+import { clearActiveContext } from "../../lib/active-context";
 
 const schoolLogo = require("../../assets/logo-header.png");
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -67,6 +68,8 @@ export default function LoginScreen() {
       return;
     }
     setLoading(true);
+    // Clear any leftover role/student from a previous account before the new session lands.
+    await clearActiveContext();
     const { error } = await supabase.auth.verifyOtp({
       phone: `+91${phone.replace(/\D/g, "")}`,
       token: otp,
