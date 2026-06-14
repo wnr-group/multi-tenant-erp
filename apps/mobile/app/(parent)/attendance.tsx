@@ -9,7 +9,7 @@ import { Skeleton } from "../../components/Skeleton";
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const DAY_LABELS = ["S","M","T","W","T","F","S"];
 
-interface AttendanceRecord { date: string; status: "present" | "absent" | "late" }
+interface AttendanceRecord { date: string; status: "present" | "absent" | "late"; session: "FULL_DAY" | "FN" | "AN" }
 
 export default function ParentAttendance() {
   const theme = useTheme();
@@ -36,7 +36,7 @@ export default function ParentAttendance() {
     const { data: sp } = await supabase.from("student_profiles").select("id").eq("id", activeStudentId).maybeSingle();
     const studentId = sp?.id;
     if (!studentId) { setRecords([]); setLoading(false); return; }
-    const { data } = await supabase.from("attendance_records").select("date, status").eq("student_id", studentId).order("date");
+    const { data } = await supabase.from("attendance_records").select("date, status, session").eq("student_id", studentId).order("date");
     setRecords((data as AttendanceRecord[]) ?? []);
     setLoading(false);
   }
@@ -45,23 +45,30 @@ export default function ParentAttendance() {
     const d = new Date(r.date);
     return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
   });
-  const present = monthRecords.filter((r) => r.status === "present").length;
-  const absent = monthRecords.filter((r) => r.status === "absent").length;
-  const total = monthRecords.length;
-  const pct = total > 0 ? Math.round((present / total) * 100) : 0;
-  const statusMap = Object.fromEntries(monthRecords.map((r) => [r.date, r.status]));
+  const isPresent = (s: string) => s === "present" || s === "late";
+  const presentSessions = monthRecords.filter((r) => isPresent(r.status)).length;
+  const totalSessions = monthRecords.length;
+  const pct = totalSessions > 0 ? Math.round((presentSessions / totalSessions) * 100) : 0;
+
+  // Group sessions by date for the calendar cell rendering.
+  const dayMap: Record<string, AttendanceRecord[]> = {};
+  monthRecords.forEach((r) => { (dayMap[r.date] ??= []).push(r); });
+
   const firstDay = new Date(selectedYear, selectedMonth, 1).getDay();
   const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
   const calendarCells = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
 
-  function getCellColor(day: number | null): string {
-    if (!day) return "transparent";
-    const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    const status = statusMap[dateStr];
+  function statusColor(status: string): string {
     if (status === "present") return theme.success;
     if (status === "absent") return theme.danger;
     if (status === "late") return theme.warning;
     return theme.border;
+  }
+
+  function cellSessions(day: number | null): AttendanceRecord[] {
+    if (!day) return [];
+    const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    return dayMap[dateStr] ?? [];
   }
 
   return (
@@ -80,7 +87,7 @@ export default function ParentAttendance() {
         {loading ? <Skeleton height={100} borderRadius={16} /> : (
           <View style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 20, alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 2 }}>
             <Text style={{ fontSize: 48, fontFamily: "Inter_700Bold", color: theme.primary }}>{pct}%</Text>
-            <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: theme.textSecondary, marginTop: 4 }}>{present} present · {absent} absent · {total} days</Text>
+            <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: theme.textSecondary, marginTop: 4 }}>{presentSessions} present · {totalSessions - presentSessions} other · {totalSessions} sessions</Text>
           </View>
         )}
         {loading ? <Skeleton height={220} borderRadius={16} /> : (
@@ -91,11 +98,40 @@ export default function ParentAttendance() {
             <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
               {calendarCells.map((day, i) => (
                 <View key={i} style={{ width: `${100/7}%`, aspectRatio: 1, padding: 2 }}>
-                  {day ? (
-                    <View style={{ flex: 1, borderRadius: 6, backgroundColor: getCellColor(day), alignItems: "center", justifyContent: "center" }}>
-                      <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: getCellColor(day) === theme.border ? theme.textMuted : "#fff" }}>{day}</Text>
-                    </View>
-                  ) : null}
+                  {day ? (() => {
+                    const sessions = cellSessions(day);
+                    const fullDay = sessions.find((s) => s.session === "FULL_DAY");
+                    const fn = sessions.find((s) => s.session === "FN");
+                    const an = sessions.find((s) => s.session === "AN");
+                    if (sessions.length === 0) {
+                      return (
+                        <View style={{ flex: 1, borderRadius: 6, backgroundColor: theme.border, alignItems: "center", justifyContent: "center" }}>
+                          <Text style={{ fontSize: 11, color: theme.textMuted }}>{day}</Text>
+                        </View>
+                      );
+                    }
+                    if (fullDay) {
+                      return (
+                        <View style={{ flex: 1, borderRadius: 6, backgroundColor: statusColor(fullDay.status), alignItems: "center", justifyContent: "center" }}>
+                          <Text style={{ fontSize: 11, color: "#fff" }}>{day}</Text>
+                        </View>
+                      );
+                    }
+                    // FN/AN split: left half FN, right half AN.
+                    return (
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        onPress={() => alert(`FN: ${fn?.status ?? "—"}\nAN: ${an?.status ?? "—"}`)}
+                        style={{ flex: 1, borderRadius: 6, overflow: "hidden", flexDirection: "row" }}
+                      >
+                        <View style={{ flex: 1, backgroundColor: fn ? statusColor(fn.status) : theme.border }} />
+                        <View style={{ flex: 1, backgroundColor: an ? statusColor(an.status) : theme.border }} />
+                        <View style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, alignItems: "center", justifyContent: "center" }}>
+                          <Text style={{ fontSize: 11, color: "#fff" }}>{day}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })() : null}
                 </View>
               ))}
             </View>
