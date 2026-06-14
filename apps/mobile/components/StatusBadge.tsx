@@ -1,7 +1,7 @@
 import { View, Text } from "react-native";
 import { useTheme } from "../lib/theme";
 
-type BadgeVariant = "paid" | "pending" | "overdue" | "partial" | "present" | "absent" | "late" | "unmarked";
+type BadgeVariant = "paid" | "pending" | "overdue" | "partial" | "present" | "absent" | "late" | "unmarked" | "hw_new" | "hw_viewed" | "hw_done" | "hw_reviewed";
 
 const LABELS: Record<BadgeVariant, string> = {
   paid: "Paid",
@@ -12,6 +12,10 @@ const LABELS: Record<BadgeVariant, string> = {
   absent: "Absent",
   late: "Late",
   unmarked: "Not Marked",
+  hw_new: "New",
+  hw_viewed: "Viewed",
+  hw_done: "Done",
+  hw_reviewed: "Reviewed",
 };
 
 interface StatusBadgeProps {
@@ -29,6 +33,10 @@ export function StatusBadge({ variant }: StatusBadgeProps) {
     absent: { bg: theme.danger + "1A", text: theme.danger },
     late: { bg: theme.warning + "1A", text: theme.warning },
     unmarked: { bg: theme.textMuted + "1A", text: theme.textMuted },
+    hw_new: { bg: theme.primary + "1A", text: theme.primary },
+    hw_viewed: { bg: theme.warning + "1A", text: theme.warning },
+    hw_done: { bg: theme.success + "1A", text: theme.success },
+    hw_reviewed: { bg: theme.success + "1A", text: theme.success },
   };
   const { bg, text } = config[variant as BadgeVariant] ?? { bg: theme.surface, text: theme.textMuted };
   return (
