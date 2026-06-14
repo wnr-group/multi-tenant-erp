@@ -66,10 +66,13 @@ async function handle(
     return json({ result: "error", reason: "not_absent" }, 422);
   }
 
-  // 3. Re-validate the caller is the class teacher for this section/year.
+  // 3. Re-validate the caller teaches this section in the active year — either as
+  // its homeroom teacher (section_assignments) or via a timetable entry. This mirrors
+  // the marking UI, which lets a teacher mark any section they teach (not just homeroom).
   const { data: yearId } = await admin.rpc("get_active_academic_year", {
     p_school_id: rec.school_id,
   });
+
   const { data: assignment } = await admin
     .from("section_assignments")
     .select("id")
@@ -77,7 +80,21 @@ async function handle(
     .eq("class_teacher_id", callerId)
     .eq("academic_year_id", yearId)
     .maybeSingle();
-  if (!assignment) {
+
+  let authorized = !!assignment;
+  if (!authorized) {
+    const { data: tt } = await admin
+      .from("timetable")
+      .select("id")
+      .eq("section_id", rec.section_id)
+      .eq("teacher_id", callerId)
+      .eq("academic_year_id", yearId)
+      .limit(1)
+      .maybeSingle();
+    authorized = !!tt;
+  }
+
+  if (!authorized) {
     return json({ result: "error", reason: "not_authorized" }, 403);
   }
 
