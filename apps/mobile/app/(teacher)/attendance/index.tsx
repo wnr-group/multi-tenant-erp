@@ -3,13 +3,13 @@ import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from "react-
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useTheme } from "../../lib/theme";
-import { useTeacherContext } from "../../lib/teacherContext";
-import { SessionSelector } from "../../components/SessionSelector";
-import { SkeletonCard } from "../../components/Skeleton";
+import { useTheme } from "../../../lib/theme";
+import { useTeacherContext } from "../../../lib/teacherContext";
+import { SessionSelector } from "../../../components/SessionSelector";
+import { SkeletonCard } from "../../../components/Skeleton";
 import {
   AttendanceSession, fetchMarkedCount, MarkedCount,
-} from "../../lib/attendance";
+} from "../../../lib/attendance";
 
 export default function TeacherAttendanceOverview() {
   const theme = useTheme();

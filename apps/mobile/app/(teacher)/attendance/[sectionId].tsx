@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Alert, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { supabase } from "../../../lib/supabase";
@@ -20,6 +20,7 @@ import { sendAbsenceNotification } from "../../../lib/notifications";
 
 export default function MarkAttendance() {
   const theme = useTheme();
+  const router = useRouter();
   const params = useLocalSearchParams<{ sectionId: string; session?: string; date?: string }>();
   const sectionId = params.sectionId;
   const date = params.date ?? new Date().toISOString().split("T")[0];
@@ -28,7 +29,7 @@ export default function MarkAttendance() {
 
   const [session, setSession] = useState<AttendanceSession>((params.session as AttendanceSession) ?? "FULL_DAY");
   const [rows, setRows] = useState<SectionAttendanceRow[]>([]);
-  const [statuses, setStatuses] = useState<Record<string, AttendanceStatus>>({});
+  const [statuses, setStatuses] = useState<Record<string, AttendanceStatus | null>>({});
   const [existingMode, setExistingMode] = useState<"FULL_DAY" | "SESSION" | null>(null);
   const [stats, setStats] = useState<DayStat[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,31 +71,47 @@ export default function MarkAttendance() {
   function cycleStatus(studentId: string) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setStatuses((prev) => {
-      const cur = prev[studentId] ?? "present";
-      const next: AttendanceStatus = cur === "present" ? "absent" : cur === "absent" ? "late" : "present";
+      const cur = prev[studentId];
+      // First tap marks Present; then cycle Present → Absent → Late → Present.
+      const next: AttendanceStatus =
+        cur == null ? "present" : cur === "present" ? "absent" : cur === "absent" ? "late" : "present";
       return { ...prev, [studentId]: next };
     });
   }
 
+  function markAll(status: AttendanceStatus) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setStatuses(Object.fromEntries(rows.map((r) => [r.studentId, status])));
+  }
+
+  const markedCount = rows.filter((r) => statuses[r.studentId] != null).length;
+
   async function submit() {
     if (!userId || !schoolId) return;
+    // Only save students that have an explicit status; leave the rest unmarked.
+    const records = rows
+      .filter((r) => statuses[r.studentId] != null)
+      .map((r) => ({
+        student_id: r.studentId,
+        section_id: sectionId,
+        school_id: schoolId,
+        date,
+        session,
+        status: statuses[r.studentId] as AttendanceStatus,
+        marked_by: userId,
+      }));
+    if (records.length === 0) {
+      Alert.alert("Nothing to save", "Mark at least one student first.");
+      return;
+    }
     setSaving(true);
-    const records = rows.map((r) => ({
-      student_id: r.studentId,
-      section_id: sectionId,
-      school_id: schoolId,
-      date,
-      session,
-      status: statuses[r.studentId] ?? "present",
-      marked_by: userId,
-    }));
     const { error } = await supabase
       .from("attendance_records")
       .upsert(records, { onConflict: "student_id,date,session" });
     setSaving(false);
     if (error) { Alert.alert("Error", error.message); return; }
     await load(); // refresh so recordIds + send icons appear
-    Alert.alert("Saved", "Attendance recorded.");
+    Alert.alert("Saved", `Attendance recorded for ${records.length} students.`);
   }
 
   function confirmClear() {
@@ -132,9 +149,18 @@ export default function MarkAttendance() {
     <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: theme.background }}>
       <View style={{ flex: 1 }}>
         <View style={{ paddingHorizontal: 20, paddingTop: 20, gap: 12 }}>
-          <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>
-            {section?.label ?? "Class"}
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <TouchableOpacity
+              onPress={() => (router.canGoBack() ? router.back() : router.replace("/(teacher)/attendance"))}
+              hitSlop={10}
+              style={{ marginLeft: -4 }}
+            >
+              <Ionicons name="chevron-back" size={26} color={theme.textPrimary} />
+            </TouchableOpacity>
+            <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>
+              {section?.label ?? "Class"}
+            </Text>
+          </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <View style={{ backgroundColor: marked ? theme.success + "1A" : theme.warning + "1A", borderRadius: 100, paddingHorizontal: 10, paddingVertical: 4 }}>
               <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: marked ? theme.success : theme.warning }}>
@@ -157,6 +183,14 @@ export default function MarkAttendance() {
               ))}
             </View>
           )}
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <TouchableOpacity onPress={() => markAll("present")} activeOpacity={0.7} style={{ flex: 1, alignItems: "center", paddingVertical: 10, borderRadius: 10, backgroundColor: theme.success + "1A" }}>
+              <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: theme.success }}>All Present</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => markAll("absent")} activeOpacity={0.7} style={{ flex: 1, alignItems: "center", paddingVertical: 10, borderRadius: 10, backgroundColor: theme.danger + "1A" }}>
+              <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: theme.danger }}>All Absent</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <ScrollView
@@ -166,7 +200,7 @@ export default function MarkAttendance() {
           {loading ? (
             [0, 1, 2, 3].map((i) => <SkeletonCard key={i} />)
           ) : rows.map((row) => {
-            const status = statuses[row.studentId] ?? "present";
+            const status = statuses[row.studentId] ?? null;
             const showSend = marked && row.recordId && status === "absent";
             return (
               <View key={row.studentId} style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 16, flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -176,7 +210,7 @@ export default function MarkAttendance() {
                     <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>{row.fullName}</Text>
                     <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: theme.textSecondary }}>Roll #{row.rollNumber}</Text>
                   </View>
-                  <StatusBadge variant={status} />
+                  <StatusBadge variant={status ?? "unmarked"} />
                 </TouchableOpacity>
                 {showSend ? (
                   !row.hasParent ? (
@@ -203,7 +237,7 @@ export default function MarkAttendance() {
 
         {!loading && rows.length > 0 && (
           <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: 20, backgroundColor: theme.background, borderTopWidth: 1, borderTopColor: theme.border }}>
-            <PrimaryButton label={marked ? "Update Attendance" : `Submit · ${rows.length} students`} onPress={submit} loading={saving} />
+            <PrimaryButton label={marked ? "Update Attendance" : `Submit · ${markedCount}/${rows.length} marked`} onPress={submit} loading={saving} />
           </View>
         )}
       </View>

@@ -1,7 +1,7 @@
 import { View, Text } from "react-native";
 import { useTheme } from "../lib/theme";
 
-type BadgeVariant = "paid" | "pending" | "overdue" | "partial" | "present" | "absent" | "late";
+type BadgeVariant = "paid" | "pending" | "overdue" | "partial" | "present" | "absent" | "late" | "unmarked";
 
 const LABELS: Record<BadgeVariant, string> = {
   paid: "Paid",
@@ -11,6 +11,7 @@ const LABELS: Record<BadgeVariant, string> = {
   present: "Present",
   absent: "Absent",
   late: "Late",
+  unmarked: "Not Marked",
 };
 
 interface StatusBadgeProps {
@@ -27,6 +28,7 @@ export function StatusBadge({ variant }: StatusBadgeProps) {
     present: { bg: theme.success + "1A", text: theme.success },
     absent: { bg: theme.danger + "1A", text: theme.danger },
     late: { bg: theme.warning + "1A", text: theme.warning },
+    unmarked: { bg: theme.textMuted + "1A", text: theme.textMuted },
   };
   const { bg, text } = config[variant as BadgeVariant] ?? { bg: theme.surface, text: theme.textMuted };
   return (

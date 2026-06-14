@@ -22,7 +22,8 @@ export interface SectionAttendanceRow {
   studentId: string;
   fullName: string;
   rollNumber: string;
-  status: AttendanceStatus;
+  /** null = not yet marked for this date/session. */
+  status: AttendanceStatus | null;
   notifiedAt: string | null;
   hasParent: boolean;
 }
@@ -92,7 +93,7 @@ export async function fetchSectionAttendance(
       studentId: sid,
       fullName: p?.full_name ?? "Student",
       rollNumber: s.roll_number || p?.admission_number || String(idx + 1),
-      status: existing?.status ?? "present",
+      status: existing?.status ?? null,
       notifiedAt: existing?.notified_at ?? null,
       hasParent: !!p?.parent_profile_id,
     };
