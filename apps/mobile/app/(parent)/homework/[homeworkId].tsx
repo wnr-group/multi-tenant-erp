@@ -23,8 +23,9 @@ const BADGE: Record<ParentHomeworkState, "hw_new" | "hw_viewed" | "hw_done" | "h
 export default function ParentHomeworkDetail() {
   const theme = useTheme();
   const router = useRouter();
-  const { homeworkId } = useLocalSearchParams<{ homeworkId: string }>();
-  const { studentId } = useActiveContext();
+  const { homeworkId, studentId: paramStudentId } = useLocalSearchParams<{ homeworkId: string; studentId?: string }>();
+  const { studentId: activeStudentId } = useActiveContext();
+  const studentId = paramStudentId || activeStudentId;
 
   const [data, setData] = useState<Awaited<ReturnType<typeof loadStudentStatus>>>(null);
   const [attachments, setAttachments] = useState<AttachmentRow[]>([]);

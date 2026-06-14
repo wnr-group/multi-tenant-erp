@@ -411,7 +411,7 @@ export default function ParentAcademics() {
                     <TouchableOpacity
                       key={h.id}
                       activeOpacity={0.85}
-                      onPress={() => router.push({ pathname: "/(parent)/homework/[homeworkId]", params: { homeworkId: h.id } })}
+                      onPress={() => router.push({ pathname: "/(parent)/homework/[homeworkId]", params: { homeworkId: h.id, studentId: activeStudentId } })}
                       style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 16, gap: 8 }}
                     >
                       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
@@ -424,7 +424,8 @@ export default function ParentAcademics() {
                           </View>
                         </View>
                         {(() => {
-                          const isOverdueNotDone = (h.state === "new" || h.state === "viewed") && new Date(h.due_date) < new Date();
+                          const todayStr = new Date().toLocaleDateString("en-CA");
+                          const isOverdueNotDone = (h.state === "new" || h.state === "viewed") && h.due_date < todayStr;
                           return <StatusBadge variant={isOverdueNotDone ? "overdue" : HW_BADGE[h.state]} />;
                         })()}
                       </View>
