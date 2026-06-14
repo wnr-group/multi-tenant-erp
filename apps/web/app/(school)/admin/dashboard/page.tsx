@@ -98,7 +98,7 @@ export default async function AdminDashboard() {
   // Attendance donut (today)
   const [{ count: presentToday }, { count: absentToday }] = await Promise.all([
     supabase.from("attendance_records").select("*", { count: "exact", head: true })
-      .eq("school_id", schoolId!).eq("date", today).eq("status", "present"),
+      .eq("school_id", schoolId!).eq("date", today).in("status", ["present", "late"]),
     supabase.from("attendance_records").select("*", { count: "exact", head: true })
       .eq("school_id", schoolId!).eq("date", today).eq("status", "absent"),
   ]);

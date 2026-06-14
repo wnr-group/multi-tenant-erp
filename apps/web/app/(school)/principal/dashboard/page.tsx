@@ -64,7 +64,7 @@ export default async function PrincipalDashboard() {
     { data: announcements },
   ] = await Promise.all([
     supabase.from("attendance_records").select("*", { count: "exact", head: true })
-      .eq("school_id", schoolId).eq("date", today).eq("status", "present"),
+      .eq("school_id", schoolId).eq("date", today).in("status", ["present", "late"]),
     supabase.from("attendance_records").select("*", { count: "exact", head: true })
       .eq("school_id", schoolId).eq("date", today).eq("status", "absent"),
     supabase.from("student_profiles").select("*", { count: "exact", head: true })
@@ -120,7 +120,7 @@ export default async function PrincipalDashboard() {
     if (!classAttMap.has(key)) classAttMap.set(key, { name: sp.classes.name, order: sp.classes.order, present: 0, total: 0 });
     const entry = classAttMap.get(key)!;
     entry.total++;
-    if (r.status === "present") entry.present++;
+    if (r.status === "present" || r.status === "late") entry.present++;
   }
   const classAttendance: ClassAttendance[] = Array.from(classAttMap.values())
     .sort((a, b) => a.order - b.order)
