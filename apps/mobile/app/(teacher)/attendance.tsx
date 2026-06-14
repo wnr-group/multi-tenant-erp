@@ -1,196 +1,94 @@
 import { useEffect, useState, useCallback } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Alert, RefreshControl } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import * as Haptics from "expo-haptics";
-import { supabase } from "../../lib/supabase";
+import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../lib/theme";
 import { useTeacherContext } from "../../lib/teacherContext";
-import { Avatar } from "../../components/Avatar";
-import { PrimaryButton } from "../../components/PrimaryButton";
-import { StatusBadge } from "../../components/StatusBadge";
+import { SessionSelector } from "../../components/SessionSelector";
 import { SkeletonCard } from "../../components/Skeleton";
+import {
+  AttendanceSession, fetchMarkedCount, MarkedCount,
+} from "../../lib/attendance";
 
-type AttendanceStatus = "present" | "absent" | "late";
-interface Student { id: string; full_name: string; roll_number: string }
-
-export default function TeacherAttendance() {
+export default function TeacherAttendanceOverview() {
   const theme = useTheme();
-  const { sections, userId, schoolId, ready } = useTeacherContext();
-  const [students, setStudents] = useState<Student[]>([]);
-  const [statuses, setStatuses] = useState<Record<string, AttendanceStatus>>({});
+  const router = useRouter();
+  const { sections, ready } = useTeacherContext();
+  const mySections = sections.filter((s) => s.isHomeroom);
+  const [session, setSession] = useState<AttendanceSession>("FULL_DAY");
+  const [counts, setCounts] = useState<Record<string, MarkedCount>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [saving, setSaving] = useState(false);
   const today = new Date().toISOString().split("T")[0];
 
-  // Always use the homeroom section for attendance
-  const homeroomSection = sections.find((s) => s.isHomeroom) ?? sections[0] ?? null;
-
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!ready) return;
-    loadStudents();
-  }, [homeroomSection?.id, ready]);
+    setLoading(true);
+    const entries = await Promise.all(
+      mySections.map((s) => fetchMarkedCount(s.id, today, session)),
+    );
+    setCounts(Object.fromEntries(entries.map((c) => [c.sectionId, c])));
+    setLoading(false);
+  }, [ready, session, mySections.map((s) => s.id).join(","), today]);
+
+  useEffect(() => { load(); }, [load]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadStudents();
+    await load();
     setRefreshing(false);
-  }, [homeroomSection?.id, ready]);
+  }, [load]);
 
-  async function loadStudents() {
-    setLoading(true);
-    setStudents([]);
-    setStatuses({});
-
-    if (!homeroomSection) { setLoading(false); return; }
-
-    const [studentRes, existingRes] = await Promise.all([
-      supabase
-        .from("student_enrollments")
-        .select("roll_number, student_profile_id, student_profiles(id, full_name, admission_number)")
-        .eq("section_id", homeroomSection.id)
-        .eq("is_active", true)
-        .order("roll_number"),
-      supabase
-        .from("attendance_records")
-        .select("student_id, status")
-        .eq("section_id", homeroomSection.id)
-        .eq("date", today),
-    ]);
-
-    const list: Student[] = (studentRes.data ?? []).map((s: any, idx: number) => {
-      const profile = s.student_profiles;
-      return {
-        id: profile?.id ?? s.student_profile_id,
-        full_name: profile?.full_name ?? "Student",
-        roll_number: s.roll_number || profile?.admission_number || String(idx + 1),
-      };
-    });
-
-    const existingMap = Object.fromEntries(
-      (existingRes.data ?? []).map((r: any) => [r.student_id, r.status as AttendanceStatus])
-    );
-    const defaults = Object.fromEntries(
-      list.map((s) => [s.id, existingMap[s.id] ?? ("present" as AttendanceStatus)])
-    );
-
-    setStudents(list);
-    setStatuses(defaults);
-    setLoading(false);
-  }
-
-  function cycleStatus(studentId: string) {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setStatuses((prev) => {
-      const current = prev[studentId] ?? "present";
-      const next: AttendanceStatus =
-        current === "present" ? "absent" : current === "absent" ? "late" : "present";
-      return { ...prev, [studentId]: next };
-    });
-  }
-
-  function markAll(status: AttendanceStatus) {
-    setStatuses(Object.fromEntries(students.map((s) => [s.id, status])));
-  }
-
-  async function saveAttendance() {
-    if (!homeroomSection || !userId || !schoolId) return;
-    setSaving(true);
-    const records = students.map((s) => ({
-      student_id: s.id,
-      section_id: homeroomSection.id,
-      school_id: schoolId,
-      date: today,
-      status: statuses[s.id] ?? "present",
-      marked_by: userId,
-    }));
-    const { error } = await supabase
-      .from("attendance_records")
-      .upsert(records, { onConflict: "student_id,date" });
-    setSaving(false);
-    if (error) Alert.alert("Error", error.message);
-    else Alert.alert("Saved", "Attendance recorded.");
+  function badge(c: MarkedCount | undefined): string {
+    if (!c) return "—";
+    // If marked in the other granularity, show a mode tag instead of false NA.
+    if (session === "FULL_DAY" && c.existingMode === "SESSION") return "FN·AN";
+    if (session !== "FULL_DAY" && c.existingMode === "FULL_DAY") return "Full-day";
+    return c.marked === 0 ? `NA / ${c.total}` : `${c.marked} / ${c.total}`;
   }
 
   return (
     <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: theme.background }}>
-      <View style={{ flex: 1 }}>
-        {/* Header */}
-        <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 8 }}>
-          <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>
-            Mark Attendance
-          </Text>
-          <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: theme.textSecondary, marginTop: 2 }}>
-            {homeroomSection ? `${homeroomSection.label} · ` : ""}
-            {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}
-          </Text>
-        </View>
-
-        {/* Bulk actions */}
-        {!loading && students.length > 0 && (
-          <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 20, marginBottom: 12 }}>
-            <TouchableOpacity
-              onPress={() => markAll("present")}
-              style={{ flex: 1, paddingVertical: 9, borderRadius: 10, backgroundColor: theme.success + "1A", alignItems: "center" }}
-            >
-              <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: theme.success }}>All Present</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => markAll("absent")}
-              style={{ flex: 1, paddingVertical: 9, borderRadius: 10, backgroundColor: theme.danger + "1A", alignItems: "center" }}
-            >
-              <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: theme.danger }}>All Absent</Text>
-            </TouchableOpacity>
+      <View style={{ paddingHorizontal: 20, paddingTop: 20, gap: 14 }}>
+        <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>Attendance</Text>
+        <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: theme.textSecondary }}>
+          {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}
+        </Text>
+        <SessionSelector value={session} onChange={setSession} />
+      </View>
+      <ScrollView
+        contentContainerStyle={{ padding: 20, gap: 8 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
+      >
+        {loading ? (
+          [0, 1, 2].map((i) => <SkeletonCard key={i} />)
+        ) : mySections.length === 0 ? (
+          <View style={{ alignItems: "center", paddingVertical: 56 }}>
+            <Text style={{ fontFamily: "Inter_500Medium", color: theme.textMuted, fontSize: 14 }}>
+              No classes assigned to you
+            </Text>
           </View>
-        )}
-
-        {/* Student list */}
-        <ScrollView
-          contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingBottom: 100 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
-        >
-          {loading ? (
-            [0,1,2,3,4].map(i => <SkeletonCard key={i} />)
-          ) : !homeroomSection ? (
-            <View style={{ alignItems: "center", paddingVertical: 56, gap: 8 }}>
-              <Text style={{ fontFamily: "Inter_500Medium", color: theme.textMuted, fontSize: 14 }}>No homeroom class assigned</Text>
-            </View>
-          ) : students.length === 0 ? (
-            <View style={{ alignItems: "center", paddingVertical: 56, gap: 8 }}>
-              <Text style={{ fontFamily: "Inter_500Medium", color: theme.textMuted, fontSize: 14 }}>No students in {homeroomSection.label}</Text>
-            </View>
-          ) : students.map((student) => (
+        ) : mySections.map((s) => {
+          const c = counts[s.id];
+          const complete = c && c.marked === c.total && c.total > 0;
+          return (
             <TouchableOpacity
-              key={student.id}
-              onPress={() => cycleStatus(student.id)}
+              key={s.id}
+              onPress={() => router.push({ pathname: "/(teacher)/attendance/[sectionId]", params: { sectionId: s.id, session, date: today } })}
               style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 16, flexDirection: "row", alignItems: "center", gap: 12 }}
               activeOpacity={0.7}
             >
-              <Avatar name={student.full_name} size={44} />
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>
-                  {student.full_name}
-                </Text>
-                <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: theme.textSecondary }}>
-                  Roll #{student.roll_number}
-                </Text>
-              </View>
-              <StatusBadge variant={statuses[student.id] ?? "present"} />
+              <Ionicons name="people-outline" size={22} color={theme.primary} />
+              <Text style={{ flex: 1, fontSize: 15, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>{s.label}</Text>
+              <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: complete ? theme.success : theme.textSecondary }}>
+                {badge(c)}
+              </Text>
+              <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
             </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* Save bar */}
-        {!loading && students.length > 0 && (
-          <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: 20, backgroundColor: theme.background, borderTopWidth: 1, borderTopColor: theme.border }}>
-            <PrimaryButton
-              label={`Save Attendance · ${students.length} students`}
-              onPress={saveAttendance}
-              loading={saving}
-            />
-          </View>
-        )}
-      </View>
+          );
+        })}
+      </ScrollView>
     </SafeAreaView>
   );
 }
