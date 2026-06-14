@@ -19,12 +19,23 @@ export async function createServerSupabaseClient() {
   const host = headersList.get("host") ?? "";
   const isLvh = host.includes("lvh.me");
   const isBalaji = host.includes("balajierp.com");
-  const cookieDomain = isLvh ? ".lvh.me" : isBalaji ? ".balajierp.com" : undefined;
+  const isConnectmyskool = host.includes("connectmyskool.com");
+  const cookieDomain = isLvh ? ".lvh.me" : isBalaji ? ".balajierp.com" : isConnectmyskool ? ".connectmyskool.com" : undefined;
+
+  // Forward the scoping headers set by middleware so PostgREST's
+  // scope_pre_request() hook can resolve get_my_school_id()/get_my_role() GUCs
+  // that the RLS policies depend on. Without this, RLS denies all web users.
+  const forwardHeaders: Record<string, string> = {};
+  const xSchoolId = headersList.get("x-school-id");
+  const xActiveRole = headersList.get("x-active-role");
+  if (xSchoolId) forwardHeaders["x-school-id"] = xSchoolId;
+  if (xActiveRole) forwardHeaders["x-active-role"] = xActiveRole;
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      global: { headers: forwardHeaders },
       cookies: {
         getAll() {
           return cookieStore.getAll();
