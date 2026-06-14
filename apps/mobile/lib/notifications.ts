@@ -43,3 +43,19 @@ export async function registerForPushNotifications(userId: string) {
     // Silently fail in Expo Go — notifications only work in dev/prod builds
   }
 }
+
+export type AbsenceNotifyResult = "sent" | "recorded_no_app" | "error";
+
+export async function sendAbsenceNotification(
+  recordId: string,
+): Promise<AbsenceNotifyResult> {
+  const { data, error } = await supabase.functions.invoke(
+    "send-attendance-notification",
+    { body: { recordId } },
+  );
+  if (error) return "error";
+  const result = (data as { result?: string } | null)?.result;
+  if (result === "sent") return "sent";
+  if (result === "recorded_no_app") return "recorded_no_app";
+  return "error";
+}
