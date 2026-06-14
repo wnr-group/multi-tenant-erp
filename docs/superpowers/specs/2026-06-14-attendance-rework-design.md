@@ -40,7 +40,13 @@ New migration (`20240001000043_announcements_seen.sql`):
 
 ### 1.4 `notifications` table
 
-No schema change. Existing columns (`user_id`, `is_read`, `title`, `body`, `type`, `school_id`, `created_at`) are sufficient. New `type` value used: `attendance_absence`.
+No column change. Existing columns (`user_id`, `is_read`, `title`, `body`, `type`, `school_id`, `created_at`) are sufficient. New `type` value used: `attendance_absence`.
+
+**RLS gap (must fix):** `notifications` has SELECT (own rows) and INSERT (system) policies but **no UPDATE policy** — a parent currently cannot set `is_read`. Add `notifications_update` allowing `user_id = auth.uid()`.
+
+### 1.5 Active academic year helper
+
+No helper exists today; the active year is a raw query (`academic_years.status = 'active'` per school; enum is `draft|active|archived`). Add SQL function `get_active_academic_year(p_school_id uuid) returns uuid` so the edge function, mobile, and web resolve the current year identically instead of duplicating the query.
 
 ---
 
