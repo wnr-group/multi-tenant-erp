@@ -6,7 +6,8 @@ import { createClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
-type AttendanceStatus = "present" | "absent" | "late" | "half_day";
+type AttendanceStatus = "present" | "absent" | "late";
+type AttendanceSession = "FULL_DAY" | "FN" | "AN";
 
 interface StudentRow {
   id: string;
@@ -19,7 +20,6 @@ const STATUS_OPTIONS: { value: AttendanceStatus; label: string; colors: string }
   { value: "present", label: "Present", colors: "bg-green-100 text-green-800 border-green-300" },
   { value: "absent", label: "Absent", colors: "bg-red-100 text-red-800 border-red-300" },
   { value: "late", label: "Late", colors: "bg-yellow-100 text-yellow-800 border-yellow-300" },
-  { value: "half_day", label: "Half", colors: "bg-orange-100 text-orange-800 border-orange-300" },
 ];
 
 function activeColors(status: AttendanceStatus): string {
@@ -31,12 +31,14 @@ export function AttendanceMarkForm({
   students,
   sectionId,
   date,
+  session,
   schoolId,
   markedBy,
 }: {
   students: StudentRow[];
   sectionId: string;
   date: string;
+  session: AttendanceSession;
   schoolId: string;
   markedBy: string;
 }) {
@@ -69,13 +71,14 @@ export function AttendanceMarkForm({
       student_id: s.id,
       section_id: sectionId,
       date,
+      session,
       status: statuses[s.id] ?? "present",
       marked_by: markedBy,
     }));
 
     const { error: err } = await supabase
       .from("attendance_records")
-      .upsert(records, { onConflict: "student_id,date" });
+      .upsert(records, { onConflict: "student_id,date,session" });
 
     setSaving(false);
     if (err) {
