@@ -3,7 +3,7 @@ import { View, Text, TextInput, KeyboardAvoidingView, Platform, ScrollView, Aler
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown, FadeInUp, FadeIn, SlideInRight, SlideOutLeft } from "react-native-reanimated";
-import { supabase } from "../../lib/supabase";
+import { supabase, SCHOOL_ID } from "../../lib/supabase";
 
 const schoolLogo = require("../../assets/logo-header.png");
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -30,7 +30,28 @@ export default function LoginScreen() {
       return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({ phone: `+91${digits}` });
+    const fullPhone = `+91${digits}`;
+
+    const { data: allowed, error: checkError } = await supabase.rpc("check_phone_has_access", {
+      p_phone: fullPhone,
+      p_school_id: SCHOOL_ID,
+    });
+
+    if (checkError) {
+      setLoading(false);
+      Alert.alert("Error", "Could not verify access. Please try again.");
+      return;
+    }
+    if (!allowed) {
+      setLoading(false);
+      Alert.alert(
+        "No access",
+        "This number isn't registered with this school. Please contact your school administrator.",
+      );
+      return;
+    }
+
+    const { error } = await supabase.auth.signInWithOtp({ phone: fullPhone });
     setLoading(false);
     if (error) {
       Alert.alert("Error", error.message);
