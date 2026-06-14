@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Image, FlatList, Dimensions, RefreshControl } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, Image, FlatList, Dimensions, RefreshControl, Modal, StatusBar } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import Animated, { FadeInDown, FadeInRight } from "react-native-reanimated";
+import Animated, { FadeInDown, FadeInRight, useSharedValue, useAnimatedStyle, withTiming } from "react-native-reanimated";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { supabase, fixStorageUrl, SCHOOL_ID } from "../../lib/supabase";
 import { useActiveContext } from "../../lib/active-context";
 import { useTheme } from "../../lib/theme";
@@ -40,6 +41,7 @@ export default function ParentDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
+  const [viewerImage, setViewerImage] = useState<GalleryItem | null>(null);
   const carouselRef = useRef<FlatList>(null);
 
   useEffect(() => { loadDashboard(); }, [activeStudentId]);
@@ -254,14 +256,14 @@ export default function ParentDashboard() {
                 setActiveSlide(Math.round(e.nativeEvent.contentOffset.x / (SCREEN_WIDTH - 40)));
               }}
               renderItem={({ item }) => (
-                <View style={{ width: SCREEN_WIDTH - 40, height: CAROUSEL_HEIGHT, borderRadius: 16, overflow: "hidden", marginRight: 12 }}>
+                <TouchableOpacity activeOpacity={0.9} onPress={() => setViewerImage(item)} style={{ width: SCREEN_WIDTH - 40, height: CAROUSEL_HEIGHT, borderRadius: 16, overflow: "hidden", marginRight: 12 }}>
                   <Image source={{ uri: item.image_url }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
                   {item.caption && (
                     <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: "rgba(0,0,0,0.5)", borderBottomLeftRadius: 16, borderBottomRightRadius: 16 }}>
                       <Text style={{ color: "#fff", fontSize: 13, fontFamily: "Inter_500Medium" }}>{item.caption}</Text>
                     </View>
                   )}
-                </View>
+                </TouchableOpacity>
               )}
             />
             {data!.gallery.length > 1 && (
@@ -273,6 +275,28 @@ export default function ParentDashboard() {
             )}
           </Animated.View>
         )}
+
+        {/* ── Full-screen gallery viewer ── */}
+        <Modal visible={viewerImage !== null} transparent animationType="fade" onRequestClose={() => setViewerImage(null)} statusBarTranslucent>
+          <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.95)", justifyContent: "center", alignItems: "center" }}>
+            <StatusBar barStyle="light-content" />
+            <TouchableOpacity
+              onPress={() => setViewerImage(null)}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              style={{ position: "absolute", top: 56, right: 20, zIndex: 2, width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" }}
+            >
+              <Ionicons name="close" size={24} color="#fff" />
+            </TouchableOpacity>
+            {viewerImage && (
+              <ZoomableImage uri={viewerImage.image_url} />
+            )}
+            {viewerImage?.caption ? (
+              <View style={{ position: "absolute", bottom: 60, left: 20, right: 20 }}>
+                <Text style={{ color: "#fff", fontSize: 15, fontFamily: "Inter_500Medium", textAlign: "center" }}>{viewerImage.caption}</Text>
+              </View>
+            ) : null}
+          </View>
+        </Modal>
 
         {/* ── Latest news ── */}
         <Animated.View entering={FadeInDown.duration(500).delay(600)} style={{ paddingHorizontal: 20, marginTop: 24 }}>
@@ -306,5 +330,75 @@ export default function ParentDashboard() {
         </Animated.View>
       </ScrollView>
     </View>
+  );
+}
+
+function ZoomableImage({ uri }: { uri: string }) {
+  const scale = useSharedValue(1);
+  const savedScale = useSharedValue(1);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const savedX = useSharedValue(0);
+  const savedY = useSharedValue(0);
+
+  const reset = () => {
+    "worklet";
+    scale.value = withTiming(1);
+    savedScale.value = 1;
+    translateX.value = withTiming(0);
+    translateY.value = withTiming(0);
+    savedX.value = 0;
+    savedY.value = 0;
+  };
+
+  const pinch = Gesture.Pinch()
+    .onUpdate((e) => {
+      scale.value = Math.max(1, Math.min(savedScale.value * e.scale, 5));
+    })
+    .onEnd(() => {
+      savedScale.value = scale.value;
+      if (scale.value <= 1) reset();
+    });
+
+  const pan = Gesture.Pan()
+    .onUpdate((e) => {
+      if (scale.value <= 1) return;
+      translateX.value = savedX.value + e.translationX;
+      translateY.value = savedY.value + e.translationY;
+    })
+    .onEnd(() => {
+      savedX.value = translateX.value;
+      savedY.value = translateY.value;
+    });
+
+  const doubleTap = Gesture.Tap()
+    .numberOfTaps(2)
+    .onEnd(() => {
+      if (scale.value > 1) {
+        reset();
+      } else {
+        scale.value = withTiming(2);
+        savedScale.value = 2;
+      }
+    });
+
+  const composed = Gesture.Simultaneous(pinch, pan, doubleTap);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value },
+    ],
+  }));
+
+  return (
+    <GestureDetector gesture={composed}>
+      <Animated.Image
+        source={{ uri }}
+        style={[{ width: SCREEN_WIDTH, height: "70%" }, animatedStyle]}
+        resizeMode="contain"
+      />
+    </GestureDetector>
   );
 }

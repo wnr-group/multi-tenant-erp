@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from "@expo-google-fonts/inter";
@@ -95,16 +96,18 @@ export default function RootLayout() {
   if (!fontsLoaded || !initialized) return null;
 
   return (
-    <ThemeProvider schoolId={SCHOOL_ID}>
-      <StatusBar style="dark" />
-      <ActiveContextProvider userId={session?.user.id ?? null}>
-        <Gate session={session} initialized={initialized}>
-          <View style={{ flex: 1 }}>
-            <Stack screenOptions={{ headerShown: false }} />
-            {!splashDone && <AnimatedSplash onFinish={() => setSplashDone(true)} />}
-          </View>
-        </Gate>
-      </ActiveContextProvider>
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider schoolId={SCHOOL_ID}>
+        <StatusBar style="dark" />
+        <ActiveContextProvider userId={session?.user.id ?? null}>
+          <Gate session={session} initialized={initialized}>
+            <View style={{ flex: 1 }}>
+              <Stack screenOptions={{ headerShown: false }} />
+              {!splashDone && <AnimatedSplash onFinish={() => setSplashDone(true)} />}
+            </View>
+          </Gate>
+        </ActiveContextProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }
