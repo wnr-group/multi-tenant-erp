@@ -11,7 +11,7 @@ import { useRouter } from "expo-router";
 import { supabase, supabaseUrl } from "../../lib/supabase";
 import { useActiveContext } from "../../lib/active-context";
 import { useTheme } from "../../lib/theme";
-import { loadParentHomework, ParentHomeworkItem, ParentHomeworkState } from "../../lib/homework";
+import { loadParentHomework, loadParentHomeworkRange, ParentHomeworkItem, ParentHomeworkState } from "../../lib/homework";
 import { StatusBadge } from "../../components/StatusBadge";
 import { SectionHeader } from "../../components/SectionHeader";
 import { SkeletonCard } from "../../components/Skeleton";
@@ -44,6 +44,8 @@ export default function ParentAcademics() {
   const [groupedResults, setGroupedResults] = useState<Record<string, ExamResult[]>>({});
   const [expandedExamId, setExpandedExamId] = useState<string | null>(null);
   const [homework, setHomework] = useState<ParentHomeworkItem[]>([]);
+  const [hwView, setHWView] = useState<"calendar" | "list">("calendar");
+  const [rangeHomework, setRangeHomework] = useState<ParentHomeworkItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split("T")[0]);
@@ -105,11 +107,22 @@ export default function ParentAcademics() {
     }
   }, [calendarMonth.year, calendarMonth.month, studentSectionId]);
 
+  useEffect(() => {
+    if (studentSectionId && activeStudentId) {
+      loadParentHomeworkRange(studentSectionId, activeStudentId).then(setRangeHomework);
+    } else {
+      setRangeHomework([]);
+    }
+  }, [studentSectionId, activeStudentId]);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadData();
+    if (studentSectionId && activeStudentId) {
+      setRangeHomework(await loadParentHomeworkRange(studentSectionId, activeStudentId));
+    }
     setRefreshing(false);
-  }, [activeStudentId]);
+  }, [activeStudentId, studentSectionId]);
 
   async function loadHomeworkForMonth(sectionId: string, year: number, month: number) {
     if (!activeStudentId) { setHomework([]); return; }
@@ -279,6 +292,41 @@ export default function ParentAcademics() {
     new: "hw_new", viewed: "hw_viewed", done: "hw_done", reviewed: "hw_reviewed",
   };
 
+  const todayStr = new Date().toLocaleDateString("en-CA");
+  const isOverdueNotDone = (h: ParentHomeworkItem) =>
+    (h.state === "new" || h.state === "viewed") && h.due_date < todayStr;
+
+  function renderHWCard(h: ParentHomeworkItem, showDueDate: boolean) {
+    return (
+      <TouchableOpacity
+        key={h.id}
+        activeOpacity={0.85}
+        onPress={() => router.push({ pathname: "/(parent)/homework/[homeworkId]", params: { homeworkId: h.id, studentId: activeStudentId } })}
+        style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 16, gap: 8 }}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <View style={{ flex: 1, marginRight: 8 }}>
+            <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>{h.title}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 }}>
+              <View style={{ backgroundColor: (subjectColorMap[h.subject] ?? theme.primary) + "20", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 }}>
+                <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: subjectColorMap[h.subject] ?? theme.primary }}>{h.subject}</Text>
+              </View>
+              {showDueDate ? (
+                <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: isOverdueNotDone(h) ? "#EF4444" : theme.textMuted }}>
+                  Due {new Date(h.due_date + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+          <StatusBadge variant={isOverdueNotDone(h) ? "overdue" : HW_BADGE[h.state]} />
+        </View>
+        {h.description ? (
+          <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: theme.textSecondary }}>{h.description}</Text>
+        ) : null}
+      </TouchableOpacity>
+    );
+  }
+
   return (
     <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: theme.background }}>
       <ScrollView contentContainerStyle={{ padding: 20, gap: 20 }} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
@@ -370,73 +418,93 @@ export default function ParentAcademics() {
             ))}
           </View>
         ) : (
-          <View style={{ gap: 0 }}>
-            <Calendar
-              markingType="multi-dot"
-              markedDates={markedDates}
-              onDayPress={(day: { dateString: string }) => setSelectedDate(day.dateString)}
-              onMonthChange={(month: { year: number; month: number }) =>
-                setCalendarMonth({ year: month.year, month: month.month })
-              }
-              theme={{
-                backgroundColor: theme.surface,
-                calendarBackground: theme.surface,
-                textSectionTitleColor: theme.textMuted,
-                selectedDayBackgroundColor: theme.primary,
-                selectedDayTextColor: "#fff",
-                todayTextColor: theme.primary,
-                dayTextColor: theme.textPrimary,
-                textDisabledColor: theme.textMuted,
-                dotColor: theme.primary,
-                arrowColor: theme.primary,
-                monthTextColor: theme.textPrimary,
-                textMonthFontFamily: "Inter_600SemiBold",
-                textDayFontFamily: "Inter_400Regular",
-                textDayHeaderFontFamily: "Inter_500Medium",
-              }}
-              style={{ borderRadius: 16, overflow: "hidden", marginBottom: 16 }}
-            />
-            {(() => {
-              const dayHomework = homework.filter(h => h.due_date === selectedDate);
-              return dayHomework.length === 0 ? (
-                <Text style={{ textAlign: "center", color: theme.textMuted, fontFamily: "Inter_400Regular", paddingVertical: 24 }}>
-                  No homework for {new Date(selectedDate + "T00:00:00").toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}
-                </Text>
-              ) : (
-                <View style={{ gap: 10 }}>
-                  <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: theme.textMuted, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 2 }}>
-                    {new Date(selectedDate + "T00:00:00").toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}
-                  </Text>
-                  {dayHomework.map((h) => (
-                    <TouchableOpacity
-                      key={h.id}
-                      activeOpacity={0.85}
-                      onPress={() => router.push({ pathname: "/(parent)/homework/[homeworkId]", params: { homeworkId: h.id, studentId: activeStudentId } })}
-                      style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 16, gap: 8 }}
-                    >
-                      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                        <View style={{ flex: 1, marginRight: 8 }}>
-                          <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>{h.title}</Text>
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 }}>
-                            <View style={{ backgroundColor: (subjectColorMap[h.subject] ?? theme.primary) + "20", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 }}>
-                              <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: subjectColorMap[h.subject] ?? theme.primary }}>{h.subject}</Text>
-                            </View>
-                          </View>
+          <View style={{ gap: 16 }}>
+            {/* Calendar | List toggle */}
+            <View style={{ flexDirection: "row", backgroundColor: theme.surface, borderRadius: 10, padding: 3, borderWidth: 1, borderColor: theme.border, alignSelf: "center" }}>
+              {(["calendar", "list"] as const).map((v) => (
+                <TouchableOpacity key={v} onPress={() => setHWView(v)} style={{ paddingVertical: 7, paddingHorizontal: 22, borderRadius: 8, backgroundColor: hwView === v ? theme.primary : "transparent" }}>
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: hwView === v ? "#fff" : theme.textSecondary, textTransform: "capitalize" }}>{v}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {hwView === "calendar" ? (
+              <View style={{ gap: 0 }}>
+                <Calendar
+                  markingType="multi-dot"
+                  markedDates={markedDates}
+                  onDayPress={(day: { dateString: string }) => setSelectedDate(day.dateString)}
+                  onMonthChange={(month: { year: number; month: number }) =>
+                    setCalendarMonth({ year: month.year, month: month.month })
+                  }
+                  theme={{
+                    backgroundColor: theme.surface,
+                    calendarBackground: theme.surface,
+                    textSectionTitleColor: theme.textMuted,
+                    selectedDayBackgroundColor: theme.primary,
+                    selectedDayTextColor: "#fff",
+                    todayTextColor: theme.primary,
+                    dayTextColor: theme.textPrimary,
+                    textDisabledColor: theme.textMuted,
+                    dotColor: theme.primary,
+                    arrowColor: theme.primary,
+                    monthTextColor: theme.textPrimary,
+                    textMonthFontFamily: "Inter_600SemiBold",
+                    textDayFontFamily: "Inter_400Regular",
+                    textDayHeaderFontFamily: "Inter_500Medium",
+                  }}
+                  style={{ borderRadius: 16, overflow: "hidden", marginBottom: 16 }}
+                />
+                {(() => {
+                  const dayHomework = homework.filter(h => h.due_date === selectedDate);
+                  return dayHomework.length === 0 ? (
+                    <Text style={{ textAlign: "center", color: theme.textMuted, fontFamily: "Inter_400Regular", paddingVertical: 24 }}>
+                      No homework for {new Date(selectedDate + "T00:00:00").toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}
+                    </Text>
+                  ) : (
+                    <View style={{ gap: 10 }}>
+                      <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: theme.textMuted, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 2 }}>
+                        {new Date(selectedDate + "T00:00:00").toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}
+                      </Text>
+                      {dayHomework.map((h) => renderHWCard(h, false))}
+                    </View>
+                  );
+                })()}
+              </View>
+            ) : (
+              (() => {
+                const groups: { key: ParentHomeworkState[]; label: string }[] = [
+                  { key: ["new", "viewed"], label: "To Do" },
+                  { key: ["done"], label: "Done" },
+                  { key: ["reviewed"], label: "Reviewed" },
+                ];
+                if (rangeHomework.length === 0) {
+                  return (
+                    <Text style={{ textAlign: "center", color: theme.textMuted, fontFamily: "Inter_400Regular", paddingVertical: 32 }}>
+                      No homework in the last or next 30 days
+                    </Text>
+                  );
+                }
+                return (
+                  <View style={{ gap: 20 }}>
+                    {groups.map(({ key, label }) => {
+                      const items = rangeHomework
+                        .filter(h => key.includes(h.state))
+                        .sort((a, b) => a.due_date.localeCompare(b.due_date));
+                      if (items.length === 0) return null;
+                      return (
+                        <View key={label} style={{ gap: 10 }}>
+                          <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: theme.textMuted, letterSpacing: 0.5, textTransform: "uppercase" }}>
+                            {label} ({items.length})
+                          </Text>
+                          {items.map((h) => renderHWCard(h, true))}
                         </View>
-                        {(() => {
-                          const todayStr = new Date().toLocaleDateString("en-CA");
-                          const isOverdueNotDone = (h.state === "new" || h.state === "viewed") && h.due_date < todayStr;
-                          return <StatusBadge variant={isOverdueNotDone ? "overdue" : HW_BADGE[h.state]} />;
-                        })()}
-                      </View>
-                      {h.description ? (
-                        <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: theme.textSecondary }}>{h.description}</Text>
-                      ) : null}
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              );
-            })()}
+                      );
+                    })}
+                  </View>
+                );
+              })()
+            )}
           </View>
         )}
       </ScrollView>

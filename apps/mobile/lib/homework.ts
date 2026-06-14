@@ -217,13 +217,11 @@ function deriveParentState(s: any): ParentHomeworkState {
   return "viewed";
 }
 
-// Homework for a child's section in a month, merged with that child's status.
-export async function loadParentHomework(
-  sectionId: string, studentId: string, year: number, month: number,
+// Homework for a child's section between two YYYY-MM-DD dates (inclusive),
+// merged with that child's status.
+async function loadParentHomeworkBetween(
+  sectionId: string, studentId: string, firstDay: string, lastDay: string,
 ): Promise<ParentHomeworkItem[]> {
-  const firstDay = `${year}-${String(month).padStart(2, "0")}-01`;
-  const lastDay = new Date(year, month, 0).toISOString().split("T")[0];
-
   const { data: hw } = await supabase
     .from("homework")
     .select("id, title, description, due_date, subjects(name)")
@@ -256,6 +254,25 @@ export async function loadParentHomework(
       teacherComment: s?.teacher_comment ?? null,
     };
   });
+}
+
+// Homework for a child's section in a calendar month (powers the calendar view).
+export async function loadParentHomework(
+  sectionId: string, studentId: string, year: number, month: number,
+): Promise<ParentHomeworkItem[]> {
+  const firstDay = `${year}-${String(month).padStart(2, "0")}-01`;
+  const lastDay = new Date(year, month, 0).toISOString().split("T")[0];
+  return loadParentHomeworkBetween(sectionId, studentId, firstDay, lastDay);
+}
+
+// Homework due within +/- `days` of today (powers the grouped status list).
+export async function loadParentHomeworkRange(
+  sectionId: string, studentId: string, days = 30,
+): Promise<ParentHomeworkItem[]> {
+  const toStr = (d: Date) => d.toLocaleDateString("en-CA");
+  const from = new Date(); from.setDate(from.getDate() - days);
+  const to = new Date(); to.setDate(to.getDate() + days);
+  return loadParentHomeworkBetween(sectionId, studentId, toStr(from), toStr(to));
 }
 
 // One homework's status for a child (for the detail screen).
