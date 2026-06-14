@@ -1,0 +1,212 @@
+import { useEffect, useState, useCallback } from "react";
+import { View, Text, ScrollView, TouchableOpacity, Alert, RefreshControl } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useLocalSearchParams } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { supabase } from "../../../lib/supabase";
+import { useTheme } from "../../../lib/theme";
+import { useTeacherContext } from "../../../lib/teacherContext";
+import { Avatar } from "../../../components/Avatar";
+import { PrimaryButton } from "../../../components/PrimaryButton";
+import { StatusBadge } from "../../../components/StatusBadge";
+import { SkeletonCard } from "../../../components/Skeleton";
+import { SessionSelector } from "../../../components/SessionSelector";
+import {
+  AttendanceSession, AttendanceStatus, SectionAttendanceRow, DayStat,
+  fetchSectionAttendance, fetchRecentStats, fetchMarkedCount, clearAttendance,
+} from "../../../lib/attendance";
+import { sendAbsenceNotification } from "../../../lib/notifications";
+
+export default function MarkAttendance() {
+  const theme = useTheme();
+  const params = useLocalSearchParams<{ sectionId: string; session?: string; date?: string }>();
+  const sectionId = params.sectionId;
+  const date = params.date ?? new Date().toISOString().split("T")[0];
+  const { sections, userId, schoolId } = useTeacherContext();
+  const section = sections.find((s) => s.id === sectionId) ?? null;
+
+  const [session, setSession] = useState<AttendanceSession>((params.session as AttendanceSession) ?? "FULL_DAY");
+  const [rows, setRows] = useState<SectionAttendanceRow[]>([]);
+  const [statuses, setStatuses] = useState<Record<string, AttendanceStatus>>({});
+  const [existingMode, setExistingMode] = useState<"FULL_DAY" | "SESSION" | null>(null);
+  const [stats, setStats] = useState<DayStat[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [notifying, setNotifying] = useState<Record<string, boolean>>({});
+
+  const marked = rows.some((r) => r.recordId !== null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const [roster, count, recent] = await Promise.all([
+      fetchSectionAttendance(sectionId, date, session),
+      fetchMarkedCount(sectionId, date, session),
+      fetchRecentStats(sectionId, 7),
+    ]);
+    setRows(roster);
+    setStatuses(Object.fromEntries(roster.map((r) => [r.studentId, r.status])));
+    setExistingMode(count.existingMode);
+    setStats(recent);
+    setLoading(false);
+  }, [sectionId, date, session]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true); await load(); setRefreshing(false);
+  }, [load]);
+
+  // Mode-lock: disable the granularity not already in use.
+  const disabled: Partial<Record<AttendanceSession, string>> = {};
+  if (existingMode === "FULL_DAY") {
+    disabled.FN = "Marked as full-day for this date";
+    disabled.AN = "Marked as full-day for this date";
+  } else if (existingMode === "SESSION") {
+    disabled.FULL_DAY = "Marked by session (FN/AN) for this date";
+  }
+
+  function cycleStatus(studentId: string) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setStatuses((prev) => {
+      const cur = prev[studentId] ?? "present";
+      const next: AttendanceStatus = cur === "present" ? "absent" : cur === "absent" ? "late" : "present";
+      return { ...prev, [studentId]: next };
+    });
+  }
+
+  async function submit() {
+    if (!userId || !schoolId) return;
+    setSaving(true);
+    const records = rows.map((r) => ({
+      student_id: r.studentId,
+      section_id: sectionId,
+      school_id: schoolId,
+      date,
+      session,
+      status: statuses[r.studentId] ?? "present",
+      marked_by: userId,
+    }));
+    const { error } = await supabase
+      .from("attendance_records")
+      .upsert(records, { onConflict: "student_id,date,session" });
+    setSaving(false);
+    if (error) { Alert.alert("Error", error.message); return; }
+    await load(); // refresh so recordIds + send icons appear
+    Alert.alert("Saved", "Attendance recorded.");
+  }
+
+  function confirmClear() {
+    const mode = existingMode;
+    if (!mode) return;
+    Alert.alert(
+      "Clear attendance?",
+      "This deletes the saved attendance for this date so you can re-mark. Notifications already sent will not be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear", style: "destructive",
+          onPress: async () => {
+            const { error } = await clearAttendance(sectionId, date, mode);
+            if (error) { Alert.alert("Error", error); return; }
+            await load();
+          },
+        },
+      ],
+    );
+  }
+
+  async function notify(row: SectionAttendanceRow) {
+    if (!row.recordId) return;
+    setNotifying((p) => ({ ...p, [row.studentId]: true }));
+    const result = await sendAbsenceNotification(row.recordId);
+    setNotifying((p) => ({ ...p, [row.studentId]: false }));
+    if (result === "sent") Alert.alert("Sent", "Parent notified.");
+    else if (result === "recorded_no_app") Alert.alert("Recorded", "Saved to parent's inbox (app not installed).");
+    else Alert.alert("Failed", "Could not notify. Try again.");
+    await load();
+  }
+
+  return (
+    <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: theme.background }}>
+      <View style={{ flex: 1 }}>
+        <View style={{ paddingHorizontal: 20, paddingTop: 20, gap: 12 }}>
+          <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>
+            {section?.label ?? "Class"}
+          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <View style={{ backgroundColor: marked ? theme.success + "1A" : theme.warning + "1A", borderRadius: 100, paddingHorizontal: 10, paddingVertical: 4 }}>
+              <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: marked ? theme.success : theme.warning }}>
+                {marked ? "Marked" : "Not marked"}
+              </Text>
+            </View>
+            <Text style={{ fontSize: 12, color: theme.textMuted, fontFamily: "Inter_400Regular" }}>
+              {new Date(date + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+            </Text>
+          </View>
+          <SessionSelector value={session} onChange={setSession} disabled={disabled} />
+          {/* Last-7-marked-days strip */}
+          {stats.length > 0 && (
+            <View style={{ flexDirection: "row", gap: 6, alignItems: "flex-end", height: 44 }}>
+              {stats.map((d) => (
+                <View key={d.date} style={{ flex: 1, alignItems: "center", gap: 3 }}>
+                  <View style={{ width: "100%", height: Math.max(4, (d.pct / 100) * 32), borderRadius: 3, backgroundColor: d.pct >= 75 ? theme.success : d.pct >= 50 ? theme.warning : theme.danger }} />
+                  <Text style={{ fontSize: 9, color: theme.textMuted }}>{d.pct}%</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
+        <ScrollView
+          contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingTop: 12, paddingBottom: 120 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
+        >
+          {loading ? (
+            [0, 1, 2, 3].map((i) => <SkeletonCard key={i} />)
+          ) : rows.map((row) => {
+            const status = statuses[row.studentId] ?? "present";
+            const showSend = marked && row.recordId && status === "absent";
+            return (
+              <View key={row.studentId} style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 16, flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <TouchableOpacity onPress={() => cycleStatus(row.studentId)} activeOpacity={0.7} style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 12 }}>
+                  <Avatar name={row.fullName} size={44} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>{row.fullName}</Text>
+                    <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: theme.textSecondary }}>Roll #{row.rollNumber}</Text>
+                  </View>
+                  <StatusBadge variant={status} />
+                </TouchableOpacity>
+                {showSend ? (
+                  !row.hasParent ? (
+                    <Ionicons name="person-remove-outline" size={20} color={theme.textMuted} />
+                  ) : (
+                    <TouchableOpacity disabled={notifying[row.studentId]} onPress={() => notify(row)} style={{ padding: 4 }}>
+                      <Ionicons
+                        name={row.notifiedAt ? "checkmark-done" : "paper-plane"}
+                        size={20}
+                        color={row.notifiedAt ? theme.success : theme.primary}
+                      />
+                    </TouchableOpacity>
+                  )
+                ) : null}
+              </View>
+            );
+          })}
+          {marked && existingMode && (
+            <TouchableOpacity onPress={confirmClear} style={{ alignItems: "center", paddingVertical: 14 }}>
+              <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: theme.danger }}>Clear &amp; re-mark</Text>
+            </TouchableOpacity>
+          )}
+        </ScrollView>
+
+        {!loading && rows.length > 0 && (
+          <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: 20, backgroundColor: theme.background, borderTopWidth: 1, borderTopColor: theme.border }}>
+            <PrimaryButton label={marked ? "Update Attendance" : `Submit · ${rows.length} students`} onPress={submit} loading={saving} />
+          </View>
+        )}
+      </View>
+    </SafeAreaView>
+  );
+}
