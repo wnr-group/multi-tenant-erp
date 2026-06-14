@@ -11,13 +11,16 @@ import { Avatar } from "../../components/Avatar";
 import { SectionHeader } from "../../components/SectionHeader";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { SkeletonCard } from "../../components/Skeleton";
+import { useParentCounts } from "../../lib/parent-counts";
 
-type Section = "menu" | "announcements" | "discipline" | "feedback-teacher" | "feedback-management" | "profile";
+type Section = "menu" | "notifications" | "announcements" | "discipline" | "feedback-teacher" | "feedback-management" | "profile";
 
 export default function ParentMore() {
   const theme = useTheme();
   const { studentId: activeStudentId } = useActiveContext();
+  const { unreadNotifications, unseenAnnouncements, refresh: refreshCounts } = useParentCounts();
   const [section, setSection] = useState<Section>("menu");
+  const [notifications, setNotifications] = useState<{ id: string; title: string; body: string; created_at: string; is_read: boolean }[]>([]);
   const [profile, setProfile] = useState<{ full_name: string; email: string } | null>(null);
   const [student, setStudent] = useState<{ name: string; className: string; sectionName: string; rollNumber: string; admissionNumber: string; photoUrl: string | null } | null>(null);
   const [announcements, setAnnouncements] = useState<{ id: string; title: string; content: string; created_at: string }[]>([]);
@@ -35,6 +38,7 @@ export default function ParentMore() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     if (section === "menu" || section === "profile") await loadProfile();
+    if (section === "notifications") await loadNotifications();
     if (section === "announcements") await loadAnnouncements();
     if (section === "discipline") await loadDiscipline();
     setRefreshing(false);
@@ -85,6 +89,33 @@ export default function ParentMore() {
     const { data } = await supabase.from("announcements").select("id, title, content, created_at").order("created_at", { ascending: false }).limit(20);
     setAnnouncements(data ?? []);
     setLoading(false);
+  }
+
+  async function loadNotifications() {
+    setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setNotifications([]); setLoading(false); return; }
+    const { data } = await supabase
+      .from("notifications")
+      .select("id, title, body, created_at, is_read")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    setNotifications(data ?? []);
+    // Mark all unread as read.
+    const unreadIds = (data ?? []).filter((n) => !n.is_read).map((n) => n.id);
+    if (unreadIds.length > 0) {
+      await supabase.from("notifications").update({ is_read: true }).in("id", unreadIds);
+      await refreshCounts();
+    }
+    setLoading(false);
+  }
+
+  async function markAnnouncementsSeen() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from("profiles").update({ announcements_seen_at: new Date().toISOString() }).eq("id", user.id);
+    await refreshCounts();
   }
 
   async function loadDiscipline() {
@@ -223,12 +254,14 @@ export default function ParentMore() {
 
   function navigate(s: Section) {
     setSection(s);
-    if (s === "announcements") loadAnnouncements();
+    if (s === "notifications") loadNotifications();
+    if (s === "announcements") { loadAnnouncements(); markAnnouncementsSeen(); }
     if (s === "discipline") loadDiscipline();
   }
 
   const sectionTitle: Record<Section, string> = {
     menu: "More",
+    notifications: "Notifications",
     announcements: "Announcements",
     discipline: "Discipline Records",
     "feedback-teacher": "Message Teacher",
@@ -246,6 +279,18 @@ export default function ParentMore() {
           <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: theme.textPrimary }}>{sectionTitle[section]}</Text>
         </View>
         <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+          {section === "notifications" && (
+            loading ? [0,1,2].map(i => <SkeletonCard key={i} />) :
+            notifications.length === 0 ? (
+              <Text style={{ textAlign: "center", color: theme.textMuted, fontFamily: "Inter_400Regular", paddingVertical: 32 }}>No notifications yet</Text>
+            ) : notifications.map((n) => (
+              <View key={n.id} style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 16, gap: 6, borderLeftWidth: n.is_read ? 0 : 3, borderLeftColor: theme.primary }}>
+                <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>{n.title}</Text>
+                <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: theme.textSecondary }}>{n.body}</Text>
+                <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: theme.textMuted }}>{new Date(n.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</Text>
+              </View>
+            ))
+          )}
           {section === "announcements" && (
             loading ? [0,1,2].map(i => <SkeletonCard key={i} />) :
             announcements.map((a) => (
@@ -396,7 +441,18 @@ export default function ParentMore() {
           </View>
         )}
         <View style={{ gap: 8 }}>
-          <ListItem icon="megaphone-outline" title="Announcements" subtitle="School news & updates" onPress={() => navigate("announcements")} />
+          <ListItem
+            icon="notifications-outline"
+            title="Notifications"
+            subtitle={unreadNotifications > 0 ? `${unreadNotifications} unread` : "Alerts & updates"}
+            onPress={() => navigate("notifications")}
+          />
+          <ListItem
+            icon="megaphone-outline"
+            title="Announcements"
+            subtitle={unseenAnnouncements > 0 ? `${unseenAnnouncements} new` : "School news & updates"}
+            onPress={() => navigate("announcements")}
+          />
           <ListItem icon="warning-outline" title="Discipline Records" subtitle="Incidents & actions" onPress={() => navigate("discipline")} />
           <ListItem icon="chatbubble-outline" title="Message Teacher" subtitle="Connect with your child's class teacher" onPress={() => navigate("feedback-teacher")} />
           <ListItem icon="mail-outline" title="Contact Management" subtitle="Reach out to the principal or admin" onPress={() => navigate("feedback-management")} />
