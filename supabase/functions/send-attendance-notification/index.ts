@@ -84,7 +84,6 @@ async function handle(
   return await deliver(admin, rec);
 }
 
-// Filled in by Task 3.
 async function deliver(
   admin: ReturnType<typeof createClient>,
   rec: {
@@ -92,5 +91,93 @@ async function deliver(
     date: string; status: string; session: string;
   },
 ): Promise<Response> {
-  return json({ result: "error", reason: "not_implemented" }, 501);
+  // Resolve student + parent. attendance.student_id holds a student_profiles.id.
+  const { data: sp } = await admin
+    .from("student_profiles")
+    .select("full_name, parent_profile_id")
+    .eq("id", rec.student_id)
+    .maybeSingle();
+  if (!sp || !sp.parent_profile_id) {
+    return json({ result: "error", reason: "no_parent_linked" }, 422);
+  }
+
+  const { data: parent } = await admin
+    .from("profiles")
+    .select("id, push_token")
+    .eq("id", sp.parent_profile_id)
+    .maybeSingle();
+  if (!parent) {
+    return json({ result: "error", reason: "no_parent_linked" }, 422);
+  }
+
+  const { data: school } = await admin
+    .from("schools")
+    .select("name")
+    .eq("id", rec.school_id)
+    .maybeSingle();
+  const schoolName = school?.name ?? "School";
+
+  const sessionLabel =
+    rec.session === "FN" ? "forenoon" :
+    rec.session === "AN" ? "afternoon" : "full day";
+  const dateLabel = new Date(rec.date + "T00:00:00").toLocaleDateString("en-IN", {
+    day: "numeric", month: "short",
+  });
+  const title = schoolName;
+  const messageBody =
+    `${sp.full_name} was marked absent for the ${sessionLabel} session on ${dateLabel}.`;
+
+  // Always write the in-app notification (survives app reinstall).
+  await admin.from("notifications").insert({
+    school_id: rec.school_id,
+    user_id: parent.id,
+    title,
+    body: messageBody,
+    type: "attendance_absence",
+  });
+
+  let result: SendResult = "recorded_no_app";
+
+  if (parent.push_token) {
+    const pushRes = await sendExpoPush(parent.push_token, title, messageBody);
+    if (pushRes === "device_not_registered") {
+      // Stale token: clear it so the "uninstalled" view stays accurate.
+      await admin.from("profiles").update({ push_token: null }).eq("id", parent.id);
+      result = "recorded_no_app";
+    } else if (pushRes === "ok") {
+      result = "sent";
+    } else {
+      result = "recorded_no_app";
+    }
+  }
+
+  // Stamp notified_at for both sent and recorded_no_app.
+  await admin
+    .from("attendance_records")
+    .update({ notified_at: new Date().toISOString() })
+    .eq("id", rec.id);
+
+  return json({ result });
+}
+
+async function sendExpoPush(
+  token: string,
+  title: string,
+  body: string,
+): Promise<"ok" | "device_not_registered" | "failed"> {
+  try {
+    const res = await fetch(EXPO_PUSH_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ to: token, title, body, sound: "default" }),
+    });
+    const data = await res.json();
+    const status = data?.data?.status;
+    const errType = data?.data?.details?.error;
+    if (status === "ok") return "ok";
+    if (errType === "DeviceNotRegistered") return "device_not_registered";
+    return "failed";
+  } catch {
+    return "failed";
+  }
 }
