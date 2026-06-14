@@ -9,6 +9,12 @@
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 CREATE EXTENSION IF NOT EXISTS pg_net;
 
+-- Defensive: drop any pre-existing job of this name so re-applying the
+-- migration never creates a duplicate (older pg_cron does not upsert by name).
+SELECT cron.unschedule(jobid)
+FROM cron.job
+WHERE jobname = 'homework-due-reminders';
+
 -- Runs every day at 02:30 UTC (~08:00 IST). Adjust per deployment if needed.
 SELECT cron.schedule(
   'homework-due-reminders',
