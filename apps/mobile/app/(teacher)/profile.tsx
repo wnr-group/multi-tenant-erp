@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { View, Text, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase, SCHOOL_ID } from "../../lib/supabase";
+import { clearActiveContext } from "../../lib/active-context";
 import { useTheme } from "../../lib/theme";
 import { Avatar } from "../../components/Avatar";
 import { ListItem } from "../../components/ListItem";
@@ -47,7 +48,7 @@ export default function TeacherProfile() {
               <ListItem icon="school-outline" title={profile.school_name} subtitle="Your school" />
               <ListItem icon="mail-outline" title={profile.email} subtitle="Email address" />
             </View>
-            <PrimaryButton label="Sign Out" onPress={async () => { await supabase.auth.signOut(); }} style={{ backgroundColor: theme.danger }} />
+            <PrimaryButton label="Sign Out" onPress={async () => { await clearActiveContext(); await supabase.auth.signOut(); }} style={{ backgroundColor: theme.danger }} />
           </>
         )}
       </ScrollView>

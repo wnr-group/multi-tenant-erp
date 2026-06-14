@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { supabase, fixStorageUrl, SCHOOL_ID } from "../../lib/supabase";
-import { useActiveContext } from "../../lib/active-context";
+import { useActiveContext, clearActiveContext } from "../../lib/active-context";
 import { useTheme } from "../../lib/theme";
 import { ListItem } from "../../components/ListItem";
 import { Avatar } from "../../components/Avatar";
@@ -419,7 +419,7 @@ export default function ParentMore() {
                 </View>
               )}
 
-              <PrimaryButton label="Sign Out" onPress={async () => { await supabase.auth.signOut(); }} style={{ backgroundColor: theme.danger }} />
+              <PrimaryButton label="Sign Out" onPress={async () => { await clearActiveContext(); await supabase.auth.signOut(); }} style={{ backgroundColor: theme.danger }} />
             </View>
           )}
         </ScrollView>

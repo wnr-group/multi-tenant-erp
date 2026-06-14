@@ -24,6 +24,11 @@ interface ActiveContextValue {
 const Ctx = createContext<ActiveContextValue | null>(null);
 const STORAGE_KEY = "active_context_v1";
 
+/** Clear persisted role/student so the next account doesn't inherit it. */
+export async function clearActiveContext() {
+  await AsyncStorage.removeItem(STORAGE_KEY);
+}
+
 export function ActiveContextProvider({
   userId,
   children,

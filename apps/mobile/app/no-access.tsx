@@ -1,6 +1,7 @@
 import { View, Text, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
+import { clearActiveContext } from "../lib/active-context";
 
 export default function NoAccessScreen() {
   return (
@@ -13,7 +14,7 @@ export default function NoAccessScreen() {
           This account isn't registered with this school. Please contact your school administrator.
         </Text>
         <TouchableOpacity
-          onPress={() => supabase.auth.signOut()}
+          onPress={async () => { await clearActiveContext(); await supabase.auth.signOut(); }}
           style={{ backgroundColor: "#4f46e5", paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 }}
         >
           <Text style={{ color: "#fff", fontWeight: "600" }}>Sign out</Text>
