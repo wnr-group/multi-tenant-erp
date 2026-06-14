@@ -16,6 +16,16 @@ VALUES (
   '#2563EB'
 );
 
+INSERT INTO public.schools (id, name, domain, is_active, contact_email, primary_color)
+VALUES (
+  'aaaaaaaa-0000-0000-0000-0000000000b2',
+  'Demo School Two',
+  'school2.lvh.me',
+  true,
+  'demo2@example.com',
+  '#059669'
+);
+
 -- ---------------------------------------------------------------
 -- ACADEMIC YEAR
 -- ---------------------------------------------------------------
@@ -92,17 +102,7 @@ UPDATE public.profiles SET phone = '+919000000006' WHERE id = 'aaaaaaaa-0000-000
 UPDATE public.profiles SET phone = '+919000000007' WHERE id = 'aaaaaaaa-0000-0000-0000-000000000016';
 UPDATE public.profiles SET phone = '+919000000008' WHERE id = 'aaaaaaaa-0000-0000-0000-000000000017';
 
--- Update profiles with school_id for school-scoped users
-UPDATE public.profiles SET school_id = 'aaaaaaaa-0000-0000-0000-000000000001'
-WHERE id IN (
-  'aaaaaaaa-0000-0000-0000-000000000011',
-  'aaaaaaaa-0000-0000-0000-000000000012',
-  'aaaaaaaa-0000-0000-0000-000000000013',
-  'aaaaaaaa-0000-0000-0000-000000000014',
-  'aaaaaaaa-0000-0000-0000-000000000015',
-  'aaaaaaaa-0000-0000-0000-000000000016',
-  'aaaaaaaa-0000-0000-0000-000000000017'
-);
+-- (profiles.school_id removed — affiliation lives in user_roles)
 
 -- ---------------------------------------------------------------
 -- USER ROLES
@@ -467,9 +467,7 @@ INSERT INTO auth.users (
   '00000000-0000-0000-0000-000000000000', '', '', '', ''
 );
 
-UPDATE public.profiles
-SET school_id = 'aaaaaaaa-0000-0000-0000-000000000001'
-WHERE id = 'aaaaaaaa-0000-0000-0000-000000000030';
+-- (profiles.school_id removed — affiliation lives in user_roles)
 
 -- Sync phone into profiles for parent user
 UPDATE public.profiles SET phone = '+919000000009' WHERE id = 'aaaaaaaa-0000-0000-0000-000000000030';
@@ -498,6 +496,31 @@ INSERT INTO public.student_enrollments (
   'cccccccc-0000-0000-0000-000000000801',
   true
 );
+
+-- ---------------------------------------------------------------
+-- DEMO: teacher-also-parent + multi-child + multi-school
+-- Ravi Kumar (919000000004) is a teacher at School 1, AND a parent of two
+-- children at School 1, AND a teacher at a second school (School 2).
+-- Exercises role switching, student switching, and multi-school login.
+-- ---------------------------------------------------------------
+
+-- Parent role at School 1 (in addition to his existing teacher role).
+INSERT INTO public.user_roles (user_id, school_id, role, is_active) VALUES
+  ('aaaaaaaa-0000-0000-0000-000000000013', 'aaaaaaaa-0000-0000-0000-000000000001', 'parent', true);
+
+-- Teacher role at School 2 (same human, second school).
+INSERT INTO public.user_roles (user_id, school_id, role, is_active) VALUES
+  ('aaaaaaaa-0000-0000-0000-000000000013', 'aaaaaaaa-0000-0000-0000-0000000000b2', 'teacher', true);
+
+-- Two children for Ravi at School 1.
+INSERT INTO public.student_profiles (id, school_id, full_name, admission_number, parent_profile_id) VALUES
+  ('dddddddd-0000-0000-0000-000000000010', 'aaaaaaaa-0000-0000-0000-000000000001', 'Aarav Kumar', 'ADM-DEMO-010', 'aaaaaaaa-0000-0000-0000-000000000013'),
+  ('dddddddd-0000-0000-0000-000000000011', 'aaaaaaaa-0000-0000-0000-000000000001', 'Diya Kumar',  'ADM-DEMO-011', 'aaaaaaaa-0000-0000-0000-000000000013');
+
+-- Enrollments for the two children (Aarav → Class 5A, Diya → Class 8A) in the active year.
+INSERT INTO public.student_enrollments (student_profile_id, academic_year_id, school_id, class_id, section_id, is_active) VALUES
+  ('dddddddd-0000-0000-0000-000000000010', 'aaaaaaaa-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000001', 'bbbbbbbb-0000-0000-0000-000000000005', 'cccccccc-0000-0000-0000-000000000501', true),
+  ('dddddddd-0000-0000-0000-000000000011', 'aaaaaaaa-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000001', 'bbbbbbbb-0000-0000-0000-000000000008', 'cccccccc-0000-0000-0000-000000000801', true);
 
 -- Fee payments block removed (fee_payments table dropped in migration 35)
 
