@@ -47,11 +47,50 @@ function json(payload: unknown, status = 200): Response {
   });
 }
 
-// Filled in by later tasks.
 async function handle(
   admin: ReturnType<typeof createClient>,
   callerId: string,
   recordId: string,
 ): Promise<Response> {
-  return json({ result: "error", reason: "not_implemented" as const }, 501);
+  // 1. Load the attendance row.
+  const { data: rec, error: recErr } = await admin
+    .from("attendance_records")
+    .select("id, school_id, student_id, section_id, date, status, session")
+    .eq("id", recordId)
+    .maybeSingle();
+  if (recErr) return json({ result: "error", reason: "load_failed" }, 500);
+  if (!rec) return json({ result: "error", reason: "not_found" }, 404);
+
+  // 2. Only absences are notifiable.
+  if (rec.status !== "absent") {
+    return json({ result: "error", reason: "not_absent" }, 422);
+  }
+
+  // 3. Re-validate the caller is the class teacher for this section/year.
+  const { data: yearId } = await admin.rpc("get_active_academic_year", {
+    p_school_id: rec.school_id,
+  });
+  const { data: assignment } = await admin
+    .from("section_assignments")
+    .select("id")
+    .eq("section_id", rec.section_id)
+    .eq("class_teacher_id", callerId)
+    .eq("academic_year_id", yearId)
+    .maybeSingle();
+  if (!assignment) {
+    return json({ result: "error", reason: "not_authorized" }, 403);
+  }
+
+  return await deliver(admin, rec);
+}
+
+// Filled in by Task 3.
+async function deliver(
+  admin: ReturnType<typeof createClient>,
+  rec: {
+    id: string; school_id: string; student_id: string;
+    date: string; status: string; session: string;
+  },
+): Promise<Response> {
+  return json({ result: "error", reason: "not_implemented" }, 501);
 }
