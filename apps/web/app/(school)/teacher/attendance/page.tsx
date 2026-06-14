@@ -27,7 +27,7 @@ export default async function AttendancePage() {
         .eq("is_active", true),
       supabase
         .from("attendance_records")
-        .select("student_id, status")
+        .select("student_id, status, session")
         .eq("section_id", sectionId)
         .eq("date", today),
     ]);
@@ -55,14 +55,21 @@ export default async function AttendancePage() {
     ? `${sec.class?.name ?? ""} – Section ${sec.name}`
     : sectionId;
 
+  const fullDayRows = (existing ?? []).filter((r) => r.session === "FULL_DAY");
+  const fnRows = (existing ?? []).filter((r) => r.session === "FN");
+  const anRows = (existing ?? []).filter((r) => r.session === "AN");
   const isMarked = (existing?.length ?? 0) > 0;
 
+  // For the table, prefer full-day; else show forenoon as the representative view.
+  const displayRows = fullDayRows.length > 0 ? fullDayRows : fnRows.length > 0 ? fnRows : anRows;
   const existingMap: Record<string, string> = {};
-  for (const rec of existing ?? []) {
-    existingMap[rec.student_id] = rec.status ?? "present";
-  }
+  for (const rec of displayRows) existingMap[rec.student_id] = rec.status ?? "present";
 
-  const markHref = `/teacher/attendance/mark?sectionId=${sectionId}&date=${today}`;
+  const markedSummary = fullDayRows.length > 0
+    ? "Full day marked"
+    : [fnRows.length > 0 ? "Forenoon" : null, anRows.length > 0 ? "Afternoon" : null].filter(Boolean).join(" + ") + " marked";
+
+  const markHref = `/teacher/attendance/mark?sectionId=${sectionId}&date=${today}&session=FULL_DAY`;
 
   const statusBadge: Record<string, string> = {
     present: "bg-emerald-100 text-emerald-700",
@@ -79,6 +86,7 @@ export default async function AttendancePage() {
           <p className="mt-1 text-sm text-gray-500">
             {sectionLabel}&nbsp;&nbsp;·&nbsp;&nbsp;{today}
           </p>
+          {isMarked && <p className="mt-1 text-xs font-medium text-emerald-600">{markedSummary}</p>}
         </div>
         <Link
           href={markHref}
