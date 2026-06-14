@@ -19,6 +19,7 @@
     "@supabase/supabase-js": "^2.49.4",
     "expo": "~55.0.24",
     "expo-constants": "~55.0.16",
+    "expo-document-picker": "~55.0.13",
     "expo-file-system": "~55.0.20",
     "expo-font": "~55.0.7",
     "expo-haptics": "~55.0.14",
