@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { supabase } from "./supabase";
+import { supabase, SCHOOL_ID } from "./supabase";
 
 export interface SectionInfo {
   id: string;
@@ -41,14 +41,19 @@ export function TeacherContextProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     setUserId(user.id);
 
+    // A user may hold several role rows (e.g. teacher + parent, or roles in
+    // multiple schools). This build is scoped to SCHOOL_ID, so resolve the
+    // teacher role for THIS school rather than assuming a single row.
     const roleRes = await supabase
       .from("user_roles")
       .select("school_id")
       .eq("user_id", user.id)
+      .eq("school_id", SCHOOL_ID)
+      .eq("role", "teacher")
       .eq("is_active", true)
-      .single();
+      .maybeSingle();
 
-    const sid = roleRes.data?.school_id ?? "";
+    const sid = roleRes.data?.school_id ?? SCHOOL_ID;
     setSchoolId(sid);
 
     // Resolve the active academic year
