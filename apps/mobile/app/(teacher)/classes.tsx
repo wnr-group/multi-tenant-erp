@@ -2,6 +2,9 @@ import { useEffect, useState, useCallback } from "react";
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Modal, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import * as DocumentPicker from "expo-document-picker";
+import * as ImagePicker from "expo-image-picker";
 import { supabase } from "../../lib/supabase";
 import { useTheme } from "../../lib/theme";
 import { useTeacherContext } from "../../lib/teacherContext";
@@ -9,10 +12,10 @@ import { SectionSwitcher } from "../../components/SectionSwitcher";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { SkeletonCard } from "../../components/Skeleton";
 import { PickerModal, SelectRow, PickerOption } from "../../components/PickerModal";
+import { loadTeacherHomework, uploadAttachment, notifyAssigned, TeacherHomeworkItem } from "../../lib/homework";
 
 type Tab = "homework" | "results";
 
-interface HomeworkItem { id: string; title: string; subject: string; due_date: string; class_name: string }
 interface ResultItem { id: string; student_name: string; subject: string; marks_obtained: number; max_marks: number; grade: string }
 
 interface TeacherContext {
@@ -52,10 +55,11 @@ function computeRanks(items: ResultItem[]): { id: string; student_name: string; 
 
 export default function TeacherClasses() {
   const theme = useTheme();
+  const router = useRouter();
   const { activeSection, userId, schoolId, ready } = useTeacherContext();
   const [tab, setTab] = useState<Tab>("homework");
 
-  const [homework, setHomework] = useState<HomeworkItem[]>([]);
+  const [homework, setHomework] = useState<TeacherHomeworkItem[]>([]);
   const [results, setResults] = useState<ResultItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -77,6 +81,7 @@ export default function TeacherClasses() {
   const [showHWSubjectPicker, setShowHWSubjectPicker] = useState(false);
   const [showDueDatePicker, setShowDueDatePicker] = useState(false);
   const [savingHW, setSavingHW] = useState(false);
+  const [hwAttachments, setHWAttachments] = useState<{ uri: string; name: string; mimeType: string; size: number }[]>([]);
 
   // Add Result form
   const [showAddResult, setShowAddResult] = useState(false);
@@ -105,11 +110,11 @@ export default function TeacherClasses() {
     const classId = activeSection.classId;
 
     // Load subjects, students, exams, homework in parallel
-    const [subjectsRes, studentsRes, examsRes, hwRes] = await Promise.all([
+    const [subjectsRes, studentsRes, examsRes, hwItems] = await Promise.all([
       supabase.from("subjects").select("id, name").eq("class_id", classId).eq("school_id", schoolId).order("name"),
       supabase.from("student_enrollments").select("student_profile_id, student_profiles(id, full_name)").eq("section_id", sectionId).eq("is_active", true).order("student_profile_id"),
       supabase.from("exams").select("id, name").eq("school_id", schoolId).order("start_date", { ascending: false }).limit(10),
-      supabase.from("homework").select("id, title, due_date, subjects(name), sections(name, classes(name))").eq("teacher_id", userId).eq("section_id", sectionId).order("due_date", { ascending: false }).limit(20),
+      loadTeacherHomework(sectionId, userId),
     ]);
 
     // Fetch results only for students in this section
@@ -122,13 +127,7 @@ export default function TeacherClasses() {
     setStudentOptions((studentsRes.data ?? []).map((s: any) => ({ label: s.student_profiles?.full_name ?? "Student", value: s.student_profiles?.id ?? "" })).filter((o: any) => o.value));
     setExamOptions((examsRes.data ?? []).map((e: any) => ({ label: e.name, value: e.id })));
 
-    setHomework((hwRes.data ?? []).map((r: any) => ({
-      id: r.id,
-      title: r.title,
-      subject: r.subjects?.name ?? "—",
-      due_date: r.due_date,
-      class_name: r.sections ? `${r.sections.classes?.name ?? ""} ${r.sections.name ?? ""}`.trim() : "—",
-    })));
+    setHomework(hwItems);
     setResults((resultsRes.data ?? []).map((r: any) => ({
       id: r.id,
       student_name: r.student_profiles?.full_name ?? "Student",
@@ -140,12 +139,32 @@ export default function TeacherClasses() {
     setLoading(false);
   }
 
+  async function pickDocument() {
+    const res = await DocumentPicker.getDocumentAsync({
+      type: ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+      copyToCacheDirectory: true,
+    });
+    if (res.canceled || !res.assets?.[0]) return;
+    const a = res.assets[0];
+    if ((a.size ?? 0) > 2 * 1024 * 1024) { Alert.alert("Too large", "Files must be under 2MB."); return; }
+    setHWAttachments((p) => [...p, { uri: a.uri, name: a.name, mimeType: a.mimeType ?? "application/octet-stream", size: a.size ?? 0 }]);
+  }
+
+  async function pickImage() {
+    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"] as any, quality: 0.8 });
+    if (res.canceled || !res.assets?.[0]) return;
+    const a = res.assets[0];
+    if ((a.fileSize ?? 0) > 2 * 1024 * 1024) { Alert.alert("Too large", "Files must be under 2MB."); return; }
+    const name = a.fileName ?? `photo-${Date.now()}.jpg`;
+    setHWAttachments((p) => [...p, { uri: a.uri, name, mimeType: a.mimeType ?? "image/jpeg", size: a.fileSize ?? 0 }]);
+  }
+
   async function submitHomework() {
     if (!hwForm.title.trim()) { Alert.alert("Missing", "Please enter a title."); return; }
     if (!hwForm.subjectId) { Alert.alert("Missing", "Please select a subject."); return; }
     if (!ctx?.sectionId) { Alert.alert("Error", "No class assigned to you."); return; }
     setSavingHW(true);
-    const { error } = await supabase.from("homework").insert({
+    const { data: created, error } = await supabase.from("homework").insert({
       title: hwForm.title.trim(),
       description: hwForm.description.trim() || null,
       due_date: hwForm.dueDate.toISOString().split("T")[0],
@@ -154,11 +173,21 @@ export default function TeacherClasses() {
       section_id: ctx.sectionId,
       class_id: ctx.classId,
       school_id: ctx.schoolId,
-    });
+    }).select("id").single();
     setSavingHW(false);
-    if (error) { Alert.alert("Error", error.message); return; }
+    if (error || !created) { Alert.alert("Error", error?.message ?? "Could not save"); return; }
+
+    // Upload attachments (sequential; small files).
+    for (const f of hwAttachments) {
+      const up = await uploadAttachment(ctx.schoolId, created.id, f);
+      if (up.error) Alert.alert("Attachment failed", `${f.name}: ${up.error}`);
+    }
+    // Notify parents (best-effort).
+    notifyAssigned(created.id);
+
     setShowAddHW(false);
     setHWForm({ title: "", subjectId: "", subjectLabel: "", description: "", dueDate: new Date() });
+    setHWAttachments([]);
     loadAll();
   }
 
@@ -251,20 +280,31 @@ export default function TeacherClasses() {
             ) : homework.map((h) => {
               const isOverdue = new Date(h.due_date) < new Date();
               return (
-                <View key={h.id} style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 16, flexDirection: "row", alignItems: "center", gap: 14 }}>
+                <TouchableOpacity
+                  key={h.id}
+                  activeOpacity={0.85}
+                  onPress={() => router.push({
+                    pathname: "/(teacher)/homework/[homeworkId]",
+                    params: { homeworkId: h.id, sectionId: activeSection!.id, title: h.title },
+                  })}
+                  style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 16, flexDirection: "row", alignItems: "center", gap: 14 }}
+                >
                   <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: theme.primary + "18", alignItems: "center", justifyContent: "center" }}>
                     <Ionicons name="book-outline" size={20} color={theme.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>{h.title}</Text>
-                    <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: theme.textSecondary, marginTop: 2 }}>{h.subject} · {h.class_name}</Text>
+                    <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: theme.textSecondary, marginTop: 2 }}>
+                      {h.subject} · {h.doneCount}/{h.totalCount} done
+                    </Text>
                   </View>
-                  <View style={{ alignItems: "flex-end" }}>
+                  <View style={{ alignItems: "flex-end", gap: 4 }}>
                     <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: isOverdue ? "#EF4444" : theme.textMuted }}>
                       {isOverdue ? "Overdue" : `Due ${new Date(h.due_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`}
                     </Text>
+                    <Ionicons name="chevron-forward" size={16} color={theme.textMuted} />
                   </View>
-                </View>
+                </TouchableOpacity>
               );
             })
           ) : (
@@ -357,6 +397,30 @@ export default function TeacherClasses() {
                 value={hwForm.description}
                 onChangeText={(v) => setHWForm(p => ({ ...p, description: v }))}
               />
+            </View>
+
+            {/* Attachments */}
+            <View>
+              <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: theme.textSecondary, marginBottom: 6 }}>Attachments (optional, ≤2MB each)</Text>
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <TouchableOpacity onPress={pickDocument} style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 10, backgroundColor: theme.surfaceRaised, borderWidth: 1, borderColor: theme.border }}>
+                  <Ionicons name="document-outline" size={18} color={theme.primary} />
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: theme.textSecondary }}>DOC / PDF</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={pickImage} style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 10, backgroundColor: theme.surfaceRaised, borderWidth: 1, borderColor: theme.border }}>
+                  <Ionicons name="image-outline" size={18} color={theme.primary} />
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: theme.textSecondary }}>Photo</Text>
+                </TouchableOpacity>
+              </View>
+              {hwAttachments.map((f, i) => (
+                <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 }}>
+                  <Ionicons name="attach" size={16} color={theme.textMuted} />
+                  <Text style={{ flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: theme.textSecondary }} numberOfLines={1}>{f.name}</Text>
+                  <TouchableOpacity onPress={() => setHWAttachments((p) => p.filter((_, j) => j !== i))}>
+                    <Ionicons name="close-circle" size={18} color={theme.textMuted} />
+                  </TouchableOpacity>
+                </View>
+              ))}
             </View>
 
             <PrimaryButton label="Assign Homework" onPress={submitHomework} loading={savingHW} />
