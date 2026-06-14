@@ -13,7 +13,7 @@ export default async function HomeworkPage() {
   const { data: { user } } = await supabase.auth.getUser();
   const schoolId = (await getSchoolId())!;
 
-  const [{ data: homework }, { data: classes }, { data: activeSection }] = await Promise.all([
+  const [{ data: homework }, { data: classes }, { data: activeSection }, { data: allSections }, { data: allSubjects }] = await Promise.all([
     supabase
       .from("homework")
       .select(
@@ -31,6 +31,16 @@ export default async function HomeworkPage() {
       .select("class_id")
       .eq("id", sectionId)
       .single(),
+    supabase
+      .from("sections")
+      .select("id, name, class_id")
+      .eq("school_id", schoolId)
+      .order("name"),
+    supabase
+      .from("subjects")
+      .select("id, name, class_id")
+      .eq("school_id", schoolId)
+      .order("name"),
   ]);
 
   const homeworkIds = (homework ?? []).map((h) => h.id);
@@ -74,6 +84,8 @@ export default async function HomeworkPage() {
           teacherId={user!.id}
           schoolId={schoolId}
           classes={(classes ?? []).map((c) => ({ id: c.id, name: c.name }))}
+          sections={(allSections ?? []).map((s) => ({ id: s.id, name: s.name, classId: s.class_id }))}
+          subjects={(allSubjects ?? []).map((s) => ({ id: s.id, name: s.name, classId: s.class_id }))}
           activeSectionId={sectionId}
           activeSectionClassId={activeSection?.class_id ?? undefined}
         />

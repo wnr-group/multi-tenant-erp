@@ -17,23 +17,29 @@ interface ClassOption {
 interface SectionOption {
   id: string;
   name: string;
+  classId: string;
 }
 
 interface SubjectOption {
   id: string;
   name: string;
+  classId: string;
 }
 
 export function CreateHomeworkForm({
   teacherId,
   schoolId,
   classes,
+  sections: allSections,
+  subjects: allSubjects,
   activeSectionId,
   activeSectionClassId,
 }: {
   teacherId: string;
   schoolId: string;
   classes: ClassOption[];
+  sections: SectionOption[];
+  subjects: SubjectOption[];
   activeSectionId?: string;
   activeSectionClassId?: string;
 }) {
@@ -44,30 +50,20 @@ export function CreateHomeworkForm({
   const [classId, setClassId] = useState("");
   const [sectionId, setSectionId] = useState("");
   const [subjectId, setSubjectId] = useState("");
-  const [sections, setSections] = useState<SectionOption[]>([]);
-  const [subjects, setSubjects] = useState<SubjectOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [files, setFiles] = useState<File[]>([]);
 
+  // Sections/subjects are loaded server-side (scoped) and filtered here by the
+  // selected class — a client-side query would miss the x-school-id scope header
+  // that RLS depends on, returning nothing.
+  const sections = allSections.filter((s) => s.classId === classId);
+  const subjects = allSubjects.filter((s) => s.classId === classId);
+
+  // Reset section/subject when the class changes (or clears).
   useEffect(() => {
-    if (!classId) {
-      setSections([]);
-      setSubjects([]);
-      setSectionId("");
-      setSubjectId("");
-      return;
-    }
-    const supabase = createClient();
-    Promise.all([
-      supabase.from("sections").select("id, name").eq("class_id", classId),
-      supabase.from("subjects").select("id, name").eq("class_id", classId),
-    ]).then(([secRes, subRes]) => {
-      setSections(secRes.data ?? []);
-      setSubjects(subRes.data ?? []);
-      setSectionId("");
-      setSubjectId("");
-    });
+    setSectionId("");
+    setSubjectId("");
   }, [classId]);
 
   // Pre-fill class when active section's class is known
@@ -77,13 +73,10 @@ export function CreateHomeworkForm({
     }
   }, [activeSectionClassId]);
 
-  // Pre-fill section once sections have loaded for the active class
+  // Pre-fill section once the active class is set
   useEffect(() => {
-    if (activeSectionId && sections.length > 0) {
-      const match = sections.find((s) => s.id === activeSectionId);
-      if (match) {
-        setSectionId(match.id);
-      }
+    if (activeSectionId && sections.some((s) => s.id === activeSectionId)) {
+      setSectionId(activeSectionId);
     }
   }, [activeSectionId, sections]);
 
