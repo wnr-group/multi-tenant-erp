@@ -549,7 +549,7 @@ BEGIN
         END,
         'aaaaaaaa-0000-0000-0000-000000000013'
       )
-      ON CONFLICT (student_id, date) DO NOTHING;
+      ON CONFLICT (student_id, date, session) DO NOTHING;
       days_done := days_done + 1;
     END IF;
     d := d - INTERVAL '1 day';
