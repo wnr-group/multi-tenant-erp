@@ -69,25 +69,45 @@ export default function TeacherAttendanceOverview() {
               No classes assigned to you
             </Text>
           </View>
-        ) : mySections.map((s) => {
-          const c = counts[s.id];
-          const complete = c && c.marked === c.total && c.total > 0;
-          return (
-            <TouchableOpacity
-              key={s.id}
-              onPress={() => router.push({ pathname: "/(teacher)/attendance/[sectionId]", params: { sectionId: s.id, session, date: today } })}
-              style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 16, flexDirection: "row", alignItems: "center", gap: 12 }}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="people-outline" size={22} color={theme.primary} />
-              <Text style={{ flex: 1, fontSize: 15, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>{s.label}</Text>
-              <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: complete ? theme.success : theme.textSecondary }}>
-                {badge(c)}
-              </Text>
-              <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
-            </TouchableOpacity>
+        ) : (() => {
+          const homeroom = mySections.filter((s) => s.isHomeroom);
+          const others = mySections.filter((s) => !s.isHomeroom);
+
+          const renderCard = (s: typeof mySections[number]) => {
+            const c = counts[s.id];
+            const complete = c && c.marked === c.total && c.total > 0;
+            return (
+              <TouchableOpacity
+                key={s.id}
+                onPress={() => router.push({ pathname: "/(teacher)/attendance/[sectionId]", params: { sectionId: s.id, session, date: today } })}
+                style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 16, flexDirection: "row", alignItems: "center", gap: 12 }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name={s.isHomeroom ? "home" : "people-outline"} size={22} color={theme.primary} />
+                <Text style={{ flex: 1, fontSize: 15, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>{s.label}</Text>
+                <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: complete ? theme.success : theme.textSecondary }}>
+                  {badge(c)}
+                </Text>
+                <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
+              </TouchableOpacity>
+            );
+          };
+
+          const header = (text: string) => (
+            <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: theme.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginTop: 4 }}>
+              {text}
+            </Text>
           );
-        })}
+
+          return (
+            <>
+              {homeroom.length > 0 && header("My Class")}
+              {homeroom.map(renderCard)}
+              {others.length > 0 && header("Other Classes I Teach")}
+              {others.map(renderCard)}
+            </>
+          );
+        })()}
       </ScrollView>
     </SafeAreaView>
   );
