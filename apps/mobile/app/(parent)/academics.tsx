@@ -7,9 +7,11 @@ import * as Print from "expo-print";
 import { StorageAccessFramework, EncodingType, readAsStringAsync, writeAsStringAsync } from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import { Platform } from "react-native";
+import { useRouter } from "expo-router";
 import { supabase, supabaseUrl } from "../../lib/supabase";
 import { useActiveContext } from "../../lib/active-context";
 import { useTheme } from "../../lib/theme";
+import { loadParentHomework, ParentHomeworkItem, ParentHomeworkState } from "../../lib/homework";
 import { StatusBadge } from "../../components/StatusBadge";
 import { SectionHeader } from "../../components/SectionHeader";
 import { SkeletonCard } from "../../components/Skeleton";
@@ -34,15 +36,14 @@ interface ExamResult {
   rank: number;
   totalStudents: number;
 }
-interface Homework { id: string; title: string; subject: string; due_date: string; status: string; description: string }
-
 export default function ParentAcademics() {
   const theme = useTheme();
+  const router = useRouter();
   const { studentId: activeStudentId } = useActiveContext();
   const [tab, setTab] = useState<"results" | "homework">("results");
   const [groupedResults, setGroupedResults] = useState<Record<string, ExamResult[]>>({});
   const [expandedExamId, setExpandedExamId] = useState<string | null>(null);
-  const [homework, setHomework] = useState<Homework[]>([]);
+  const [homework, setHomework] = useState<ParentHomeworkItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split("T")[0]);
@@ -111,23 +112,9 @@ export default function ParentAcademics() {
   }, [activeStudentId]);
 
   async function loadHomeworkForMonth(sectionId: string, year: number, month: number) {
-    const firstDay = `${year}-${String(month).padStart(2, "0")}-01`;
-    const lastDay = new Date(year, month, 0).toISOString().split("T")[0];
-    const { data } = await supabase
-      .from("homework")
-      .select("id, title, description, due_date, subjects(name)")
-      .eq("section_id", sectionId)
-      .gte("due_date", firstDay)
-      .lte("due_date", lastDay)
-      .order("due_date", { ascending: true });
-    setHomework((data ?? []).map((h: any) => ({
-      id: h.id,
-      title: h.title,
-      description: h.description ?? "",
-      subject: h.subjects?.name ?? "",
-      due_date: h.due_date,
-      status: new Date(h.due_date) < new Date() ? "overdue" : "pending",
-    })));
+    if (!activeStudentId) { setHomework([]); return; }
+    const items = await loadParentHomework(sectionId, activeStudentId, year, month);
+    setHomework(items);
   }
 
   async function loadData() {
@@ -288,6 +275,10 @@ export default function ParentAcademics() {
     markedDates[selectedDate] = { selected: true, selectedColor: theme.primary + "30" };
   }
 
+  const HW_BADGE: Record<ParentHomeworkState, "hw_new" | "hw_viewed" | "hw_done" | "hw_reviewed"> = {
+    new: "hw_new", viewed: "hw_viewed", done: "hw_done", reviewed: "hw_reviewed",
+  };
+
   return (
     <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: theme.background }}>
       <ScrollView contentContainerStyle={{ padding: 20, gap: 20 }} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
@@ -417,7 +408,12 @@ export default function ParentAcademics() {
                     {new Date(selectedDate + "T00:00:00").toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}
                   </Text>
                   {dayHomework.map((h) => (
-                    <View key={h.id} style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 16, gap: 8 }}>
+                    <TouchableOpacity
+                      key={h.id}
+                      activeOpacity={0.85}
+                      onPress={() => router.push({ pathname: "/(parent)/homework/[homeworkId]", params: { homeworkId: h.id } })}
+                      style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 16, gap: 8 }}
+                    >
                       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                         <View style={{ flex: 1, marginRight: 8 }}>
                           <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: theme.textPrimary }}>{h.title}</Text>
@@ -427,12 +423,15 @@ export default function ParentAcademics() {
                             </View>
                           </View>
                         </View>
-                        <StatusBadge variant={h.status === "submitted" ? "paid" : h.status === "overdue" ? "overdue" : "pending"} />
+                        {(() => {
+                          const isOverdueNotDone = (h.state === "new" || h.state === "viewed") && new Date(h.due_date) < new Date();
+                          return <StatusBadge variant={isOverdueNotDone ? "overdue" : HW_BADGE[h.state]} />;
+                        })()}
                       </View>
                       {h.description ? (
                         <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: theme.textSecondary }}>{h.description}</Text>
                       ) : null}
-                    </View>
+                    </TouchableOpacity>
                   ))}
                 </View>
               );
