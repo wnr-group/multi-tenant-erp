@@ -102,7 +102,7 @@ export default async function SchoolLayout({
       .single(),
     supabase
       .from("profiles")
-      .select("full_name, school_id")
+      .select("full_name")
       .eq("id", user.id)
       .single(),
   ]);
@@ -119,7 +119,7 @@ export default async function SchoolLayout({
 
   let brandColor: string | undefined;
   let schoolName = "School ERP";
-  const schoolId = profile?.school_id ?? (await getSchoolId());
+  const schoolId = await getSchoolId();
   if (schoolId) {
     const { data: school } = await supabase
       .from("schools")

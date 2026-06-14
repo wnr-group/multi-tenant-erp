@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { View, Text, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { supabase } from "../../lib/supabase";
+import { supabase, SCHOOL_ID } from "../../lib/supabase";
 import { useTheme } from "../../lib/theme";
 import { Avatar } from "../../components/Avatar";
 import { ListItem } from "../../components/ListItem";
@@ -18,15 +18,14 @@ export default function TeacherProfile() {
   async function loadProfile() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { data } = await supabase
-      .from("profiles")
-      .select("full_name, school_id, schools(name)")
-      .eq("id", user.id)
-      .single();
+    const [{ data: prof }, { data: school }] = await Promise.all([
+      supabase.from("profiles").select("full_name").eq("id", user.id).single(),
+      supabase.from("schools").select("name").eq("id", SCHOOL_ID).maybeSingle(),
+    ]);
     setProfile({
-      full_name: data?.full_name ?? "Teacher",
+      full_name: prof?.full_name ?? "Teacher",
       email: user.email ?? "",
-      school_name: (data as any)?.schools?.name ?? "School",
+      school_name: school?.name ?? "School",
     });
   }
 
