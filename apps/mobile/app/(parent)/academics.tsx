@@ -40,7 +40,7 @@ export default function ParentAcademics() {
   const theme = useTheme();
   const router = useRouter();
   const { studentId: activeStudentId } = useActiveContext();
-  const [tab, setTab] = useState<"results" | "homework">("results");
+  const [tab, setTab] = useState<"results" | "homework">("homework");
   const [groupedResults, setGroupedResults] = useState<Record<string, ExamResult[]>>({});
   const [expandedExamId, setExpandedExamId] = useState<string | null>(null);
   const [homework, setHomework] = useState<ParentHomeworkItem[]>([]);
@@ -334,7 +334,7 @@ export default function ParentAcademics() {
 
         {/* Segmented control */}
         <View style={{ flexDirection: "row", backgroundColor: theme.surface, borderRadius: 12, padding: 4, borderWidth: 1, borderColor: theme.border }}>
-          {(["results", "homework"] as const).map((t) => (
+          {(["homework", "results"] as const).map((t) => (
             <TouchableOpacity key={t} onPress={() => setTab(t)} style={{ flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: tab === t ? theme.primary : "transparent", alignItems: "center" }}>
               <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: tab === t ? "#fff" : theme.textSecondary, textTransform: "capitalize" }}>{t}</Text>
             </TouchableOpacity>
