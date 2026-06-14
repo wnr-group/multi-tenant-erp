@@ -1,10 +1,25 @@
+import { useEffect } from "react";
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../lib/theme";
 import { AppBar } from "../../components/AppBar";
+import { ParentCountsProvider, useParentCounts } from "../../lib/parent-counts";
 
 export default function ParentLayout() {
+  return (
+    <ParentCountsProvider>
+      <ParentTabs />
+    </ParentCountsProvider>
+  );
+}
+
+function ParentTabs() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const { unreadNotifications, unseenAnnouncements, refresh } = useParentCounts();
+  const totalBadge = unreadNotifications + unseenAnnouncements;
+  useEffect(() => { refresh(); }, [refresh]);
   return (
     <Tabs
       screenOptions={{
@@ -12,7 +27,7 @@ export default function ParentLayout() {
         header: () => <AppBar />,
         tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: theme.textMuted,
-        tabBarStyle: { backgroundColor: theme.surface, borderTopColor: theme.border, borderTopWidth: 1, height: 60, paddingBottom: 8 },
+        tabBarStyle: { backgroundColor: theme.surface, borderTopColor: theme.border, borderTopWidth: 1, height: 60 + insets.bottom, paddingBottom: 8 + insets.bottom },
         tabBarLabelStyle: { fontSize: 11, fontFamily: "Inter_500Medium" },
       }}
     >
@@ -20,7 +35,7 @@ export default function ParentLayout() {
       <Tabs.Screen name="attendance" options={{ title: "Attendance", tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "calendar" : "calendar-outline"} size={22} color={color} /> }} />
       <Tabs.Screen name="academics" options={{ title: "Academics", tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "book" : "book-outline"} size={22} color={color} /> }} />
       <Tabs.Screen name="fees" options={{ title: "Fees", tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "wallet" : "wallet-outline"} size={22} color={color} /> }} />
-      <Tabs.Screen name="more" options={{ title: "More", tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "grid" : "grid-outline"} size={22} color={color} /> }} />
+      <Tabs.Screen name="more" options={{ title: "More", tabBarBadge: totalBadge > 0 ? totalBadge : undefined, tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "grid" : "grid-outline"} size={22} color={color} /> }} />
     </Tabs>
   );
 }
