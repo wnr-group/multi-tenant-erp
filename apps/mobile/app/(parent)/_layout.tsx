@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../lib/theme";
 import { AppBar } from "../../components/AppBar";
 import { ParentCountsProvider, useParentCounts } from "../../lib/parent-counts";
+import { useActiveContext } from "../../lib/active-context";
 
 export default function ParentLayout() {
   return (
@@ -18,10 +19,11 @@ function ParentTabs() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { unreadNotifications, unseenAnnouncements, refresh } = useParentCounts();
+  const { studentId } = useActiveContext();
   const totalBadge = unreadNotifications + unseenAnnouncements;
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => { refresh(studentId); }, [refresh, studentId]);
   // Re-fetch whenever the parent area regains focus (covers cold-start session races).
-  useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
+  useFocusEffect(useCallback(() => { refresh(studentId); }, [refresh, studentId]));
   return (
     <Tabs
       screenOptions={{

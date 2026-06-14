@@ -95,10 +95,13 @@ export default function ParentMore() {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setNotifications([]); setLoading(false); return; }
-    const { data } = await supabase
+    let query = supabase
       .from("notifications")
       .select("id, title, body, created_at, is_read")
-      .eq("user_id", user.id)
+      .eq("user_id", user.id);
+    // Show alerts for the active child plus school-wide ones (student_id IS NULL).
+    if (activeStudentId) query = query.or(`student_id.eq.${activeStudentId},student_id.is.null`);
+    const { data } = await query
       .order("created_at", { ascending: false })
       .limit(50);
     setNotifications(data ?? []);
@@ -106,7 +109,7 @@ export default function ParentMore() {
     const unreadIds = (data ?? []).filter((n) => !n.is_read).map((n) => n.id);
     if (unreadIds.length > 0) {
       await supabase.from("notifications").update({ is_read: true }).in("id", unreadIds);
-      await refreshCounts();
+      await refreshCounts(activeStudentId);
     }
     setLoading(false);
   }

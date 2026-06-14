@@ -4,7 +4,8 @@ import { supabase } from "./supabase";
 interface ParentCounts {
   unreadNotifications: number;
   unseenAnnouncements: number;
-  refresh: () => Promise<void>;
+  /** Pass the active student id to scope the unread-notification count to that child. */
+  refresh: (activeStudentId?: string | null) => Promise<void>;
 }
 
 const Ctx = createContext<ParentCounts>({
@@ -17,19 +18,23 @@ export function ParentCountsProvider({ children }: { children: ReactNode }) {
   const [unreadNotifications, setUnread] = useState(0);
   const [unseenAnnouncements, setUnseen] = useState(0);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (activeStudentId?: string | null) => {
     // Use the locally-cached session (no network round-trip) so a cold-start
     // network blip can't transiently null the user and zero the badges.
     const { data: { session } } = await supabase.auth.getSession();
     const userId = session?.user?.id;
     if (!userId) return;
 
+    let notifQuery = supabase
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("is_read", false);
+    // Scope unread count to the active child plus school-wide alerts.
+    if (activeStudentId) notifQuery = notifQuery.or(`student_id.eq.${activeStudentId},student_id.is.null`);
+
     const [notifRes, profRes] = await Promise.all([
-      supabase
-        .from("notifications")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", userId)
-        .eq("is_read", false),
+      notifQuery,
       supabase
         .from("profiles")
         .select("announcements_seen_at")

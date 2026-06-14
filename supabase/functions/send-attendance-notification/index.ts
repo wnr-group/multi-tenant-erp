@@ -145,9 +145,12 @@ async function deliver(
     `${sp.full_name} was marked absent for the ${sessionLabel} session on ${dateLabel}.`;
 
   // Always write the in-app notification (survives app reinstall).
+  // student_id scopes it to the absent child so a multi-child parent sees it
+  // only in that child's context.
   await admin.from("notifications").insert({
     school_id: rec.school_id,
     user_id: parent.id,
+    student_id: rec.student_id,
     title,
     body: messageBody,
     type: "attendance_absence",
