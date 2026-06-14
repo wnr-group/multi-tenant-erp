@@ -18,19 +18,24 @@ export async function StudentAttendanceTab({ studentId, month, year }: Props) {
 
   const { data: records } = await supabase
     .from("attendance_records")
-    .select("date, status")
+    .select("date, status, session")
     .eq("student_id", studentId)
     .gte("date", from)
     .lte("date", to);
 
-  const statusMap: Record<string, string> = {};
-  for (const r of records ?? []) statusMap[r.date] = r.status;
+  type Rec = { date: string; status: string; session: string };
+  const rows = (records ?? []) as Rec[];
 
-  const present = Object.values(statusMap).filter((s) => s === "present").length;
-  const absent = Object.values(statusMap).filter((s) => s === "absent").length;
-  const late = Object.values(statusMap).filter((s) => s === "late").length;
-  const total = Object.keys(statusMap).length;
-  const pct = total > 0 ? Math.round((present / total) * 100) : 0;
+  const isPresent = (s: string) => s === "present" || s === "late";
+  const present = rows.filter((r) => r.status === "present").length;
+  const absent = rows.filter((r) => r.status === "absent").length;
+  const late = rows.filter((r) => r.status === "late").length;
+  const total = rows.length; // total sessions, not days
+  const pct = total > 0 ? Math.round((rows.filter((r) => isPresent(r.status)).length / total) * 100) : 0;
+
+  // Per-day grouping for the calendar (a day may hold FN + AN).
+  const dayMap: Record<string, Rec[]> = {};
+  for (const r of rows) (dayMap[r.date] ??= []).push(r);
 
   const firstDow = new Date(year, month, 1).getDay();
   const daysInMonth = lastDay;
@@ -38,10 +43,17 @@ export async function StudentAttendanceTab({ studentId, month, year }: Props) {
 
   function cellColor(day: number): string {
     const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    const s = statusMap[dateStr];
-    if (s === "present") return "bg-emerald-500 text-white";
-    if (s === "absent") return "bg-rose-500 text-white";
-    if (s === "late") return "bg-amber-400 text-white";
+    const recs = dayMap[dateStr];
+    if (!recs || recs.length === 0) return "bg-muted text-muted-foreground";
+    const full = recs.find((r) => r.session === "FULL_DAY");
+    const status = full ? full.status : recs.every((r) => isPresent(r.status))
+      ? "present"
+      : recs.some((r) => r.status === "absent")
+      ? "absent"
+      : "late";
+    if (status === "present") return "bg-emerald-500 text-white";
+    if (status === "absent") return "bg-rose-500 text-white";
+    if (status === "late") return "bg-amber-400 text-white";
     return "bg-muted text-muted-foreground";
   }
 
