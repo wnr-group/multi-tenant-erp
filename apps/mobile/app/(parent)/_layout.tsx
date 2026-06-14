@@ -40,6 +40,7 @@ function ParentTabs() {
       <Tabs.Screen name="academics" options={{ title: "Academics", tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "book" : "book-outline"} size={22} color={color} /> }} />
       <Tabs.Screen name="fees" options={{ title: "Fees", tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "wallet" : "wallet-outline"} size={22} color={color} /> }} />
       <Tabs.Screen name="more" options={{ title: "More", tabBarBadge: totalBadge > 0 ? totalBadge : undefined, tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "grid" : "grid-outline"} size={22} color={color} /> }} />
+      <Tabs.Screen name="homework" options={{ href: null }} />
     </Tabs>
   );
 }
