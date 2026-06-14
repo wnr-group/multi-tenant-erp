@@ -49,7 +49,11 @@ function Gate({
       return;
     }
 
-    if (inAuthGroup || segments[0] === "no-access") {
+    const target = role === "teacher" ? "(teacher)" : "(parent)";
+    const inWrongGroup =
+      (segments[0] === "(teacher)" || segments[0] === "(parent)") && segments[0] !== target;
+
+    if (inAuthGroup || segments[0] === "no-access" || inWrongGroup) {
       router.replace(role === "teacher" ? "/(teacher)/dashboard" : "/(parent)/dashboard");
     }
   }, [session, initialized, loading, hasAccess, role, segments, router]);

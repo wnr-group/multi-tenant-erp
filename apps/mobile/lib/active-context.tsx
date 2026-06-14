@@ -58,8 +58,24 @@ export function ActiveContextProvider({
   }, [role, persist]);
 
   useEffect(() => {
-    if (!userId) { setLoading(false); return; }
+    // Logged out: wipe any in-memory state from the previous account so a
+    // stale role/student can't leak into the next session.
+    if (!userId) {
+      setRoles([]);
+      setStudents([]);
+      setRoleState(null);
+      setStudentId(null);
+      setActiveRoleHeader("");
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
+    // Re-enter the loading state for the new account so the router waits for
+    // the fresh roles instead of acting on the previous user's role.
+    setLoading(true);
+    setRoleState(null);
+    setRoles([]);
 
     (async () => {
       const { data: roleRows } = await supabase
