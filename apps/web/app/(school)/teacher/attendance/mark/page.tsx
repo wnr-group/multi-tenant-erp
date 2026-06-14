@@ -6,9 +6,10 @@ import { AttendanceMarkForm } from "./attendance-mark-form";
 export default async function AttendanceMarkPage({
   searchParams,
 }: {
-  searchParams: Promise<{ sectionId?: string; date?: string }>;
+  searchParams: Promise<{ sectionId?: string; date?: string; session?: string }>;
 }) {
-  const { sectionId: paramSectionId, date } = await searchParams;
+  const { sectionId: paramSectionId, date, session: paramSession } = await searchParams;
+  const session = (paramSession === "FN" || paramSession === "AN" ? paramSession : "FULL_DAY") as "FULL_DAY" | "FN" | "AN";
   const activeSectionId = await getActiveSection();
   const sectionId = paramSectionId ?? activeSectionId;
 
@@ -36,15 +37,18 @@ export default async function AttendanceMarkPage({
     .eq("section_id", sectionId)
     .eq("is_active", true);
 
-  const { data: existing } = await supabase
+  const { data: existingAll } = await supabase
     .from("attendance_records")
-    .select("student_id, status")
+    .select("student_id, status, session")
     .eq("section_id", sectionId)
     .eq("date", date);
 
+  const hasFullDay = (existingAll ?? []).some((r) => r.session === "FULL_DAY");
+  const hasSession = (existingAll ?? []).some((r) => r.session === "FN" || r.session === "AN");
+
   const existingMap: Record<string, string> = {};
-  for (const rec of existing ?? []) {
-    existingMap[rec.student_id] = rec.status ?? "present";
+  for (const rec of existingAll ?? []) {
+    if (rec.session === session) existingMap[rec.student_id] = rec.status ?? "present";
   }
 
   const studentRows = (studentEnrollments ?? []).map((e) => {
@@ -66,17 +70,53 @@ export default async function AttendanceMarkPage({
     ? `${sec.class?.name ?? ""} – Section ${sec.name}`
     : sectionId;
 
+  const sessions: { key: "FULL_DAY" | "FN" | "AN"; label: string }[] = [
+    { key: "FULL_DAY", label: "Full Day" },
+    { key: "FN", label: "Forenoon" },
+    { key: "AN", label: "Afternoon" },
+  ];
+  const lockedToSession = hasSession; // FN/AN exist → full-day disabled
+  const lockedToFullDay = hasFullDay; // full-day exists → FN/AN disabled
+
   return (
     <div>
       <h1 className="mb-1 text-2xl font-bold text-gray-900">Mark Attendance</h1>
-      <p className="mb-6 text-sm text-gray-500">
-        {sectionLabel} &nbsp;·&nbsp; {date}
-      </p>
+      <p className="mb-4 text-sm text-gray-500">{sectionLabel} &nbsp;·&nbsp; {date}</p>
+
+      <div className="mb-4 flex gap-2">
+        {sessions.map((s) => {
+          const disabled =
+            (s.key === "FULL_DAY" && lockedToSession) ||
+            (s.key !== "FULL_DAY" && lockedToFullDay);
+          const active = s.key === session;
+          const href = `/teacher/attendance/mark?sectionId=${sectionId}&date=${date}&session=${s.key}`;
+          return disabled ? (
+            <span key={s.key} className="cursor-not-allowed rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-300">
+              {s.label}
+            </span>
+          ) : (
+            <a
+              key={s.key}
+              href={href}
+              className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${active ? "border-indigo-600 bg-indigo-600 text-white" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
+            >
+              {s.label}
+            </a>
+          );
+        })}
+      </div>
+      {(lockedToSession || lockedToFullDay) && (
+        <p className="mb-4 text-xs text-amber-600">
+          {lockedToFullDay ? "Marked as full-day for this date." : "Marked by session (FN/AN) for this date."}
+        </p>
+      )}
+
       <div className="rounded-lg bg-white p-6 shadow-sm">
         <AttendanceMarkForm
           students={studentRows}
           sectionId={sectionId}
           date={date}
+          session={session}
           schoolId={schoolId}
           markedBy={user!.id}
         />
