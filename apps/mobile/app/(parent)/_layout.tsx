@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { Tabs } from "expo-router";
+import { useEffect, useCallback } from "react";
+import { Tabs, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../lib/theme";
@@ -20,6 +20,8 @@ function ParentTabs() {
   const { unreadNotifications, unseenAnnouncements, refresh } = useParentCounts();
   const totalBadge = unreadNotifications + unseenAnnouncements;
   useEffect(() => { refresh(); }, [refresh]);
+  // Re-fetch whenever the parent area regains focus (covers cold-start session races).
+  useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
   return (
     <Tabs
       screenOptions={{

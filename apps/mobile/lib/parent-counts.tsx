@@ -18,19 +18,22 @@ export function ParentCountsProvider({ children }: { children: ReactNode }) {
   const [unseenAnnouncements, setUnseen] = useState(0);
 
   const refresh = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setUnread(0); setUnseen(0); return; }
+    // Use the locally-cached session (no network round-trip) so a cold-start
+    // network blip can't transiently null the user and zero the badges.
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    if (!userId) return;
 
     const [notifRes, profRes] = await Promise.all([
       supabase
         .from("notifications")
         .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .eq("is_read", false),
       supabase
         .from("profiles")
         .select("announcements_seen_at")
-        .eq("id", user.id)
+        .eq("id", userId)
         .maybeSingle(),
     ]);
     setUnread(notifRes.count ?? 0);
