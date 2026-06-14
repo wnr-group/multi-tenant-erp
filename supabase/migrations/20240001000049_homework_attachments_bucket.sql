@@ -12,6 +12,7 @@ CREATE POLICY "homework_attachments_upload" ON storage.objects FOR INSERT
   WITH CHECK (
     bucket_id = 'homework-attachments'
     AND public.get_my_role() IN ('super_admin', 'school_admin', 'teacher')
+    AND (storage.foldername(name))[2] = public.get_my_school_id()::text
   );
 
 CREATE POLICY "homework_attachments_modify" ON storage.objects FOR UPDATE
@@ -19,6 +20,7 @@ CREATE POLICY "homework_attachments_modify" ON storage.objects FOR UPDATE
   USING (
     bucket_id = 'homework-attachments'
     AND public.get_my_role() IN ('super_admin', 'school_admin', 'teacher')
+    AND (storage.foldername(name))[2] = public.get_my_school_id()::text
   );
 
 CREATE POLICY "homework_attachments_remove" ON storage.objects FOR DELETE
@@ -26,11 +28,12 @@ CREATE POLICY "homework_attachments_remove" ON storage.objects FOR DELETE
   USING (
     bucket_id = 'homework-attachments'
     AND public.get_my_role() IN ('super_admin', 'school_admin', 'teacher')
+    AND (storage.foldername(name))[2] = public.get_my_school_id()::text
   );
 
 CREATE POLICY "homework_attachments_read" ON storage.objects FOR SELECT
   TO authenticated
   USING (
     bucket_id = 'homework-attachments'
-    AND public.get_my_school_id() IS NOT NULL
+    AND (storage.foldername(name))[2] = public.get_my_school_id()::text
   );
