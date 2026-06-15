@@ -32,7 +32,16 @@ export async function registerForPushNotifications(userId: string) {
 
     if (finalStatus !== "granted") return;
 
-    const tokenData = await Notifications.getExpoPushTokenAsync();
+    // Push tokens are scoped to an EAS project. Outside Expo Go,
+    // getExpoPushTokenAsync requires the projectId — without it the call throws
+    // and the catch below swallows it, so no token is ever saved. Resolve it
+    // from the resolved Expo config (app.json extra.eas.projectId).
+    const projectId =
+      Constants.expoConfig?.extra?.eas?.projectId ??
+      Constants.easConfig?.projectId;
+    if (!projectId) return;
+
+    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
     const token = tokenData.data;
 
     await supabase

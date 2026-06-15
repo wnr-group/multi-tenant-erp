@@ -3,9 +3,9 @@ module.exports = ({ config }) => {
     ...config,
     plugins: [...(config.plugins ?? []), "expo-sharing"],
     name: process.env.EXPO_PUBLIC_SCHOOL_NAME ?? config.name,
-    slug: process.env.EXPO_PUBLIC_BUNDLE_ID
-      ? process.env.EXPO_PUBLIC_BUNDLE_ID.split(".").pop()
-      : config.slug,
+    // slug must stay stable (= app.json "connectmyskool") so EAS resolves a
+    // single project across white-label builds. Per-school variation happens
+    // via the bundle id below, not the slug.
     android: {
       ...config.android,
       package: process.env.EXPO_PUBLIC_BUNDLE_ID ?? config.android?.package,

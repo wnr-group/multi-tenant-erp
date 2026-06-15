@@ -1,7 +1,8 @@
 {
   "expo": {
     "name": "School ERP",
-    "slug": "school-erp",
+    "slug": "connectmyskool",
+    "owner": "connect-my-skool",
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "schoolerp",
@@ -15,14 +16,15 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.wnradvisory.schoolerp"
+      "bundleIdentifier": "com.connectmyskool.erp"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.wnradvisory.schoolerp"
+      "package": "com.connectmyskool.erp",
+      "googleServicesFile": "./android/app/google-services.json"
     },
     "plugins": [
       "expo-router",
@@ -42,7 +44,11 @@
       "supabaseUrl": "http://127.0.0.1:54321",
       "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0",
       "razorpayKeyId": "rzp_test_placeholder",
-      "schoolId": "aaaaaaaa-0000-0000-0000-000000000001"
+      "schoolId": "aaaaaaaa-0000-0000-0000-000000000001",
+      "router": {},
+      "eas": {
+        "projectId": "da337643-058b-45d7-b53f-a1fd6fc528fd"
+      }
     }
   }
 }
