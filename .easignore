@@ -1,0 +1,30 @@
+# EAS uses this instead of .gitignore when building the upload archive.
+# It mirrors .gitignore so heavy/secret artifacts stay out, but deliberately
+# does NOT exclude apps/mobile/google-services.json — that file is gitignored
+# yet must be present in the archive so `expo prebuild` can copy it into the
+# regenerated android/ during a managed EAS build.
+
+# Dependencies & build artifacts (same as .gitignore)
+node_modules/
+.next/
+dist/
+.turbo/
+*.tsbuildinfo
+.worktrees/
+test-screenshots/
+.vercel
+apps/demo-video/
+.superpowers/
+
+# Secrets / env
+.env
+.env.local
+
+# Mobile native prebuild output (regenerated during the build)
+apps/mobile/android/
+apps/mobile/.expo/
+apps/mobile/expo-env.d.ts
+
+# Other app build outputs not needed by the mobile build
+apps/web/
+apps/mobile/build/

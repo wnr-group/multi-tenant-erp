@@ -24,7 +24,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.connectmyskool.erp",
-      "googleServicesFile": "./android/app/google-services.json"
+      "googleServicesFile": "./google-services.json"
     },
     "plugins": [
       "expo-router",

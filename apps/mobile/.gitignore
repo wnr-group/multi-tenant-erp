@@ -8,3 +8,11 @@ expo-env.d.ts
 
 # Native prebuild output (regenerate with: npx expo prebuild)
 /android
+
+# FCM config — referenced by app.json googleServicesFile, kept out of git.
+# NOTE: .easignore deliberately re-includes this so EAS local builds can copy
+# it during prebuild (which regenerates /android).
+google-services.json
+
+# Local build output (APKs from `eas build --local`)
+/build
