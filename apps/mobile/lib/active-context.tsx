@@ -37,6 +37,12 @@ export function ActiveContextProvider({
   children: React.ReactNode;
 }) {
   const [loading, setLoading] = useState(true);
+  // Tracks which user the roles/students below were loaded for. Until this
+  // matches the current userId, the context is still "loading" — this closes a
+  // race where Gate (a child) runs its effect before this provider's effect on
+  // login, briefly seeing the previous state (loading=false, no roles) and
+  // bouncing to /no-access.
+  const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
   const [roles, setRoles] = useState<MobileRole[]>([]);
   const [students, setStudents] = useState<StudentRef[]>([]);
   const [role, setRoleState] = useState<MobileRole | null>(null);
@@ -66,6 +72,7 @@ export function ActiveContextProvider({
       setRoleState(null);
       setStudentId(null);
       setActiveRoleHeader("");
+      setLoadedUserId(null);
       setLoading(false);
       return;
     }
@@ -121,17 +128,21 @@ export function ActiveContextProvider({
       setRoleState(nextRole);
       setStudentId(nextStudent);
       if (nextRole) setActiveRoleHeader(nextRole);
+      setLoadedUserId(userId);
       setLoading(false);
     })();
 
     return () => { cancelled = true; };
   }, [userId]);
 
+  // Still loading if the fetch is in flight OR the loaded data is for a
+  // different user than the current one (covers the login effect-order race).
+  const effectiveLoading = loading || loadedUserId !== userId;
   const hasAccess = roles.length > 0;
 
   return (
     <Ctx.Provider
-      value={{ loading, roles, students, role, studentId, setRole, setStudent, hasAccess }}
+      value={{ loading: effectiveLoading, roles, students, role, studentId, setRole, setStudent, hasAccess }}
     >
       {children}
     </Ctx.Provider>
