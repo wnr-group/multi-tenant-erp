@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { createServiceSupabaseClient } from "../../../lib/supabase/server";
 import { LoginForm } from "./login-form";
+import { FindSchoolForm } from "./find-school-form";
 
 export const metadata: Metadata = {
   title: "Login",
@@ -21,14 +22,18 @@ export default async function LoginPage() {
     .eq("domain", domain)
     .single();
 
-  const schoolName = school?.name ?? "School Portal";
-  const primaryColor = school?.primary_color ?? "#2563EB";
+  // On the apex/marketing domain no school resolves (unknown subdomains are
+  // rewritten to /school-not-found by middleware before reaching here), so the
+  // visitor is on the bare domain. Help them find their school's subdomain.
+  if (!school) {
+    return <FindSchoolForm host={host} />;
+  }
 
   return (
     <LoginForm
-      schoolId={school?.id ?? null}
-      schoolName={schoolName}
-      primaryColor={primaryColor}
+      schoolId={school.id}
+      schoolName={school.name}
+      primaryColor={school.primary_color ?? "#2563EB"}
     />
   );
 }

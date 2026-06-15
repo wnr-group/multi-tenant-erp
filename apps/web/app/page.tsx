@@ -11,7 +11,6 @@ import {
   Clock,
   Shield,
   ArrowRight,
-  Menu,
 } from "lucide-react";
 import { AnimateOnScroll, StaggerChildren } from "@/components/animate-on-scroll";
 import { HeroReveal, HeroFloat } from "@/components/hero-animations";
@@ -59,59 +58,62 @@ const jsonLd = {
 
 export default function MarketingPage() {
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#0D1B2A] font-[family-name:var(--font-display)] text-white">
+    <div className="min-h-screen overflow-x-clip bg-[#F6F9FB] font-[family-name:var(--font-display)] text-[#0D1B2A]">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
       {/* ── NAVBAR ── */}
-      <nav className="sticky top-0 z-50 border-b border-white/5 bg-[#0D1B2A]/90 backdrop-blur-md">
+      <nav className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
             <Image src="/logo-mark.webp" alt="ConnectMySkool logo" width={36} height={36} className="rounded-lg" />
-            <span className="text-lg font-bold tracking-tight">ConnectMySkool</span>
+            <span className="text-lg font-bold tracking-tight text-[#0D1B2A]">ConnectMySkool</span>
           </div>
           <div className="hidden items-center gap-8 md:flex">
-            <a href="#features" className="text-sm text-slate-400 transition-colors hover:text-white">Features</a>
-            <a href="#how-it-works" className="text-sm text-slate-400 transition-colors hover:text-white">How It Works</a>
-            <a href="#testimonial" className="text-sm text-slate-400 transition-colors hover:text-white">Testimonials</a>
-            <a href="#contact" className="text-sm text-slate-400 transition-colors hover:text-white">Contact</a>
+            <a href="#features" className="text-sm text-slate-600 transition-colors hover:text-[#0E8A92]">Features</a>
+            <a href="#how-it-works" className="text-sm text-slate-600 transition-colors hover:text-[#0E8A92]">How It Works</a>
+            <a href="#testimonial" className="text-sm text-slate-600 transition-colors hover:text-[#0E8A92]">Testimonials</a>
+            <a href="#contact" className="text-sm text-slate-600 transition-colors hover:text-[#0E8A92]">Contact</a>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
+            <a
+              href="/login"
+              className="rounded-full px-4 py-2 text-sm font-semibold text-[#0D1B2A] transition-colors hover:text-[#0E8A92]"
+            >
+              Log in
+            </a>
             <a
               href="#contact"
               className="hidden rounded-full bg-[#1BABB4] px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-[#17969e] md:block"
             >
               Book a Demo
             </a>
-            <button className="md:hidden text-slate-400" aria-label="Open menu">
-              <Menu className="h-5 w-5" />
-            </button>
           </div>
         </div>
       </nav>
 
       {/* ── HERO ── */}
       <section className="relative overflow-hidden px-5 pb-16 pt-14 md:px-6 md:pb-24 md:pt-20">
-        <div className="pointer-events-none absolute left-1/2 top-0 h-[500px] w-[800px] -translate-x-1/2 rounded-full bg-[#1BABB4]/10 blur-[120px]" />
+        <div className="pointer-events-none absolute left-1/2 top-0 h-[500px] w-[800px] -translate-x-1/2 rounded-full bg-[#1BABB4]/15 blur-[120px]" />
         <div className="relative mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-2 lg:gap-12">
           {/* Left */}
           <div>
             <HeroReveal delay={100}>
-              <span className="mb-4 inline-block rounded-full border border-[#1BABB4]/40 bg-[#1BABB4]/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-[#1BABB4] md:px-4 md:py-1.5 md:text-xs">
+              <span className="mb-4 inline-block rounded-full border border-[#1BABB4]/40 bg-[#1BABB4]/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-[#0E8A92] md:px-4 md:py-1.5 md:text-xs">
                 One Platform. Every Stakeholder.
               </span>
             </HeroReveal>
             <HeroReveal delay={200}>
-              <h1 className="mt-4 text-3xl font-extrabold leading-[1.15] tracking-tight text-white sm:text-4xl lg:text-6xl">
+              <h1 className="mt-4 text-3xl font-extrabold leading-[1.15] tracking-tight text-[#0D1B2A] sm:text-4xl lg:text-6xl">
                 The School ERP That{" "}
-                <span className="text-[#1BABB4]">Connects Everyone</span>
+                <span className="text-[#0E8A92]">Connects Everyone</span>
                 {" "}— Admins, Teachers &amp; Parents.
               </h1>
             </HeroReveal>
             <HeroReveal delay={350}>
-              <p className="mt-4 text-base leading-relaxed text-slate-400 md:mt-6 md:text-lg">
+              <p className="mt-4 text-base leading-relaxed text-slate-600 md:mt-6 md:text-lg">
                 ConnectMySkool gives your school a powerful web portal for staff and
                 a beautifully branded mobile app for parents — all in one platform.
               </p>
@@ -128,7 +130,7 @@ export default function MarketingPage() {
                   href="https://wa.me/919789471572"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white transition-all hover:border-white/40 hover:bg-white/5 hover:scale-[1.03] active:scale-[0.97]"
+                  className="flex items-center gap-2 rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-[#0D1B2A] transition-all hover:border-slate-400 hover:bg-slate-50 hover:scale-[1.03] active:scale-[0.97]"
                 >
                   <svg className="h-4 w-4 text-[#25D366]" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
@@ -144,8 +146,8 @@ export default function MarketingPage() {
                   { icon: Clock, text: "Setup in 48 hours" },
                   { icon: Shield, text: "Built for Indian schools" },
                 ].map(({ icon: Icon, text }) => (
-                  <div key={text} className="flex items-center gap-1.5 text-xs text-slate-400 md:gap-2 md:text-sm">
-                    <Icon className="h-3.5 w-3.5 text-[#1BABB4] md:h-4 md:w-4" />
+                  <div key={text} className="flex items-center gap-1.5 text-xs text-slate-600 md:gap-2 md:text-sm">
+                    <Icon className="h-3.5 w-3.5 text-[#0E8A92] md:h-4 md:w-4" />
                     {text}
                   </div>
                 ))}
@@ -156,15 +158,15 @@ export default function MarketingPage() {
           {/* Right — Real dashboard screenshot (hidden on mobile) */}
           <HeroFloat delay={400} className="relative hidden justify-center lg:flex lg:justify-end">
             <div className="relative w-full max-w-lg">
-              <div className="absolute inset-0 rounded-2xl bg-[#1BABB4]/10 blur-3xl" />
-              <div className="relative overflow-hidden rounded-2xl border border-white/10 shadow-2xl shadow-[#1BABB4]/10">
-                <div className="flex items-center gap-2 border-b border-white/10 bg-[#0D1B2A] px-4 py-3">
+              <div className="absolute inset-0 rounded-2xl bg-[#1BABB4]/15 blur-3xl" />
+              <div className="relative overflow-hidden rounded-2xl border border-slate-200 shadow-2xl shadow-slate-300/40">
+                <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-100 px-4 py-3">
                   <div className="flex gap-1.5">
-                    <div className="h-2.5 w-2.5 rounded-full bg-red-500/60" />
-                    <div className="h-2.5 w-2.5 rounded-full bg-yellow-500/60" />
-                    <div className="h-2.5 w-2.5 rounded-full bg-green-500/60" />
+                    <div className="h-2.5 w-2.5 rounded-full bg-red-400" />
+                    <div className="h-2.5 w-2.5 rounded-full bg-yellow-400" />
+                    <div className="h-2.5 w-2.5 rounded-full bg-green-400" />
                   </div>
-                  <div className="mx-auto flex-1 max-w-xs rounded bg-white/5 px-3 py-1 text-center text-xs text-slate-500">
+                  <div className="mx-auto flex-1 max-w-xs rounded bg-white px-3 py-1 text-center text-xs text-slate-500">
                     school.connectmyskool.com/admin/dashboard
                   </div>
                 </div>
@@ -177,13 +179,13 @@ export default function MarketingPage() {
                   className="w-full"
                 />
               </div>
-              <div className="absolute -bottom-4 -left-6 flex items-center gap-2 rounded-full border border-[#1BABB4]/30 bg-[#0D1B2A] px-4 py-2 shadow-xl">
-                <CheckCircle className="h-3.5 w-3.5 text-[#1BABB4]" />
-                <span className="text-xs font-medium text-white">Attendance marked in 30 sec</span>
+              <div className="absolute -bottom-4 -left-6 flex items-center gap-2 rounded-full border border-[#1BABB4]/30 bg-white px-4 py-2 shadow-xl shadow-slate-300/40">
+                <CheckCircle className="h-3.5 w-3.5 text-[#0E8A92]" />
+                <span className="text-xs font-medium text-[#0D1B2A]">Attendance marked in 30 sec</span>
               </div>
-              <div className="absolute -right-6 top-8 flex items-center gap-2 rounded-full border border-[#F5A623]/30 bg-[#0D1B2A] px-4 py-2 shadow-xl">
+              <div className="absolute -right-6 top-8 flex items-center gap-2 rounded-full border border-[#F5A623]/40 bg-white px-4 py-2 shadow-xl shadow-slate-300/40">
                 <Bell className="h-3.5 w-3.5 text-[#F5A623]" />
-                <span className="text-xs font-medium text-white">Fee reminders on autopilot</span>
+                <span className="text-xs font-medium text-[#0D1B2A]">Fee reminders on autopilot</span>
               </div>
             </div>
           </HeroFloat>
@@ -191,7 +193,7 @@ export default function MarketingPage() {
       </section>
 
       {/* ── MARQUEE STRIP ── */}
-      <div className="overflow-hidden border-y border-white/5 bg-[#0A1520] py-4">
+      <div className="overflow-hidden border-y border-slate-200 bg-[#EDF2F5] py-4">
         <div
           className="flex gap-6 whitespace-nowrap motion-reduce:animate-none"
           style={{ animation: "marquee 30s linear infinite", display: "flex", width: "max-content" }}
@@ -210,7 +212,7 @@ export default function MarketingPage() {
             ].map((text, i) => (
               <span
                 key={`${text}-${i}`}
-                className="rounded-full border border-[#1BABB4]/30 px-4 py-1.5 text-xs font-medium text-slate-300"
+                className="rounded-full border border-[#1BABB4]/30 bg-white px-4 py-1.5 text-xs font-medium text-slate-600"
               >
                 {text}
               </span>
@@ -223,18 +225,18 @@ export default function MarketingPage() {
       <section className="px-4 py-16 md:px-6 md:py-24">
         <div className="mx-auto max-w-6xl">
           <AnimateOnScroll className="mb-8 text-center md:mb-12">
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-[#1BABB4] md:text-xs">Product</span>
-            <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-white sm:text-3xl md:text-4xl">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-[#0E8A92] md:text-xs">Product</span>
+            <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-[#0D1B2A] sm:text-3xl md:text-4xl">
               Everything your school needs,<br className="hidden sm:block" /> beautifully designed.
             </h2>
-            <p className="mt-3 text-sm text-slate-400 md:mt-4 md:text-base">
+            <p className="mt-3 text-sm text-slate-600 md:mt-4 md:text-base">
               Stop jumping between clunky tools. ConnectMySkool brings administration,<br className="hidden md:block" />
               academics, and communication into one seamless, intuitive interface.
             </p>
           </AnimateOnScroll>
 
           <AnimateOnScroll delay={200} from="scale">
-            <div className="relative overflow-hidden rounded-2xl bg-white/[0.06] p-4 pb-0 shadow-2xl ring-1 ring-white/10 md:rounded-3xl md:p-6 md:pb-0 lg:p-10 lg:pb-0">
+            <div className="relative overflow-hidden rounded-2xl bg-white p-4 pb-0 shadow-2xl shadow-slate-300/40 ring-1 ring-slate-200 md:rounded-3xl md:p-6 md:pb-0 lg:p-10 lg:pb-0">
               {/* Stat bar */}
               <div className="mb-6 grid grid-cols-2 gap-4 sm:flex sm:flex-wrap sm:justify-center sm:gap-8 md:mb-8 lg:gap-16">
                 {[
@@ -244,8 +246,8 @@ export default function MarketingPage() {
                   { label: "Fee Pending", value: "₹4.2L", accent: true },
                 ].map((s) => (
                   <div key={s.label} className="text-center">
-                    <p className="text-[10px] uppercase tracking-widest text-slate-400">{s.label}</p>
-                    <p className={`mt-1 text-2xl font-extrabold ${s.accent ? "text-[#F5A623]" : "text-white"}`}>{s.value}</p>
+                    <p className="text-[10px] uppercase tracking-widest text-slate-500">{s.label}</p>
+                    <p className={`mt-1 text-2xl font-extrabold ${s.accent ? "text-[#E0860D]" : "text-[#0D1B2A]"}`}>{s.value}</p>
                   </div>
                 ))}
               </div>
@@ -254,24 +256,24 @@ export default function MarketingPage() {
               <div className="relative mx-auto flex items-end justify-center">
                 {/* Teacher phone */}
                 <div className="relative z-20 -mr-8 mb-[-80px] hidden w-[210px] flex-shrink-0 self-end lg:block xl:w-[240px]">
-                  <div className="absolute -top-10 left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-full border border-[#1BABB4]/30 bg-[#0D1B2A] px-3 py-1.5 shadow-xl whitespace-nowrap z-30">
-                    <CheckCircle className="h-3 w-3 text-[#1BABB4]" />
-                    <span className="text-[10px] font-medium text-white">Attendance marked in 30 seconds</span>
+                  <div className="absolute -top-10 left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-full border border-[#1BABB4]/30 bg-white px-3 py-1.5 shadow-xl shadow-slate-300/40 whitespace-nowrap z-30">
+                    <CheckCircle className="h-3 w-3 text-[#0E8A92]" />
+                    <span className="text-[10px] font-medium text-[#0D1B2A]">Attendance marked in 30 seconds</span>
                   </div>
-                  <div className="overflow-hidden rounded-[28px] border-2 border-white/20 shadow-2xl shadow-black/50">
+                  <div className="overflow-hidden rounded-[28px] border-2 border-white shadow-2xl shadow-slate-400/40">
                     <Image src="/screenshots/mobile-11-attendance.webp" alt="Teacher marking attendance on ConnectMySkool mobile app" width={540} height={1170} className="w-full" />
                   </div>
                 </div>
 
                 {/* Dashboard */}
-                <div className="relative z-10 w-full max-w-3xl flex-shrink-0 overflow-hidden rounded-t-2xl border border-b-0 border-white/10 shadow-2xl shadow-[#1BABB4]/10">
-                  <div className="flex items-center gap-2 border-b border-white/10 bg-[#0D1B2A] px-4 py-3">
+                <div className="relative z-10 w-full max-w-3xl flex-shrink-0 overflow-hidden rounded-t-2xl border border-b-0 border-slate-200 shadow-2xl shadow-slate-300/40">
+                  <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-100 px-4 py-3">
                     <div className="flex gap-1.5">
-                      <div className="h-2 w-2 rounded-full bg-red-500/60" />
-                      <div className="h-2 w-2 rounded-full bg-yellow-500/60" />
-                      <div className="h-2 w-2 rounded-full bg-green-500/60" />
+                      <div className="h-2 w-2 rounded-full bg-red-400" />
+                      <div className="h-2 w-2 rounded-full bg-yellow-400" />
+                      <div className="h-2 w-2 rounded-full bg-green-400" />
                     </div>
-                    <div className="ml-3 flex-1 rounded bg-white/5 px-3 py-1 text-xs text-slate-500">
+                    <div className="ml-3 flex-1 rounded bg-white px-3 py-1 text-xs text-slate-500">
                       school.connectmyskool.com/admin/dashboard
                     </div>
                   </div>
@@ -280,11 +282,11 @@ export default function MarketingPage() {
 
                 {/* Parent phone */}
                 <div className="relative z-20 -ml-8 mb-[-80px] hidden w-[210px] flex-shrink-0 self-end lg:block xl:w-[240px]">
-                  <div className="absolute -top-10 left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-full border border-[#F5A623]/30 bg-[#0D1B2A] px-3 py-1.5 shadow-xl whitespace-nowrap z-30">
+                  <div className="absolute -top-10 left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-full border border-[#F5A623]/40 bg-white px-3 py-1.5 shadow-xl shadow-slate-300/40 whitespace-nowrap z-30">
                     <Bell className="h-3 w-3 text-[#F5A623]" />
-                    <span className="text-[10px] font-medium text-white">Fee reminders sent automatically</span>
+                    <span className="text-[10px] font-medium text-[#0D1B2A]">Fee reminders sent automatically</span>
                   </div>
-                  <div className="overflow-hidden rounded-[28px] border-2 border-white/20 shadow-2xl shadow-black/50">
+                  <div className="overflow-hidden rounded-[28px] border-2 border-white shadow-2xl shadow-slate-400/40">
                     <Image src="/screenshots/mobile-parent-01-dashboard.webp" alt="Parent mobile app showing child attendance and homework" width={540} height={1170} className="w-full" />
                   </div>
                 </div>
@@ -295,12 +297,12 @@ export default function MarketingPage() {
       </section>
 
       {/* ── FEATURES GRID ── */}
-      <section id="features" className="relative bg-[#0A1520] px-5 py-16 md:px-6 md:py-24">
+      <section id="features" className="relative bg-[#EDF2F5] px-5 py-16 md:px-6 md:py-24">
         <div className="mx-auto max-w-7xl">
           <AnimateOnScroll className="text-center">
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-[#1BABB4] md:text-xs">Features</span>
-            <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-white sm:text-3xl md:text-4xl">Built for every role in your school.</h2>
-            <p className="mt-3 text-sm text-slate-400 md:mt-4 md:text-base">From the principal&apos;s dashboard to the parent&apos;s phone — every touchpoint covered.</p>
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-[#0E8A92] md:text-xs">Features</span>
+            <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-[#0D1B2A] sm:text-3xl md:text-4xl">Built for every role in your school.</h2>
+            <p className="mt-3 text-sm text-slate-600 md:mt-4 md:text-base">From the principal&apos;s dashboard to the parent&apos;s phone — every touchpoint covered.</p>
           </AnimateOnScroll>
           <StaggerChildren className="mt-8 grid gap-4 sm:grid-cols-2 md:mt-14 md:gap-5 lg:grid-cols-3" staggerMs={120} baseDelay={100}>
             {[
@@ -313,14 +315,14 @@ export default function MarketingPage() {
             ].map(({ icon: Icon, title, desc, color }) => (
               <div
                 key={title}
-                className="group rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-sm transition-all duration-200 hover:border-[#1BABB4]/30 hover:bg-white/[0.05] hover:-translate-y-1"
+                className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/50 transition-all duration-200 hover:border-[#1BABB4]/40 hover:shadow-lg hover:shadow-slate-300/50 hover:-translate-y-1"
               >
-                <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: `${color}20` }}>
+                <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: `${color}1A` }}>
                   <Icon className="h-5 w-5" style={{ color }} />
                 </div>
-                <h3 className="mb-2 text-base font-bold text-white">{title}</h3>
-                <p className="text-sm leading-relaxed text-slate-400">{desc}</p>
-                <div className="mt-4 flex items-center gap-1 text-xs font-semibold text-[#1BABB4] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                <h3 className="mb-2 text-base font-bold text-[#0D1B2A]">{title}</h3>
+                <p className="text-sm leading-relaxed text-slate-600">{desc}</p>
+                <div className="mt-4 flex items-center gap-1 text-xs font-semibold text-[#0E8A92] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                   Learn more <ArrowRight className="h-3 w-3" />
                 </div>
               </div>
@@ -331,12 +333,12 @@ export default function MarketingPage() {
 
       {/* ── HOW IT WORKS ── */}
       <section id="how-it-works" className="relative px-5 py-16 md:px-6 md:py-24">
-        <div className="pointer-events-none absolute left-1/2 top-1/2 h-[400px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#1BABB4]/5 blur-[100px]" />
+        <div className="pointer-events-none absolute left-1/2 top-1/2 h-[400px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#1BABB4]/10 blur-[100px]" />
         <div className="relative mx-auto max-w-4xl text-center">
           <AnimateOnScroll>
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-[#1BABB4] md:text-xs">Process</span>
-            <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-white sm:text-3xl md:text-4xl">Up and running in 3 simple steps.</h2>
-            <p className="mt-4 text-slate-400">No IT team needed. We handle everything.</p>
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-[#0E8A92] md:text-xs">Process</span>
+            <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-[#0D1B2A] sm:text-3xl md:text-4xl">Up and running in 3 simple steps.</h2>
+            <p className="mt-4 text-slate-600">No IT team needed. We handle everything.</p>
           </AnimateOnScroll>
           <StaggerChildren className="relative mt-16 grid gap-8 md:grid-cols-3" staggerMs={150}>
             {[
@@ -345,11 +347,11 @@ export default function MarketingPage() {
               { n: "3", title: "Parents Stay Connected", desc: "Parents download your school's app and get real-time updates on everything." },
             ].map(({ n, title, desc }) => (
               <div key={n} className="flex flex-col items-center text-center">
-                <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#1BABB4] bg-[#1BABB4]/10 text-lg font-extrabold text-[#1BABB4]">
+                <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#1BABB4] bg-[#1BABB4]/10 text-lg font-extrabold text-[#0E8A92]">
                   {n}
                 </div>
-                <h3 className="mb-2 text-base font-bold text-white">{title}</h3>
-                <p className="text-sm leading-relaxed text-slate-400">{desc}</p>
+                <h3 className="mb-2 text-base font-bold text-[#0D1B2A]">{title}</h3>
+                <p className="text-sm leading-relaxed text-slate-600">{desc}</p>
               </div>
             ))}
           </StaggerChildren>
@@ -368,25 +370,25 @@ export default function MarketingPage() {
       <section id="testimonial" className="px-4 py-16 md:px-6 md:py-24">
         <div className="mx-auto max-w-7xl">
           <AnimateOnScroll from="scale">
-            <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] md:rounded-3xl">
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg shadow-slate-200/50 md:rounded-3xl">
               <div className="grid md:grid-cols-2">
-                <div className="border-b border-white/10 p-6 md:border-b-0 md:border-r md:p-10">
-                  <div className="mb-4 text-5xl font-serif leading-none text-[#1BABB4]/40 md:mb-6 md:text-6xl">&ldquo;</div>
-                  <p className="text-base font-medium leading-relaxed text-white md:text-xl">
+                <div className="border-b border-slate-200 p-6 md:border-b-0 md:border-r md:p-10">
+                  <div className="mb-4 text-5xl font-serif leading-none text-[#1BABB4]/50 md:mb-6 md:text-6xl">&ldquo;</div>
+                  <p className="text-base font-medium leading-relaxed text-[#0D1B2A] md:text-xl">
                     ConnectMySkool transformed how we communicate with parents.
                     Fee collection alone saves us 3 hours a week.
                   </p>
                   <div className="mt-8 flex items-center gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1BABB4]/20 text-sm font-bold text-[#1BABB4]">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1BABB4]/15 text-sm font-bold text-[#0E8A92]">
                       AM
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-white">Dr. Anjali Mehta</p>
-                      <p className="text-xs text-slate-400">Principal, St. Xavier&apos;s International</p>
+                      <p className="text-sm font-semibold text-[#0D1B2A]">Dr. Anjali Mehta</p>
+                      <p className="text-xs text-slate-500">Principal, St. Xavier&apos;s International</p>
                     </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-2">
+                <div className="grid grid-cols-2 bg-[#F6F9FB]">
                   {[
                     { value: "98%", label: "Parent app adoption rate" },
                     { value: "3×", label: "Faster fee collection" },
@@ -395,10 +397,10 @@ export default function MarketingPage() {
                   ].map(({ value, label }, i) => (
                     <div
                       key={label}
-                      className={`flex flex-col items-center justify-center p-4 text-center border-white/10 md:p-8 ${i < 2 ? "border-b" : ""} ${i % 2 === 0 ? "border-r" : ""}`}
+                      className={`flex flex-col items-center justify-center p-4 text-center border-slate-200 md:p-8 ${i < 2 ? "border-b" : ""} ${i % 2 === 0 ? "border-r" : ""}`}
                     >
-                      <p className="text-xl font-extrabold text-[#1BABB4] md:text-3xl">{value}</p>
-                      <p className="mt-1 text-[10px] text-slate-400 md:text-xs">{label}</p>
+                      <p className="text-xl font-extrabold text-[#0E8A92] md:text-3xl">{value}</p>
+                      <p className="mt-1 text-[10px] text-slate-500 md:text-xs">{label}</p>
                     </div>
                   ))}
                 </div>
@@ -412,10 +414,10 @@ export default function MarketingPage() {
       <section id="contact" className="relative overflow-hidden px-5 py-16 md:px-6 md:py-24">
         <div className="pointer-events-none absolute left-1/2 top-0 h-[400px] w-[600px] -translate-x-1/2 rounded-full bg-[#1BABB4]/10 blur-[100px]" />
         <AnimateOnScroll className="relative mx-auto max-w-3xl text-center">
-          <h2 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl md:text-4xl lg:text-5xl">
+          <h2 className="text-2xl font-extrabold tracking-tight text-[#0D1B2A] sm:text-3xl md:text-4xl lg:text-5xl">
             Ready to connect your school?
           </h2>
-          <p className="mt-4 text-sm text-slate-400 md:mt-5 md:text-lg">
+          <p className="mt-4 text-sm text-slate-600 md:mt-5 md:text-lg">
             See ConnectMySkool in action — a live demo tailored to your school&apos;s needs, no commitment required.
           </p>
           <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center md:mt-8">
@@ -429,7 +431,7 @@ export default function MarketingPage() {
               href="https://wa.me/919789471572"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 rounded-full border border-white/20 px-8 py-3 text-sm font-semibold text-white transition-all hover:border-white/40 hover:bg-white/5 hover:scale-[1.03] active:scale-[0.97]"
+              className="flex items-center gap-2 rounded-full border border-slate-300 bg-white px-8 py-3 text-sm font-semibold text-[#0D1B2A] transition-all hover:border-slate-400 hover:bg-slate-50 hover:scale-[1.03] active:scale-[0.97]"
             >
               <svg className="h-4 w-4 text-[#25D366]" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
@@ -441,16 +443,17 @@ export default function MarketingPage() {
       </section>
 
       {/* ── FOOTER ── */}
-      <footer className="border-t border-white/5 px-6 py-8">
+      <footer className="border-t border-slate-200 bg-[#EDF2F5] px-6 py-8">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 text-xs text-slate-500 md:flex-row">
           <div className="flex items-center gap-2">
             <Image src="/logo-mark.webp" alt="ConnectMySkool" width={20} height={20} />
             <span>© {new Date().getFullYear()} ConnectMySkool. All rights reserved.</span>
           </div>
           <div className="flex gap-6">
-            <a href="#features" className="hover:text-white transition-colors">Features</a>
-            <a href="/privacy" className="hover:text-white transition-colors">Privacy Policy</a>
-            <a href="#contact" className="hover:text-white transition-colors">Contact</a>
+            <a href="#features" className="hover:text-[#0E8A92] transition-colors">Features</a>
+            <a href="/login" className="hover:text-[#0E8A92] transition-colors">Log in</a>
+            <a href="/privacy" className="hover:text-[#0E8A92] transition-colors">Privacy Policy</a>
+            <a href="#contact" className="hover:text-[#0E8A92] transition-colors">Contact</a>
           </div>
         </div>
       </footer>
