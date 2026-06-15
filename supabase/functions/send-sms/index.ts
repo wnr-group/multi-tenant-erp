@@ -17,8 +17,10 @@ Deno.serve(async (req) => {
     });
   }
 
-  const authHeader = req.headers.get("Authorization");
-  if (authHeader !== `Bearer ${hookSecret}`) {
+  // Gateway validates Authorization as JWT (service_role_key).
+  // We do app-level verification via x-hook-secret.
+  const incomingSecret = req.headers.get("x-hook-secret");
+  if (incomingSecret !== hookSecret) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { "Content-Type": "application/json" },
