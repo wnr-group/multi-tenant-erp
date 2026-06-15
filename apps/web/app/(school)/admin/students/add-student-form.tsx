@@ -64,7 +64,7 @@ export function AddStudentForm({
       const resp = await fetch("/api/students/resolve-parent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: parentPhone, schoolId }),
+        body: JSON.stringify({ phone: parentPhone, schoolId, studentName: name }),
       });
       const resolveJson = await resp.json();
       if (!resp.ok) {

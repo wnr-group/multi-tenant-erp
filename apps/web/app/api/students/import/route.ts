@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
 import { findOrCreateUserByPhone, attachRole } from "@/lib/provisioning/find-or-create-user";
+import { sendParentWelcomeSms } from "@/lib/provisioning/send-welcome-sms";
 
 interface ImportRow {
   full_name: string;
@@ -49,6 +50,13 @@ export async function POST(request: NextRequest) {
 
   const { rows } = (await request.json()) as { rows: ImportRow[] };
 
+  const { data: schoolData } = await adminClient
+    .from("schools")
+    .select("domain")
+    .eq("id", schoolId)
+    .single();
+  const schoolDomain = schoolData?.domain ?? null;
+
   const { data: classes } = await adminClient
     .from("classes")
     .select("id, name")
@@ -89,9 +97,12 @@ export async function POST(request: NextRequest) {
       let parentProfileId: string | null = null;
       const normalizedParent = `+91${(row.parent_phone ?? "").replace(/\D/g, "").slice(-10)}`;
       if (/^\+91\d{10}$/.test(normalizedParent)) {
-        const { userId } = await findOrCreateUserByPhone(adminClient, normalizedParent, row.parent_name?.trim() ?? "");
+        const { userId, created } = await findOrCreateUserByPhone(adminClient, normalizedParent, row.parent_name?.trim() ?? "");
         await attachRole(adminClient, userId, schoolId, "parent");
         parentProfileId = userId;
+        if (created && schoolDomain) {
+          await sendParentWelcomeSms(normalizedParent, row.parent_name?.trim() ?? "", row.full_name.trim(), schoolDomain);
+        }
       }
 
       const record = {
