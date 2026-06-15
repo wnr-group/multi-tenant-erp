@@ -114,9 +114,16 @@ export async function middleware(request: NextRequest) {
     student: 5,
   };
 
+  // Use service-role client for role lookups to bypass RLS — middleware is
+  // server-side and the service client is already created above for school validation.
+  const serviceForRoles = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
   let role: string | null = null;
   if (schoolId) {
-    const { data: rows } = await supabase
+    const { data: rows } = await serviceForRoles
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
@@ -130,7 +137,7 @@ export async function middleware(request: NextRequest) {
   }
   if (!role) {
     // Platform admin fallback (NULL school_id, super_admin).
-    const { data } = await supabase
+    const { data } = await serviceForRoles
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id)

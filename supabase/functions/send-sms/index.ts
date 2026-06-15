@@ -1,3 +1,5 @@
+import { Webhook } from "npm:standardwebhooks@1.0.0";
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -17,32 +19,19 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Gateway validates Authorization as JWT (service_role_key).
-  // We do app-level verification via x-hook-secret.
-  const incomingSecret = req.headers.get("x-hook-secret");
-  if (incomingSecret !== hookSecret) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  const payload = await req.text();
+  const headers = Object.fromEntries(req.headers);
 
-  let phone: string | undefined;
-  let otp: string | undefined;
+  // Verify Standard Webhooks signature (sent by Supabase Auth HTTP hook)
+  const secret = hookSecret.replace("v1,whsec_", "");
+  const wh = new Webhook(secret);
+  let user: { phone: string };
+  let sms: { otp: string };
   try {
-    const body = await req.json() as { phone?: string; otp?: string };
-    phone = body.phone;
-    otp = body.otp;
+    ({ user, sms } = wh.verify(payload, headers) as { user: { phone: string }; sms: { otp: string } });
   } catch {
-    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
-  if (!phone || !otp) {
-    return new Response(JSON.stringify({ error: "phone and otp required" }), {
-      status: 400,
+    return new Response(JSON.stringify({ error: "Invalid webhook signature" }), {
+      status: 401,
       headers: { "Content-Type": "application/json" },
     });
   }
@@ -51,7 +40,7 @@ Deno.serve(async (req) => {
   const nettyfishPassword = Deno.env.get("NETTYFISH_PASSWORD");
   const senderId          = Deno.env.get("NETTYFISH_SENDER_ID");
   const channel           = Deno.env.get("NETTYFISH_CHANNEL") ?? "Trans";
-  const route             = Deno.env.get("NETTYFISH_ROUTE") ?? "##";
+  const route             = Deno.env.get("NETTYFISH_ROUTE") ?? "4";
 
   if (!nettyfishUser || !nettyfishPassword || !senderId) {
     return new Response(JSON.stringify({ error: "SMS provider not configured" }), {
@@ -61,8 +50,8 @@ Deno.serve(async (req) => {
   }
 
   // Nettyfish expects phone without leading +
-  const number = phone.replace(/^\+/, "");
-  const text   = `ConnectMySkool: Your login OTP is ${otp}. Valid for 10 minutes. Do not share this OTP with anyone. Thank You CMYSKL`;
+  const number = user.phone.replace(/^\+/, "");
+  const text   = `ConnectMySkool: Your login OTP is ${sms.otp}. Valid for 10 minutes. Do not share this OTP with anyone. Thank You CMYSKL`;
 
   const params = new URLSearchParams({
     user:     nettyfishUser,
@@ -96,7 +85,7 @@ Deno.serve(async (req) => {
     );
   }
 
-  return new Response(JSON.stringify({ ok: true }), {
+  return new Response(JSON.stringify({}), {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });
