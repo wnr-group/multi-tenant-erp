@@ -16,7 +16,7 @@ export default async function StudentsPage() {
     supabase
       .from("student_enrollments")
       .select(
-        "id, roll_number, is_active, student_profile:student_profiles(id, full_name, email, admission_number, parent_phone, profile:profiles!profile_id(full_name, email)), class:classes(name), section:sections(name)"
+        "id, roll_number, is_active, student_profile:student_profiles(id, full_name, email, admission_number, profile:profiles!profile_id(full_name, email), parent:profiles!parent_profile_id(full_name, phone)), class:classes(name), section:sections(name)"
       )
       .eq("school_id", schoolId)
       .eq("academic_year_id", academicYearId ?? "")
@@ -29,7 +29,7 @@ export default async function StudentsPage() {
   ]);
 
   const rows = (enrollments ?? []).map((e) => {
-    const sp = e.student_profile as unknown as { id: string; full_name: string | null; email: string | null; admission_number: string | null; parent_phone: string | null; profile: { full_name: string; email: string } | null } | null;
+    const sp = e.student_profile as unknown as { id: string; full_name: string | null; email: string | null; admission_number: string | null; profile: { full_name: string; email: string } | null; parent: { full_name: string | null; phone: string | null } | null } | null;
     const c = e.class as unknown as { name: string } | null;
     const sec = e.section as unknown as { name: string } | null;
     return {
@@ -41,7 +41,7 @@ export default async function StudentsPage() {
       admission_number: sp?.admission_number ?? "",
       class_name: c?.name ?? "",
       section: sec?.name ?? "",
-      parent_phone: sp?.parent_phone ?? "",
+      parent_phone: sp?.parent?.phone ?? "",
     };
   });
 

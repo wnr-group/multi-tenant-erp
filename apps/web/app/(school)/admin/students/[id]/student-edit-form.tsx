@@ -92,15 +92,27 @@ export function StudentEditForm({
         if (profileErr) { toast.error(profileErr.message); return; }
       }
 
+      // Resolve the parent identity by phone (find-or-create + parent role),
+      // then link the student to it. The parent's phone/name live on their
+      // profile/auth identity — not on the student row.
+      if (!parentPhone.trim()) { toast.error("Parent phone is required."); return; }
+      const resp = await fetch("/api/students/resolve-parent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: parentPhone, schoolId, parentName }),
+      });
+      const resolveJson = await resp.json();
+      if (!resp.ok) { toast.error(resolveJson.error ?? "Failed to resolve parent."); return; }
+      const parentProfileId: string = resolveJson.parentProfileId;
+
       // Update student_profiles fields
       const { error: spErr } = await supabase
         .from("student_profiles")
         .update({
           admission_number: admission || null,
-          parent_phone: parentPhone || null,
           date_of_birth: dateOfBirth || null,
-          parent_name: parentName || null,
           gender: gender || null,
+          parent_profile_id: parentProfileId,
         })
         .eq("id", studentId);
       if (spErr) { toast.error(spErr.message); return; }

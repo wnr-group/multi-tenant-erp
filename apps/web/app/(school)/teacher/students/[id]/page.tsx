@@ -36,7 +36,7 @@ export default async function TeacherStudentDetailPage({
   const [{ data: student }, { data: classes }] = await Promise.all([
     supabase
       .from("student_profiles")
-      .select("id, full_name, email, admission_number, parent_phone, date_of_birth, parent_name, gender, profile:profiles!profile_id(full_name, email, avatar_url)")
+      .select("id, full_name, email, admission_number, date_of_birth, gender, profile:profiles!profile_id(full_name, email, avatar_url), parent:profiles!parent_profile_id(full_name, phone)")
       .eq("id", id)
       .single(),
     supabase
@@ -57,9 +57,11 @@ export default async function TeacherStudentDetailPage({
     .maybeSingle();
 
   const profile = student.profile as unknown as { full_name: string; email: string; avatar_url: string | null } | null;
+  const parent = student.parent as unknown as { full_name: string | null; phone: string | null } | null;
   const displayName = profile?.full_name ?? (student as unknown as { full_name: string | null }).full_name ?? "Student";
   const displayEmail = profile?.email ?? (student as unknown as { email: string | null }).email ?? "";
-  const displayParentPhone = (student as unknown as { parent_phone: string | null }).parent_phone ?? "";
+  const displayParentPhone = parent?.phone ?? "";
+  const displayParentName = parent?.full_name ?? "";
   const cls = enrollment?.class as unknown as { name: string } | null;
   const sec = enrollment?.section as unknown as { name: string } | null;
 
@@ -116,7 +118,7 @@ export default async function TeacherStudentDetailPage({
           initialClassId={enrollment?.class_id ?? ""}
           initialSectionId={enrollment?.section_id ?? ""}
           initialDateOfBirth={(student as any).date_of_birth ?? ""}
-          initialParentName={(student as any).parent_name ?? ""}
+          initialParentName={displayParentName}
           initialGender={(student as any).gender ?? ""}
           classes={classes ?? []}
         />

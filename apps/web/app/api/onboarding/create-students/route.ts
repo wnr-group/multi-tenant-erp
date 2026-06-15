@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient, createServiceSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
+import { findOrCreateUserByPhone, attachRole } from "@/lib/provisioning/find-or-create-user";
 
 interface StudentInput {
   fullName: string;
@@ -39,11 +40,25 @@ export async function POST(request: NextRequest) {
   for (const s of students) {
     const uid = crypto.randomUUID();
 
+    // Resolve the parent identity by phone and link via parent_profile_id.
+    let parentProfileId: string | null = null;
+    const normalizedParent = `+91${(s.parentPhone ?? "").replace(/\D/g, "").slice(-10)}`;
+    if (/^\+91\d{10}$/.test(normalizedParent)) {
+      try {
+        const { userId } = await findOrCreateUserByPhone(svc, normalizedParent, "");
+        await attachRole(svc, userId, schoolId, "parent");
+        parentProfileId = userId;
+      } catch {
+        failed.push(s.fullName);
+        continue;
+      }
+    }
+
     const { data: sp, error: spErr } = await svc.from("student_profiles").insert({
       school_id: schoolId,
       full_name: s.fullName,
       admission_number: `ADM-${uid.slice(0, 8).toUpperCase()}`,
-      parent_phone: s.parentPhone || null,
+      parent_profile_id: parentProfileId,
     }).select("id").single();
 
     if (spErr || !sp) { failed.push(s.fullName); continue; }

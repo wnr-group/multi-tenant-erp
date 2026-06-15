@@ -15,7 +15,7 @@ export default async function CertificatePage({ params }: { params: Promise<{ st
   const [{ data: student }, { data: school }, { data: enrollment }, { data: academicYear }] = await Promise.all([
     supabase
       .from("student_profiles")
-      .select("id, full_name, admission_number, date_of_birth, parent_name, gender")
+      .select("id, full_name, admission_number, date_of_birth, gender, parent:profiles!parent_profile_id(full_name)")
       .eq("id", studentId)
       .eq("school_id", schoolId)
       .single(),
@@ -52,7 +52,7 @@ export default async function CertificatePage({ params }: { params: Promise<{ st
         admissionNumber: student.admission_number ?? null,
         className: cls?.name ?? "—",
         sectionName: sec?.name ?? "—",
-        parentName: (student as any).parent_name ?? null,
+        parentName: (student as any).parent?.full_name ?? null,
         gender: (student as any).gender ?? null,
         dateOfBirth: (student as any).date_of_birth ?? null,
         academicYearName: academicYear?.name ?? "—",

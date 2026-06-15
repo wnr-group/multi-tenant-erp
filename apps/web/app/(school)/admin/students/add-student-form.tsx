@@ -79,7 +79,6 @@ export function AddStudentForm({
           school_id: schoolId,
           full_name: name,
           admission_number: admissionNumber || null,
-          parent_phone: parentPhone || null,
           parent_profile_id: parentProfileId,
         })
         .select("id")

@@ -23,7 +23,7 @@ export default async function TeacherStudentsPage() {
       .single(),
     supabase
       .from("student_enrollments")
-      .select("roll_number, student_profile:student_profiles(id, full_name, admission_number, photo_url, parent_phone)")
+      .select("roll_number, student_profile:student_profiles(id, full_name, admission_number, photo_url, parent:profiles!parent_profile_id(phone))")
       .eq("section_id", sectionId)
       .eq("school_id", schoolId)
       .eq("academic_year_id", academicYearId ?? "")
@@ -32,14 +32,14 @@ export default async function TeacherStudentsPage() {
   ]);
 
   const students = (enrollments ?? []).map((e) => {
-    const sp = e.student_profile as unknown as { id: string; full_name: string | null; admission_number: string | null; photo_url: string | null; parent_phone: string | null } | null;
+    const sp = e.student_profile as unknown as { id: string; full_name: string | null; admission_number: string | null; photo_url: string | null; parent: { phone: string | null } | null } | null;
     return {
       id: sp?.id ?? "",
       full_name: sp?.full_name ?? null,
       roll_number: e.roll_number ?? null,
       admission_number: sp?.admission_number ?? null,
       photo_url: sp?.photo_url ?? null,
-      parent_phone: sp?.parent_phone ?? null,
+      parent_phone: sp?.parent?.phone ?? null,
     };
   });
 

@@ -20,23 +20,25 @@ export default async function UninstalledStudentsPage({
   const [studentsRes, classesRes] = await Promise.all([
     supabase
       .from("student_profiles")
-      .select("id, full_name, parent_phone")
+      .select("id, full_name, parent:profiles!parent_profile_id(phone, push_token)")
       .eq("school_id", schoolId)
-      .not("parent_phone", "is", null)
-      .is("parent_profile_id", null)
+      .not("parent_profile_id", "is", null)
       .order("full_name"),
     supabase.from("classes").select("id, name").eq("school_id", schoolId).order("order"),
   ]);
 
-  const allStudents = (studentsRes.data ?? []).map((s: any) => ({
-    id: s.id,
-    full_name: s.full_name ?? "—",
-    parent_phone: s.parent_phone ?? "",
-    roll_number: "",
-    class_id: "",
-    class_name: "—",
-    section_name: "—",
-  }));
+  // "App not installed" = the linked parent has not registered a push token.
+  const allStudents = (studentsRes.data ?? [])
+    .filter((s: any) => !s.parent?.push_token)
+    .map((s: any) => ({
+      id: s.id,
+      full_name: s.full_name ?? "—",
+      parent_phone: s.parent?.phone ?? "",
+      roll_number: "",
+      class_id: "",
+      class_name: "—",
+      section_name: "—",
+    }));
 
   const filtered = classId
     ? allStudents.filter((s) => s.class_id === classId)

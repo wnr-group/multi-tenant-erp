@@ -1,4 +1,5 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 import { type NextRequest, NextResponse } from "next/server";
 
 const PUBLIC_PATHS = ["/login", "/auth/callback", "/download-app"];
@@ -19,12 +20,34 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
+  // Mobile app calls these API routes with Bearer token — skip cookie auth + school-domain check
+  if (pathname.startsWith("/api/fees/") || pathname.startsWith("/api/students/import")) {
     return NextResponse.next();
   }
 
-  // Mobile app calls these API routes with Bearer token — skip cookie auth + school-domain check
-  if (pathname.startsWith("/api/fees/") || pathname.startsWith("/api/students/import")) {
+  // Validate the subdomain maps to a real, active school before anything else
+  // (including the unauthenticated /login path). RLS hides schools from anon,
+  // so use the service-role client. Platform-admin domains have no school row.
+  let resolvedSchoolId: string | null = null;
+  if (!isPlatformAdmin) {
+    const service = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+    const { data: school } = await service
+      .from("schools")
+      .select("id, is_active")
+      .eq("domain", domain)
+      .maybeSingle();
+    if (!school || !school.is_active) {
+      return NextResponse.rewrite(new URL("/school-not-found", request.url), {
+        status: 404,
+      });
+    }
+    resolvedSchoolId = school.id;
+  }
+
+  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }
 
@@ -68,21 +91,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  let schoolId: string | null = null;
-  if (!isPlatformAdmin) {
-    const { data: school } = await supabase
-      .from("schools")
-      .select("id, is_active")
-      .eq("domain", domain)
-      .single();
-
-    if (!school || !school.is_active) {
-      return new NextResponse("School not found or inactive.", { status: 404 });
-    }
-    schoolId = school.id;
-    request.headers.set("x-school-id", school.id);
+  // School already validated above via service-role (RLS hides it from anon
+  // until the x-school-id scope header is set, which is a chicken-and-egg for
+  // the schools table itself — so we reuse the resolved id rather than re-query).
+  let schoolId: string | null = resolvedSchoolId;
+  if (!isPlatformAdmin && schoolId) {
+    request.headers.set("x-school-id", schoolId);
     response = NextResponse.next({ request });
-    response.headers.set("x-school-id", school.id);
+    response.headers.set("x-school-id", schoolId);
   }
 
   // Resolve user's role at this school by fixed precedence.
@@ -131,6 +147,24 @@ export async function middleware(request: NextRequest) {
     response = NextResponse.next({ request });
     response.headers.set("x-active-role", role);
     response.headers.set("x-school-id", schoolId);
+
+    // Also persist the scope as cookies so the browser Supabase client can
+    // forward them as headers on its direct PostgREST calls (middleware only
+    // runs on navigations, not on client-side API requests). Not httpOnly:
+    // client JS must read them. Not a trust boundary — scope_pre_request
+    // re-validates the (user, school, role) triple against user_roles, so a
+    // tampered cookie fails closed.
+    const host = request.headers.get("host") ?? "";
+    const cookieDomain = host.includes("lvh.me")
+      ? ".lvh.me"
+      : host.includes("balajierp.com")
+      ? ".balajierp.com"
+      : host.includes("connectmyskool.com")
+      ? ".connectmyskool.com"
+      : undefined;
+    const scopeCookie = { path: "/", sameSite: "lax" as const, domain: cookieDomain };
+    response.cookies.set("x-school-id", schoolId, scopeCookie);
+    response.cookies.set("x-active-role", role, scopeCookie);
   }
 
   // Platform admin routing

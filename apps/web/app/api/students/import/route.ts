@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
+import { findOrCreateUserByPhone, attachRole } from "@/lib/provisioning/find-or-create-user";
 
 interface ImportRow {
   full_name: string;
@@ -11,6 +12,7 @@ interface ImportRow {
   class_name?: string;
   section_name?: string;
   parent_phone?: string;
+  parent_name?: string;
 }
 
 interface RowResult {
@@ -83,6 +85,15 @@ export async function POST(request: NextRequest) {
         ? sectionMap.get(`${classId}:${sectionName}`)
         : undefined;
 
+      // Resolve the parent identity by phone and link via parent_profile_id.
+      let parentProfileId: string | null = null;
+      const normalizedParent = `+91${(row.parent_phone ?? "").replace(/\D/g, "").slice(-10)}`;
+      if (/^\+91\d{10}$/.test(normalizedParent)) {
+        const { userId } = await findOrCreateUserByPhone(adminClient, normalizedParent, row.parent_name?.trim() ?? "");
+        await attachRole(adminClient, userId, schoolId, "parent");
+        parentProfileId = userId;
+      }
+
       const record = {
         school_id: schoolId,
         full_name: row.full_name.trim(),
@@ -91,7 +102,7 @@ export async function POST(request: NextRequest) {
         admission_number: row.admission_number?.trim() || null,
         class_id: classId ?? null,
         section_id: sectionId ?? null,
-        parent_phone: row.parent_phone?.trim() || null,
+        parent_profile_id: parentProfileId,
       };
 
       if (row.admission_number?.trim()) {

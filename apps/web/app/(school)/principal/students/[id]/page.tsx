@@ -32,7 +32,7 @@ export default async function PrincipalStudentDetailPage({
   const [{ data: student }, { data: disciplineRecords }] = await Promise.all([
     supabase
       .from("student_profiles")
-      .select("id, full_name, admission_number, photo_url, parent_phone")
+      .select("id, full_name, admission_number, photo_url, parent:profiles!parent_profile_id(phone)")
       .eq("id", id)
       .single(),
     supabase
@@ -88,7 +88,7 @@ export default async function PrincipalStudentDetailPage({
               {cls?.name && <span>{cls.name}{sec?.name ? ` · Section ${sec.name}` : ""}</span>}
               {enrollment?.roll_number && <span>Roll No: {enrollment.roll_number}</span>}
               {student.admission_number && <span>Adm: {student.admission_number}</span>}
-              {student.parent_phone && <span>Phone: {student.parent_phone}</span>}
+              {(student.parent as unknown as { phone: string | null } | null)?.phone && <span>Phone: {(student.parent as unknown as { phone: string | null }).phone}</span>}
             </div>
           </div>
         </div>

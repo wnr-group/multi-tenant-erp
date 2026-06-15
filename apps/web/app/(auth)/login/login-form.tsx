@@ -6,9 +6,11 @@ import { phoneSchema, otpSchema } from "@erp/shared";
 import { GraduationCap } from "lucide-react";
 
 export function LoginForm({
+  schoolId,
   schoolName,
   primaryColor,
 }: {
+  schoolId: string | null;
   schoolName: string;
   primaryColor: string;
 }) {
@@ -28,10 +30,16 @@ export function LoginForm({
     const reason = params.get("reason");
     if (reason === "no_access") setNoAccess(true);
     const supabase = createClient();
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session && reason === "no_access") {
+    // Validate against the auth server (getUser), not just the local cookie
+    // (getSession). A stale cookie — e.g. after a DB reset or expired refresh
+    // token — otherwise makes the login page redirect to "/" while middleware
+    // bounces back to "/login", causing an infinite reload. Sign out on no user.
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) {
         supabase.auth.signOut();
-      } else if (session && !reason) {
+      } else if (reason === "no_access") {
+        supabase.auth.signOut();
+      } else if (!reason) {
         window.location.href = "/";
       }
     });
@@ -46,6 +54,7 @@ export function LoginForm({
   async function handleSendOtp(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setNoAccess(false);
     const result = phoneSchema.safeParse({ phone });
     if (!result.success) {
       setError(result.error.errors[0].message);
@@ -53,6 +62,22 @@ export function LoginForm({
     }
     setLoading(true);
     const supabase = createClient();
+
+    const { data: allowed, error: checkError } = await supabase.rpc(
+      "check_phone_has_access",
+      { p_phone: `+91${phone}`, p_school_id: schoolId },
+    );
+    if (checkError) {
+      setLoading(false);
+      setError("Could not verify access. Please try again.");
+      return;
+    }
+    if (!allowed) {
+      setLoading(false);
+      setNoAccess(true);
+      return;
+    }
+
     const { error: authError } = await supabase.auth.signInWithOtp({
       phone: `+91${phone}`,
     });

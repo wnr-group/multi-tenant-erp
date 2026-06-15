@@ -72,6 +72,21 @@ BEGIN
         ELSE 6 END
       LIMIT 1;
     END IF;
+
+    -- Platform super_admin acting on a school subdomain: they hold a global
+    -- super_admin row (school_id IS NULL), not a per-school role, so the lookups
+    -- above find nothing. Grant them effective scope for the claimed school so
+    -- they can administer it (RLS policies already honor super_admin).
+    IF valid_school IS NULL THEN
+      IF EXISTS (
+        SELECT 1 FROM public.user_roles ur
+        WHERE ur.user_id = uid AND ur.school_id IS NULL
+          AND ur.role = 'super_admin' AND ur.is_active = true
+      ) THEN
+        valid_school := hdr_school::uuid;
+        valid_role   := 'super_admin';
+      END IF;
+    END IF;
   EXCEPTION WHEN invalid_text_representation THEN
     -- Malformed uuid/role header: deny (GUCs already empty).
     RETURN;

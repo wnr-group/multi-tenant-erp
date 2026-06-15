@@ -17,12 +17,18 @@ export default async function LoginPage() {
   const supabase = createServiceSupabaseClient();
   const { data: school } = await supabase
     .from("schools")
-    .select("name, primary_color")
+    .select("id, name, primary_color")
     .eq("domain", domain)
     .single();
 
   const schoolName = school?.name ?? "School Portal";
   const primaryColor = school?.primary_color ?? "#2563EB";
 
-  return <LoginForm schoolName={schoolName} primaryColor={primaryColor} />;
+  return (
+    <LoginForm
+      schoolId={school?.id ?? null}
+      schoolName={schoolName}
+      primaryColor={primaryColor}
+    />
+  );
 }
