@@ -1,24 +1,22 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
       },
     });
   }
 
-  // Issue 1: Verify caller authentication (fail-closed)
-  const hookSecret = Deno.env.get("SMS_HOOK_SECRET");
+  const hookSecret = Deno.env.get("SEND_SMS_HOOK_SECRET");
   if (!hookSecret) {
-    return new Response(JSON.stringify({ error: "SMS_HOOK_SECRET not configured" }), {
+    return new Response(JSON.stringify({ error: "SEND_SMS_HOOK_SECRET not configured" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });
   }
+
   const authHeader = req.headers.get("Authorization");
   if (authHeader !== `Bearer ${hookSecret}`) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -27,7 +25,6 @@ serve(async (req) => {
     });
   }
 
-  // Issue 2: Wrap req.json() in try/catch for malformed bodies
   let phone: string | undefined;
   let otp: string | undefined;
   try {
@@ -48,40 +45,53 @@ serve(async (req) => {
     });
   }
 
-  // Issue 3: Guard environment variable access
-  const authKey = Deno.env.get("MSG91_AUTH_KEY");
-  const flowId = Deno.env.get("MSG91_FLOW_ID");
-  const senderId = Deno.env.get("MSG91_SENDER_ID");
-  if (!authKey || !flowId || !senderId) {
+  const nettyfishUser     = Deno.env.get("NETTYFISH_USER");
+  const nettyfishPassword = Deno.env.get("NETTYFISH_PASSWORD");
+  const senderId          = Deno.env.get("NETTYFISH_SENDER_ID");
+  const channel           = Deno.env.get("NETTYFISH_CHANNEL") ?? "Trans";
+  const route             = Deno.env.get("NETTYFISH_ROUTE") ?? "##";
+
+  if (!nettyfishUser || !nettyfishPassword || !senderId) {
     return new Response(JSON.stringify({ error: "SMS provider not configured" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });
   }
 
-  // MSG91 expects phone without leading +
-  const mobile = phone.replace(/^\+/, "");
+  // Nettyfish expects phone without leading +
+  const number = phone.replace(/^\+/, "");
+  const text   = `ConnectMySkool: Your login OTP is ${otp}. Valid for 10 minutes. Do not share this OTP with anyone. Thank You CMYSKL`;
 
-  const res = await fetch("https://api.msg91.com/api/v5/flow/", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      authkey: authKey,
-    },
-    body: JSON.stringify({
-      flow_id: flowId,
-      sender: senderId,
-      mobiles: mobile,
-      otp,
-    }),
+  const params = new URLSearchParams({
+    user:     nettyfishUser,
+    password: nettyfishPassword,
+    senderid: senderId,
+    channel,
+    DCS:      "0",
+    flashsms: "0",
+    number,
+    text,
+    route,
   });
 
-  if (!res.ok) {
-    const text = await res.text();
-    return new Response(JSON.stringify({ error: text }), {
-      status: 502,
-      headers: { "Content-Type": "application/json" },
-    });
+  let result: { ErrorCode?: string; ErrorMessage?: string };
+  try {
+    const res = await fetch(
+      `http://retailsms.nettyfish.com/api/mt/SendSMS?${params.toString()}`
+    );
+    result = await res.json();
+  } catch (err) {
+    return new Response(
+      JSON.stringify({ error: `SMS provider unreachable: ${err}` }),
+      { status: 502, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  if (result.ErrorCode !== "000") {
+    return new Response(
+      JSON.stringify({ error: `SMS provider error: ${result.ErrorMessage ?? result.ErrorCode}` }),
+      { status: 502, headers: { "Content-Type": "application/json" } }
+    );
   }
 
   return new Response(JSON.stringify({ ok: true }), {

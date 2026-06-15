@@ -9,10 +9,22 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+const PLATFORM_ADMIN_DOMAINS = ["admin.balajierp.com", "core.lvh.me", "core.connectmyskool.com"];
+
 export default async function LoginPage() {
   const headersList = await headers();
   const host = headersList.get("host") ?? "";
   const domain = host.replace(/:\d+$/, "");
+
+  if (PLATFORM_ADMIN_DOMAINS.includes(domain)) {
+    return (
+      <LoginForm
+        schoolId={null}
+        schoolName="ConnectMySkool Admin"
+        primaryColor="#0d9488"
+      />
+    );
+  }
 
   // Use service role to bypass RLS — login page is unauthenticated
   const supabase = createServiceSupabaseClient();

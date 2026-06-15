@@ -70,9 +70,13 @@ export async function middleware(request: NextRequest) {
           const isConnectmyskool = host.includes("connectmyskool.com");
           const cookieDomain = isLvh ? ".lvh.me" : isBalaji ? ".balajierp.com" : isConnectmyskool ? ".connectmyskool.com" : undefined;
 
+          // Set all cookies on the request first, then create ONE response and
+          // set all cookies on it. Creating a new NextResponse inside the loop
+          // caused each iteration to discard the previous one's cookies, breaking
+          // multi-chunk auth tokens and triggering an infinite refresh loop.
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          response = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) => {
-            request.cookies.set(name, value);
-            response = NextResponse.next({ request });
             response.cookies.set(name, value, {
               ...options,
               domain: cookieDomain,

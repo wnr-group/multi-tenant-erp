@@ -239,7 +239,7 @@ enable_confirmations = true
 template = "Your code is {{ .Code }}"
 max_frequency = "5s"
 
-# Dummy Twilio config — required to satisfy "no SMS provider" check locally.
+# Dummy Twilio config — satisfies the "no SMS provider" check locally.
 # test_otp numbers bypass actual SMS sending so no real credentials are needed.
 [auth.sms.twilio]
 enabled = true
