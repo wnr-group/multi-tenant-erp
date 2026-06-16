@@ -44,6 +44,15 @@ export async function POST(request: NextRequest) {
     const { userId, created } = await findOrCreateUserByPhone(adminClient, normalized, parentName ?? "");
     await attachRole(adminClient, userId, schoolId, "parent");
 
+    // Persist the parent name on the shared profile when provided (find-or-create
+    // only sets it on first creation, so edits to an existing parent are applied here).
+    if (parentName?.trim()) {
+      await adminClient
+        .from("profiles")
+        .update({ full_name: parentName.trim() })
+        .eq("id", userId);
+    }
+
     console.log("[resolve-parent] result", { created, hasStudentName: !!studentName, studentName });
 
     if (created && studentName) {
