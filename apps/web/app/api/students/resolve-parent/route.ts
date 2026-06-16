@@ -44,6 +44,8 @@ export async function POST(request: NextRequest) {
     const { userId, created } = await findOrCreateUserByPhone(adminClient, normalized, parentName ?? "");
     await attachRole(adminClient, userId, schoolId, "parent");
 
+    console.log("[resolve-parent] result", { created, hasStudentName: !!studentName, studentName });
+
     if (created && studentName) {
       const { data: school } = await adminClient
         .from("schools")

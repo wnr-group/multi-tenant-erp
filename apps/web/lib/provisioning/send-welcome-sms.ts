@@ -12,7 +12,19 @@ export async function sendParentWelcomeSmsBatch(
 
   const supabaseUrl  = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const sharedSecret = process.env.WELCOME_SMS_SECRET;
-  if (!supabaseUrl || !sharedSecret) return;
+
+  console.log("[welcome-sms] invoked", {
+    recipients: recipients.length,
+    schoolDomain,
+    hasUrl: !!supabaseUrl,
+    hasSecret: !!sharedSecret,
+    secretLen: sharedSecret?.length ?? 0,
+  });
+
+  if (!supabaseUrl || !sharedSecret) {
+    console.error("[welcome-sms] aborting — missing env", { hasUrl: !!supabaseUrl, hasSecret: !!sharedSecret });
+    return;
+  }
 
   try {
     const res = await fetch(`${supabaseUrl}/functions/v1/send-welcome-sms`, {
@@ -23,10 +35,8 @@ export async function sendParentWelcomeSmsBatch(
       },
       body: JSON.stringify({ recipients, schoolDomain }),
     });
-    if (!res.ok) {
-      const txt = await res.text();
-      console.error("[welcome-sms] edge function returned error:", res.status, txt);
-    }
+    const txt = await res.text();
+    console.log("[welcome-sms] edge response:", res.status, txt);
   } catch (err) {
     console.error("[welcome-sms] failed to invoke edge function:", err);
   }
