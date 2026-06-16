@@ -99,7 +99,7 @@ export function StudentEditForm({
       const resp = await fetch("/api/students/resolve-parent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: parentPhone, schoolId, parentName }),
+        body: JSON.stringify({ phone: parentPhone, schoolId, parentName, studentName: name }),
       });
       const resolveJson = await resp.json();
       if (!resp.ok) { toast.error(resolveJson.error ?? "Failed to resolve parent."); return; }
