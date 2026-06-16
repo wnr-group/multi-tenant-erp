@@ -23,7 +23,7 @@ async function sendOne(
 ): Promise<SendResult> {
   const number  = r.phone.replace(/^\+/, "");
   const appLink = `${schoolDomain}/download-app`;
-  const text    = `Welcome to ConnectMySkool! Your child is registered. Download the app: ${appLink} - CMYSKL`;
+  const text    = `Dear ${r.parentName || "Parent"}, Welcome to ConnectMySkool. Your child ${r.studentName} has been registered on the platform. Download the app and stay connected with school updates: ${appLink} Thank you, CMYSKL`;
 
   const params = new URLSearchParams({
     user:     creds.user,
