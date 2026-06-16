@@ -63,8 +63,8 @@ Deno.serve(async (req) => {
     });
   }
 
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!serviceKey || req.headers.get("Authorization") !== `Bearer ${serviceKey}`) {
+  const sharedSecret = Deno.env.get("WELCOME_SMS_SECRET");
+  if (!sharedSecret || req.headers.get("x-welcome-secret") !== sharedSecret) {
     console.error("[welcome-sms] unauthorized call");
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
