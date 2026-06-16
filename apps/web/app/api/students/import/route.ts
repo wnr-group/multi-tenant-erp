@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSchoolId } from "@/lib/school";
 import { findOrCreateUserByPhone, attachRole } from "@/lib/provisioning/find-or-create-user";
-import { sendParentWelcomeSms } from "@/lib/provisioning/send-welcome-sms";
+import { sendParentWelcomeSmsBatch, type WelcomeRecipient } from "@/lib/provisioning/send-welcome-sms";
 
 interface ImportRow {
   full_name: string;
@@ -78,6 +78,7 @@ export async function POST(request: NextRequest) {
   }
 
   const results: RowResult[] = [];
+  const welcomeRecipients: WelcomeRecipient[] = [];
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
@@ -101,7 +102,11 @@ export async function POST(request: NextRequest) {
         await attachRole(adminClient, userId, schoolId, "parent");
         parentProfileId = userId;
         if (created && schoolDomain) {
-          await sendParentWelcomeSms(normalizedParent, row.parent_name?.trim() ?? "", row.full_name.trim(), schoolDomain);
+          welcomeRecipients.push({
+            phone: normalizedParent,
+            parentName: row.parent_name?.trim() ?? "",
+            studentName: row.full_name.trim(),
+          });
         }
       }
 
@@ -151,6 +156,13 @@ export async function POST(request: NextRequest) {
         status: "error",
         error: err instanceof Error ? err.message : String(err),
       });
+    }
+  }
+
+  // Send welcome SMS to all newly-created parents in batches of 100.
+  if (schoolDomain && welcomeRecipients.length > 0) {
+    for (let i = 0; i < welcomeRecipients.length; i += 100) {
+      await sendParentWelcomeSmsBatch(welcomeRecipients.slice(i, i + 100), schoolDomain);
     }
   }
 
